@@ -1,0 +1,15 @@
+# TAKO Production Caddyfile
+# Replace YOUR_DOMAIN with actual domain (e.g., app.tako.software)
+# Caddy automatically provisions and renews Let's Encrypt SSL certificates.
+
+YOUR_DOMAIN {
+    # Frontend — serves the React app
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # Backend API — proxied under /api path
+    handle_path /api/* {
+        reverse_proxy backend:8001
+    }
+}

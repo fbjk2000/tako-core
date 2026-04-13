@@ -198,3 +198,5 @@ credentials.json
 !.env.example
 !backend/.env.example
 !frontend/.env.example
+!backend/.env.production.template
+!frontend/.env.production.template
