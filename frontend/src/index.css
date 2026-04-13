@@ -5,12 +5,12 @@
 @tailwind utilities;
 
 :root {
-  /* earnrm Brand Colors */
-  --earnrm-purple: #A100FF;
-  --earnrm-black: #111111;
-  --earnrm-bg-dark: #0B0B0B;
-  --earnrm-gray: #444444;
-  --earnrm-white: #FFFFFF;
+  /* TAKO Brand Colors */
+  --tako-teal: #0EA5A0;
+  --tako-black: #111111;
+  --tako-bg-dark: #0B0B0B;
+  --tako-gray: #444444;
+  --tako-white: #FFFFFF;
   
   --font-heading: 'Inter', 'Lato', system-ui, sans-serif;
   --font-body: 'Inter', 'Lato', system-ui, sans-serif;

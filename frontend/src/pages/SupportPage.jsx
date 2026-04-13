@@ -72,7 +72,7 @@ const SupportPage = () => {
         },
         {
           q: 'Is there a free trial?',
-          a: 'Yes! earnrm is free for up to 3 users. You only pay when you add more team members. No credit card required to start.'
+          a: 'Yes! TAKO is free for up to 3 users. You only pay when you add more team members. No credit card required to start.'
         },
         {
           q: 'How do I invite team members?',
@@ -97,7 +97,7 @@ const SupportPage = () => {
         },
         {
           q: 'How does the LinkedIn integration work?',
-          a: 'You can import LinkedIn contacts via CSV export. Go to LinkedIn > My Network > Connections > Export, then upload the CSV to earnrm. Web scraping features coming soon.'
+          a: 'You can import LinkedIn contacts via CSV export. Go to LinkedIn > My Network > Connections > Export, then upload the CSV to TAKO. Web scraping features coming soon.'
         },
         {
           q: 'What email integrations are supported?',
@@ -109,7 +109,7 @@ const SupportPage = () => {
       category: 'Billing & Pricing',
       questions: [
         {
-          q: 'How much does earnrm cost?',
+          q: 'How much does TAKO cost?',
           a: 'Free for up to 3 users. €15/user/month for additional users. Annual billing saves 20% (€12/user/month). Pay with crypto for an extra 5% discount.'
         },
         {
@@ -118,11 +118,11 @@ const SupportPage = () => {
         },
         {
           q: 'Can I get a refund?',
-          a: 'Yes, we offer a 30-day money-back guarantee. Contact support@earnrm.com within 30 days of purchase for a full refund.'
+          a: 'Yes, we offer a 30-day money-back guarantee. Contact support@tako.software within 30 days of purchase for a full refund.'
         },
         {
           q: 'Do you offer discounts for startups or non-profits?',
-          a: 'Yes! Contact us at support@earnrm.com with details about your organization, and we\'ll work out a custom plan.'
+          a: 'Yes! Contact us at support@tako.software with details about your organization, and we\'ll work out a custom plan.'
         }
       ]
     },
@@ -220,42 +220,42 @@ const SupportPage = () => {
       best_for: 'Complex B2B sales with long cycles',
       description: 'Focus on Situation, Problem, Implication, and Need-payoff questions to uncover customer needs.',
       when_to_use: 'When selling high-value solutions that require deep understanding of customer challenges.',
-      in_earnrm: 'Use lead notes to track SPIN questions asked. Create tasks for each stage of the SPIN process.'
+      in_tako: 'Use lead notes to track SPIN questions asked. Create tasks for each stage of the SPIN process.'
     },
     {
       name: 'Challenger Sale',
       best_for: 'Disruptive products or new market categories',
       description: 'Teach, tailor, and take control. Challenge customer assumptions with insights.',
       when_to_use: 'When your product changes how customers think about their problems.',
-      in_earnrm: 'Use AI email drafting to create insight-driven messages. Track "teaching moments" in deal notes.'
+      in_tako: 'Use AI email drafting to create insight-driven messages. Track "teaching moments" in deal notes.'
     },
     {
       name: 'Solution Selling',
       best_for: 'Service-based businesses and consultancies',
       description: 'Focus on solving specific customer problems rather than pushing product features.',
       when_to_use: 'When customers have clear pain points that your solution addresses.',
-      in_earnrm: 'Document pain points in lead profiles. Move deals through pipeline based on solution fit.'
+      in_tako: 'Document pain points in lead profiles. Move deals through pipeline based on solution fit.'
     },
     {
       name: 'MEDDIC',
       best_for: 'Enterprise sales with multiple stakeholders',
       description: 'Metrics, Economic Buyer, Decision Criteria, Decision Process, Identify Pain, Champion.',
       when_to_use: 'Complex deals with multiple decision-makers and long approval processes.',
-      in_earnrm: 'Create custom fields for MEDDIC criteria. Use companies to track all stakeholders.'
+      in_tako: 'Create custom fields for MEDDIC criteria. Use companies to track all stakeholders.'
     },
     {
       name: 'Sandler Selling',
       best_for: 'Consultative sales where trust is paramount',
       description: 'Build relationships first, qualify rigorously, and let buyers "discover" the solution.',
       when_to_use: 'When building long-term client relationships matters more than quick closes.',
-      in_earnrm: 'Use AI scoring to identify high-trust potential leads. Track relationship milestones in notes.'
+      in_tako: 'Use AI scoring to identify high-trust potential leads. Track relationship milestones in notes.'
     },
     {
       name: 'Value Selling',
       best_for: 'Premium products and services',
       description: 'Demonstrate ROI and value rather than competing on price.',
       when_to_use: 'When your product costs more but delivers superior results.',
-      in_earnrm: 'Document value metrics in deal notes. Use pipeline value to forecast ROI conversations.'
+      in_tako: 'Document value metrics in deal notes. Use pipeline value to forecast ROI conversations.'
     }
   ];
 
@@ -274,7 +274,7 @@ const SupportPage = () => {
               <div className="w-8 h-8 bg-[#A100FF] rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">U</span>
               </div>
-              <span className="text-xl font-semibold text-slate-900">earnrm</span>
+              <span className="text-xl font-semibold text-slate-900">TAKO</span>
             </Link>
             <div className="flex items-center gap-4">
               <Link to="/">
@@ -295,7 +295,7 @@ const SupportPage = () => {
       )}
 
       {/* Hero */}
-      <section className="bg-gradient-to-r from-earnrm-purple to-purple-600 py-16 px-6">
+      <section className="bg-gradient-to-r from-tako-teal to-purple-600 py-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl font-bold text-white mb-4" data-testid="support-title">
             How Can We Help?
@@ -392,12 +392,12 @@ const SupportPage = () => {
                   <h2 className="text-2xl font-bold text-slate-900">Sales Methodologies</h2>
                 </div>
                 <p className="text-slate-600 mb-6 max-w-3xl">
-                  Choose the right sales approach for your business. Here's how to apply proven methodologies within earnrm.
+                  Choose the right sales approach for your business. Here's how to apply proven methodologies within TAKO.
                 </p>
                 
                 <div className="grid md:grid-cols-2 gap-6">
                   {salesMethodologies.map((method, idx) => (
-                    <Card key={idx} className="border-l-4 border-l-earnrm-purple" data-testid={`methodology-${idx}`}>
+                    <Card key={idx} className="border-l-4 border-l-tako-teal" data-testid={`methodology-${idx}`}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg flex items-center gap-2">
@@ -421,9 +421,9 @@ const SupportPage = () => {
                         <div className="p-3 bg-purple-50 rounded-lg">
                           <p className="text-sm font-medium text-purple-800 flex items-center gap-2">
                             <Lightbulb className="w-4 h-4" />
-                            In earnrm:
+                            In TAKO:
                           </p>
-                          <p className="text-sm text-purple-700 mt-1">{method.in_earnrm}</p>
+                          <p className="text-sm text-purple-700 mt-1">{method.in_tako}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -517,8 +517,8 @@ const SupportPage = () => {
                           <Mail className="w-5 h-5 text-[#A100FF] mt-0.5" />
                           <div>
                             <p className="font-medium text-slate-900">Email</p>
-                            <a href="mailto:support@earnrm.com" className="text-[#A100FF] hover:text-purple-700">
-                              support@earnrm.com
+                            <a href="mailto:support@tako.software" className="text-[#A100FF] hover:text-purple-700">
+                              support@tako.software
                             </a>
                           </div>
                         </div>
@@ -555,7 +555,7 @@ const SupportPage = () => {
                       <p className="text-sm text-purple-700 mb-4">
                         For urgent technical issues, email us with "URGENT" in the subject line.
                       </p>
-                      <a href="mailto:support@earnrm.com?subject=URGENT:">
+                      <a href="mailto:support@tako.software?subject=URGENT:">
                         <Button variant="outline" className="border-indigo-300 text-purple-700 hover:bg-purple-100">
                           <Mail className="w-4 h-4 mr-2" />
                           Send Urgent Request
@@ -614,13 +614,13 @@ const SupportPage = () => {
                   
                   <h4 className="text-lg font-semibold text-slate-900 mt-4">1. Acceptance of Terms</h4>
                   <p className="text-slate-600">
-                    By accessing or using earnrm services, you agree to be bound by these Terms of Service. 
+                    By accessing or using TAKO services, you agree to be bound by these Terms of Service.
                     If you do not agree, please do not use our services.
                   </p>
 
                   <h4 className="text-lg font-semibold text-slate-900 mt-4">2. Description of Service</h4>
                   <p className="text-slate-600">
-                    earnrm provides a customer relationship management (CRM) platform with features including 
+                    TAKO provides a customer relationship management (CRM) platform with features including
                     lead management, deal tracking, task management, email campaigns, and AI-powered insights.
                   </p>
 
@@ -632,14 +632,14 @@ const SupportPage = () => {
 
                   <h4 className="text-lg font-semibold text-slate-900 mt-4">4. Acceptable Use</h4>
                   <p className="text-slate-600">
-                    You agree not to use earnrm for any unlawful purpose or in violation of any applicable 
+                    You agree not to use TAKO for any unlawful purpose or in violation of any applicable
                     laws, including data protection regulations such as GDPR.
                   </p>
 
                   <h4 className="text-lg font-semibold text-slate-900 mt-4">5. Payment Terms</h4>
                   <p className="text-slate-600">
                     Paid subscriptions are billed monthly or annually as selected. Refunds are available 
-                    within 30 days of purchase. Contact support@earnrm.com for refund requests.
+                    within 30 days of purchase. Contact support@tako.software for refund requests.
                   </p>
                 </CardContent>
               </Card>
@@ -677,7 +677,7 @@ const SupportPage = () => {
                   <h4 className="text-lg font-semibold text-slate-900 mt-4">Your Rights (GDPR)</h4>
                   <p className="text-slate-600">
                     You have the right to access, correct, delete, or export your data. Contact 
-                    support@earnrm.com to exercise these rights.
+                    support@tako.software to exercise these rights.
                   </p>
                 </CardContent>
               </Card>
@@ -703,7 +703,7 @@ const SupportPage = () => {
                 </CardHeader>
                 <CardContent className="text-amber-700">
                   <p>
-                    earnrm is provided "as is" without warranties of any kind. We do not guarantee that the 
+                    TAKO is provided "as is" without warranties of any kind. We do not guarantee that the
                     service will be uninterrupted or error-free. We are not liable for any indirect, 
                     incidental, or consequential damages arising from use of our services.
                   </p>
@@ -723,7 +723,7 @@ const SupportPage = () => {
       <footer className="bg-slate-900 py-8 px-6">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-slate-400 text-sm">
-            © {new Date().getFullYear()} earnrm by Fintery Ltd. All rights reserved.
+            © {new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.
           </p>
           <p className="text-slate-500 text-xs mt-2">
             Canbury Works, Units 6 and 7, Canbury Business Park, Elm Crescent, Kingston upon Thames, Surrey, KT2 6HJ, UK

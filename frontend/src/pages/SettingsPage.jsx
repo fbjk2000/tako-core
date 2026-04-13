@@ -545,11 +545,11 @@ const SettingsPage = () => {
                       {/* Embed HTML Code */}
                       <div className="border border-slate-200 rounded-lg p-4 space-y-2">
                         <p className="text-sm font-medium text-slate-800">Embed Code for Your Website / CMS</p>
-                        <p className="text-xs text-slate-500">Copy and paste this HTML into your website to promote earnrm and earn commissions.</p>
+                        <p className="text-xs text-slate-500">Copy and paste this HTML into your website to promote TAKO and earn commissions.</p>
                         <div className="relative">
                           <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto max-h-40" data-testid="affiliate-embed-code">{`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
   <div style="background:linear-gradient(135deg,#A100FF,#7B00CC);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;">
-    <p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try earnrm - Your CRM that pAIs you back</p>
+    <p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p>
     <p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p>
     <span style="background:#fff;color:#A100FF;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span>
   </div>
@@ -559,7 +559,7 @@ const SettingsPage = () => {
                             variant="outline"
                             className="absolute top-2 right-2 h-7 text-xs"
                             data-testid="copy-embed-btn"
-                            onClick={() => copyToClipboard(`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#A100FF,#7B00CC);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;"><p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try earnrm - Your CRM that pAIs you back</p><p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p><span style="background:#fff;color:#A100FF;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span></div></a>`)}
+                            onClick={() => copyToClipboard(`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#A100FF,#7B00CC);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;"><p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p><p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p><span style="background:#fff;color:#A100FF;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span></div></a>`)}
                           >
                             <Copy className="w-3 h-3 mr-1" /> Copy
                           </Button>
@@ -569,7 +569,7 @@ const SettingsPage = () => {
                       {/* Social Media Assets */}
                       <div className="border border-slate-200 rounded-lg p-4 space-y-3">
                         <p className="text-sm font-medium text-slate-800">Social Media Assets</p>
-                        <p className="text-xs text-slate-500">Download these images to promote earnrm on your social channels. Pair them with your referral link!</p>
+                        <p className="text-xs text-slate-500">Download these images to promote TAKO on your social channels. Pair them with your referral link!</p>
                         <div className="grid grid-cols-3 gap-3">
                           {[
                             { label: 'Banner (1536x1024)', desc: 'Facebook, LinkedIn, X', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/d4c7d179cc49d6bcdd5bdeba2bd3c0ee15d214451c0e4ac91a8035ff9554f03b.png' },
@@ -1193,7 +1193,7 @@ const SettingsPage = () => {
                     </div>
                     <div>
                       <p className="font-medium text-slate-900">Resend</p>
-                      <p className="text-sm text-slate-500">Transactional & campaign emails (earnrm.com)</p>
+                      <p className="text-sm text-slate-500">Transactional & campaign emails (tako.software)</p>
                     </div>
                   </div>
                   <Badge className="bg-emerald-100 text-emerald-700">Verified</Badge>
@@ -1353,11 +1353,11 @@ const SettingsPage = () => {
                   <div className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs font-mono space-y-2">
                     <p># n8n.io - Use HTTP Request node</p>
                     <p>GET {API}/v1/leads</p>
-                    <p>Header: X-API-Key: earnrm_your_key_here</p>
+                    <p>Header: X-API-Key: tako_your_key_here</p>
                     <p></p>
                     <p># Notion - Sync data via API</p>
                     <p>POST {API}/v1/notion/sync?entity_type=leads</p>
-                    <p>Header: X-API-Key: earnrm_your_key_here</p>
+                    <p>Header: X-API-Key: tako_your_key_here</p>
                     <p></p>
                     <p># Webhooks - Register for events</p>
                     <p>POST {API}/webhooks?url=https://your-n8n.com/webhook/xxx&events=lead.created</p>
@@ -1371,14 +1371,14 @@ const SettingsPage = () => {
           <TabsContent value="app">
             <Card>
               <CardHeader>
-                <CardTitle>Install earnrm on your device</CardTitle>
+                <CardTitle>Install TAKO on your device</CardTitle>
                 <CardDescription>Get the full CRM experience as an app on your phone, tablet, or desktop</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
-                  <img src="/icon-192.png" alt="earnrm" className="w-16 h-16 rounded-2xl shadow-md" />
+                  <img src="/icon-192.png" alt="TAKO" className="w-16 h-16 rounded-2xl shadow-md" />
                   <div>
-                    <h3 className="font-bold text-slate-900">earnrm PWA</h3>
+                    <h3 className="font-bold text-slate-900">TAKO PWA</h3>
                     <p className="text-sm text-slate-500">Works on iOS, Android & Desktop</p>
                   </div>
                   <Button

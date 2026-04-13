@@ -38,7 +38,7 @@ export const ForgotPasswordPage = () => {
     <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Link to="/"><img src="/logo-horizontal.svg" alt="earnrm" className="h-7 mx-auto mb-4" /></Link>
+          <Link to="/"><img src="/logo-horizontal.svg" alt="TAKO" className="h-7 mx-auto mb-4" /></Link>
           <CardTitle style={{ fontFamily: "'Syne'" }}>{sent ? 'Check your email' : 'Reset your password'}</CardTitle>
           <CardDescription>{sent ? `We sent a reset link to ${email}` : 'Enter your email and we will send you a reset link.'}</CardDescription>
         </CardHeader>
@@ -113,7 +113,7 @@ export const ResetPasswordPage = () => {
     <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Link to="/"><img src="/logo-horizontal.svg" alt="earnrm" className="h-7 mx-auto mb-4" /></Link>
+          <Link to="/"><img src="/logo-horizontal.svg" alt="TAKO" className="h-7 mx-auto mb-4" /></Link>
           <CardTitle style={{ fontFamily: "'Syne'" }}>{done ? 'Password reset' : 'Set new password'}</CardTitle>
         </CardHeader>
         <CardContent>

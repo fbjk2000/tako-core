@@ -215,7 +215,7 @@ export const PublicBookingPage = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <Card className="max-w-2xl w-full">
         <CardHeader className="text-center border-b">
-          <img src="/logo-horizontal.svg" alt="earnrm" className="h-8 mx-auto mb-3" />
+          <img src="/logo-horizontal.svg" alt="TAKO" className="h-8 mx-auto mb-3" />
           <CardTitle className="text-xl">Book a Meeting</CardTitle>
           <CardDescription>Select a date and time that works for you</CardDescription>
         </CardHeader>

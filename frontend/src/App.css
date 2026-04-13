@@ -1,4 +1,4 @@
-/* earnrm CRM Styles */
+/* TAKO CRM Styles */
 
 /* Smooth scrolling */
 html {
@@ -33,7 +33,7 @@ button {
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* Gradient text - earnrm purple */
+/* Gradient text - TAKO teal */
 .gradient-text {
   background: linear-gradient(135deg, #A100FF 0%, #7C3AED 100%);
   -webkit-background-clip: text;
@@ -41,9 +41,9 @@ button {
   background-clip: text;
 }
 
-/* earnrm brand gradient */
-.earnrm-gradient {
-  background: linear-gradient(135deg, #A100FF 0%, #8B00E6 50%, #7200BD 100%);
+/* TAKO brand gradient */
+.tako-gradient {
+  background: linear-gradient(135deg, #0EA5A0 0%, #0B8C88 50%, #097370 100%);
 }
 
 /* AI highlight for slogan */

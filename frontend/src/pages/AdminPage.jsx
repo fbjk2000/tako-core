@@ -1110,9 +1110,9 @@ const AdminPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="w-5 h-5" />
-                  earnrm Platform Settings
+                  TAKO Platform Settings
                 </CardTitle>
-                <CardDescription>Configure earnrm platform payment integrations, support email, and global settings (Super Admin only)</CardDescription>
+                <CardDescription>Configure TAKO platform payment integrations, support email, and global settings (Super Admin only)</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSaveAllSettings} className="space-y-6">
@@ -1129,7 +1129,7 @@ const AdminPage = () => {
                           type="email"
                           value={platformSettings?.support_email || ''}
                           onChange={(e) => setPlatformSettings({...platformSettings, support_email: e.target.value})}
-                          placeholder="support@earnrm.com"
+                          placeholder="support@tako.software"
                           data-testid="settings-support-email"
                         />
                         <p className="text-xs text-slate-500">Contact form submissions will be sent to this email</p>

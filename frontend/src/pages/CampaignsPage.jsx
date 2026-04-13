@@ -259,7 +259,7 @@ const CampaignsPage = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-emerald-900">Email Sending Ready</p>
-                      <p className="text-sm text-emerald-700">Campaigns sent via Resend (earnrm.com){kitAccount?.status === 'active' ? ' + Kit.com' : ''}</p>
+                      <p className="text-sm text-emerald-700">Campaigns sent via Resend (tako.software){kitAccount?.status === 'active' ? ' + Kit.com' : ''}</p>
                     </div>
                   </div>
                   <Button variant="outline" size="sm" onClick={fetchKitData} disabled={kitLoading}>

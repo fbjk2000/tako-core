@@ -68,8 +68,8 @@ const CalendarPage = () => {
   const reloadEvents = async () => {
     try {
       const cfg = getCfg();
-      const [earnrm, google] = await Promise.allSettled([axios.get(`${API}/calendar/events`, cfg), axios.get(`${API}/calendar/google/events`, cfg)]);
-      setEvents([...(earnrm.status === 'fulfilled' ? earnrm.value.data || [] : []), ...(google.status === 'fulfilled' && Array.isArray(google.value.data) ? google.value.data : [])]);
+      const [tako, google] = await Promise.allSettled([axios.get(`${API}/calendar/events`, cfg), axios.get(`${API}/calendar/google/events`, cfg)]);
+      setEvents([...(tako.status === 'fulfilled' ? tako.value.data || [] : []), ...(google.status === 'fulfilled' && Array.isArray(google.value.data) ? google.value.data : [])]);
     } catch (err) { console.error(err); }
   };
 

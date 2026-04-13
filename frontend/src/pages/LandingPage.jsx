@@ -114,7 +114,7 @@ const LaunchEdition = () => {
               <h3 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-1" style={{ fontFamily: "'Syne'" }}>Launch Edition</h3>
               <p className="text-white text-xl font-bold mb-4">EUR 4,999 <span className="text-white/70 font-medium text-base ml-1">one-time</span></p>
               <p className="text-white/90 text-base leading-relaxed mb-3">
-                Get the existing earnrm app with <strong>unlimited users</strong> and deploy it on <strong>your own hosting</strong>.
+                Get the existing TAKO app with <strong>unlimited users</strong> and deploy it on <strong>your own hosting</strong>.
               </p>
               <p className="text-white/70 text-sm leading-relaxed mb-5">
                 Save 2 to 3 months of setup and iteration, reduce unnecessary AI credit spend, and launch faster with a proven CRM foundation shaped by real implementation experience.
@@ -166,7 +166,7 @@ const LaunchEdition = () => {
 
 const LandingPage = () => {
   const { t, i18n } = useTranslation();
-  const toggleLang = () => { const nl = i18n.language === 'en' ? 'de' : 'en'; i18n.changeLanguage(nl); localStorage.setItem('earnrm_lang', nl); };
+  const toggleLang = () => { const nl = i18n.language === 'en' ? 'de' : 'en'; i18n.changeLanguage(nl); localStorage.setItem('tako_lang', nl); };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLeadMagnet, setShowLeadMagnet] = useState(false);
   const [leadMagnetEmail, setLeadMagnetEmail] = useState('');
@@ -204,8 +204,8 @@ const LandingPage = () => {
 
   const handleDownload = () => {
     const a = document.createElement('a');
-    a.href = 'https://customer-assets.emergentagent.com/job_bf31783e-7e9c-47ad-b065-3e62a7895ee8/artifacts/7c9fmulw_EarnRM_LinkedIn_Lead_Generation_Playbook_Agency_Edition.pdf';
-    a.download = 'EarnRM_LinkedIn_Lead_Generation_Playbook.pdf';
+    a.href = 'https://customer-assets.emergentagent.com/job_bf31783e-7e9c-47ad-b065-3e62a7895ee8/artifacts/7c9fmulw_TAKO_LinkedIn_Lead_Generation_Playbook_Agency_Edition.pdf';
+    a.download = 'TAKO_LinkedIn_Lead_Generation_Playbook.pdf';
     a.target = '_blank';
     document.body.appendChild(a);
     a.click();
@@ -230,7 +230,7 @@ const LandingPage = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAF8]/95 backdrop-blur-sm border-b border-[#0F0A1E]/5">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center">
-            <img src="/logo-horizontal.svg" alt="earnrm" className="h-7" data-testid="nav-logo" />
+            <img src="/logo-horizontal.svg" alt="TAKO" className="h-7" data-testid="nav-logo" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerFeatures')}</a>
@@ -371,7 +371,7 @@ const LandingPage = () => {
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { quote: "We replaced three tools with earnrm. Pipeline visibility went from guesswork to real time.", name: "Marcus W.", role: "Head of Sales, SaaS (Berlin)" },
+              { quote: "We replaced three tools with TAKO. Pipeline visibility went from guesswork to real time.", name: "Marcus W.", role: "Head of Sales, SaaS (Berlin)" },
               { quote: "The AI scoring saves us hours every week. We only call leads that actually convert.", name: "Sophie L.", role: "Sales Director, Agency (Paris)" },
               { quote: "Finally a CRM that does not feel like it was built for a Fortune 500 IT department.", name: "James R.", role: "Founder, Consulting (London)" }
             ].map((t, i) => (
@@ -445,7 +445,7 @@ const LandingPage = () => {
             Ready to sell smarter?
           </h2>
           <p className="text-white/60 text-lg mb-8 max-w-xl mx-auto">
-            Join hundreds of European sales teams using earnrm to close more deals with less effort.
+            Join hundreds of European sales teams using TAKO to close more deals with less effort.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/signup">
@@ -467,7 +467,7 @@ const LandingPage = () => {
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
-              <img src="/logo-horizontal-reversed.svg" alt="earnrm" className="h-6 mb-4" />
+              <img src="/logo-horizontal-reversed.svg" alt="TAKO" className="h-6 mb-4" />
               <p className="text-white/40 text-sm mb-4 max-w-xs">
                 The CRM that runs your marketing and sales. Built for European teams that want results, not complexity.
               </p>
@@ -491,12 +491,12 @@ const LandingPage = () => {
               <div className="space-y-2 text-sm">
                 <a href="#" className="block text-white/40 hover:text-white/70 transition-colors">Privacy Policy</a>
                 <a href="#" className="block text-white/40 hover:text-white/70 transition-colors">Terms of Service</a>
-                <a href="mailto:support@earnrm.com" className="block text-white/40 hover:text-white/70 transition-colors">support@earnrm.com</a>
+                <a href="mailto:support@tako.software" className="block text-white/40 hover:text-white/70 transition-colors">support@tako.software</a>
               </div>
             </div>
           </div>
           <div className="border-t border-white/5 pt-6 text-center">
-            <p className="text-white/30 text-xs">{new Date().getFullYear()} earnrm by Finerty Ltd. All rights reserved.</p>
+            <p className="text-white/30 text-xs">{new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.</p>
           </div>
         </div>
       </footer>

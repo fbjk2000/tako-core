@@ -122,7 +122,7 @@ const SignupPage = () => {
           <CardHeader className="text-center pb-2">
             <img 
               src="/logo-horizontal.svg"
-              alt="earnrm" 
+              alt="TAKO" 
               className="h-10 mx-auto mb-4"
             />
             <CardTitle className="text-2xl font-bold text-slate-900" data-testid="signup-title">

@@ -29,7 +29,7 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [lang, setLang] = useState(() => localStorage.getItem('earnrm_lang') || 'en');
+  const [lang, setLang] = useState(() => localStorage.getItem('tako_lang') || 'en');
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'deputy_admin' || user?.email === 'florian@unyted.world';
 
@@ -42,7 +42,7 @@ const DashboardLayout = ({ children }) => {
   const toggleLang = () => {
     const nl = lang === 'en' ? 'de' : 'en';
     setLang(nl);
-    localStorage.setItem('earnrm_lang', nl);
+    localStorage.setItem('tako_lang', nl);
     try { window.dispatchEvent(new Event('languagechange')); } catch {}
   };
 
@@ -80,7 +80,7 @@ const DashboardLayout = ({ children }) => {
       {/* Mobile Header - always visible on mobile */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 h-14 flex items-center justify-between px-3 shadow-sm">
         <Link to="/dashboard" className="flex items-center">
-          <img src="/logo-horizontal.svg" alt="earnrm" className="h-6" />
+          <img src="/logo-horizontal.svg" alt="TAKO" className="h-6" />
         </Link>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -110,7 +110,7 @@ const DashboardLayout = ({ children }) => {
           {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b border-slate-100">
             <Link to="/dashboard" className="flex items-center">
-              <img src="/logo-horizontal.svg" alt="earnrm" className="h-7" />
+              <img src="/logo-horizontal.svg" alt="TAKO" className="h-7" />
             </Link>
           </div>
 

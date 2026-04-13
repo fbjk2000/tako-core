@@ -4,7 +4,7 @@ import de from './locales/de.json';
 const translations = { en, de };
 
 export function useT() {
-  const lang = localStorage.getItem('earnrm_lang') || 'en';
+  const lang = localStorage.getItem('tako_lang') || 'en';
   const strings = translations[lang] || translations.en;
   
   const t = (key) => {
