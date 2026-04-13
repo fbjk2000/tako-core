@@ -1418,6 +1418,6 @@ The app supports English and German. Language toggle available in the sidebar (E
 
 ## License
 
-Proprietary — earnrm by Finerty Ltd. All rights reserved.
+Proprietary — TAKO by Fintery Ltd. All rights reserved.
 
 Canbury Works, Units 6 and 7, Canbury Business Park, Elm Crescent, Kingston upon Thames, Surrey, KT2 6HJ, UK

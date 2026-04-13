@@ -472,7 +472,7 @@ const LandingPage = () => {
                 The CRM that runs your marketing and sales. Built for European teams that want results, not complexity.
               </p>
               <div className="text-xs text-white/30">
-                <p className="font-medium text-white/40">Finerty Ltd.</p>
+                <p className="font-medium text-white/40">Fintery Ltd.</p>
                 <p>Canbury Works, Units 6 and 7, Canbury Business Park</p>
                 <p>Kingston upon Thames, Surrey, KT2 6HJ, UK</p>
               </div>
