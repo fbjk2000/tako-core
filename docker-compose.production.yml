@@ -3,6 +3,9 @@ services:
     image: caddy:2-alpine
     container_name: tako-caddy
     restart: unless-stopped
+    dns:
+      - 212.227.123.16
+      - 212.227.123.17
     ports:
       - "80:80"
       - "443:443"
