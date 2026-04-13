@@ -133,37 +133,31 @@ const AuthCallback = () => {
   const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
-    const processSession = async () => {
-      // Check hash first, then query params (Safari may strip hash on redirect)
-      const hash = location.hash || '';
-      const search = location.search || '';
-      const fullUrl = hash + search;
-      let sessionId = null;
-      
-      if (hash.includes('session_id=')) {
-        sessionId = hash.split('session_id=')[1]?.split('&')[0];
-      } else if (search.includes('session_id=')) {
-        sessionId = new URLSearchParams(search).get('session_id');
+    const processCallback = async () => {
+      const params = new URLSearchParams(location.search);
+      const token = params.get('token');
+      const error = params.get('error');
+
+      if (error) {
+        console.error('Auth error:', error);
+        navigate('/login', { replace: true });
+        return;
       }
 
-      if (sessionId) {
+      if (token) {
         try {
-          const response = await axios.post(
-            `${API}/auth/session`,
-            { session_id: sessionId }
-          );
-          const { token: newToken, ...userData } = response.data;
-          if (newToken) {
-            localStorage.setItem('token', newToken);
-          }
-          setUser(userData);
-          navigate('/dashboard', { replace: true, state: { user: userData } });
+          localStorage.setItem('token', token);
+          const response = await axios.get(`${API}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUser(response.data);
+          navigate('/dashboard', { replace: true });
         } catch (error) {
-          console.error('Session processing error:', error);
+          console.error('Auth callback error:', error);
+          localStorage.removeItem('token');
           navigate('/login', { replace: true });
         }
       } else {
@@ -171,7 +165,7 @@ const AuthCallback = () => {
       }
     };
 
-    processSession();
+    processCallback();
   }, []);
 
   return (
@@ -208,15 +202,10 @@ const ProtectedRoute = ({ children }) => {
 const AppRouter = () => {
   const location = useLocation();
 
-  // Check for session_id in hash OR query params BEFORE rendering routes
-  const hasSessionId = location.hash?.includes('session_id=') || location.search?.includes('session_id=');
-  if (hasSessionId) {
-    return <AuthCallback />;
-  }
-
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/pricing" element={<PricingPage />} />

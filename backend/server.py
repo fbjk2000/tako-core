@@ -868,28 +868,78 @@ async def reset_password(token: str, new_password: str):
     return {"message": "Password reset successfully. You can now sign in."}
 
 
-@api_router.post("/auth/session")
-async def process_google_session(request: Request, response: Response):
-    body = await request.json()
-    session_id = body.get("session_id")
-    
-    if not session_id:
-        raise HTTPException(status_code=400, detail="Session ID required")
-    
-    # Fetch session data from Emergent Auth
+@api_router.get("/auth/google/login")
+async def google_login_redirect(request: Request):
+    """Redirect user to Google OAuth for login/signup"""
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise HTTPException(status_code=400, detail="Google login not configured")
+
+    from urllib.parse import urlencode
+    redirect_uri = f"{FRONTEND_URL}/api/auth/google/login/callback"
+    state = secrets.token_urlsafe(32)
+
+    # Store state for CSRF protection
+    await db.google_login_states.insert_one({
+        "state": state,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    params = urlencode({
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "online",
+        "state": state,
+        "prompt": "select_account"
+    })
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+
+@api_router.get("/auth/google/login/callback")
+async def google_login_callback(code: str, state: str, response: Response):
+    """Handle Google OAuth callback for login/signup"""
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise HTTPException(status_code=400, detail="Google login not configured")
+
+    # Verify state
+    state_doc = await db.google_login_states.find_one({"state": state})
+    if not state_doc:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=invalid_state")
+    await db.google_login_states.delete_one({"state": state})
+
+    # Exchange code for tokens
+    redirect_uri = f"{FRONTEND_URL}/api/auth/google/login/callback"
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-            headers={"X-Session-ID": session_id}
+        token_resp = await client.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code"
+        })
+        if token_resp.status_code != 200:
+            logger.error(f"Google token exchange failed: {token_resp.text}")
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed")
+        tokens = token_resp.json()
+
+        # Get user info from Google
+        userinfo_resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"}
         )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=401, detail="Invalid session")
-        session_data = resp.json()
-    
-    email = session_data["email"]
-    name = session_data.get("name", email.split("@")[0])
-    picture = session_data.get("picture")
-    session_token = session_data["session_token"]
+        if userinfo_resp.status_code != 200:
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{FRONTEND_URL}/login?error=userinfo_failed")
+        userinfo = userinfo_resp.json()
+
+    email = userinfo["email"]
+    name = userinfo.get("name", email.split("@")[0])
+    picture = userinfo.get("picture")
+    session_token = secrets.token_urlsafe(32)
     
     now = datetime.now(timezone.utc)
     
@@ -949,7 +999,13 @@ async def process_google_session(request: Request, response: Response):
     await db.user_sessions.delete_many({"user_id": user_id})
     await db.user_sessions.insert_one(session_doc)
     
-    response.set_cookie(
+    # Generate JWT token for consistent auth (same as email/password login)
+    jwt_token = create_jwt_token(user_id, email, user.get("organization_id"))
+
+    # Store session cookie
+    from fastapi.responses import RedirectResponse
+    redirect = RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?token={jwt_token}", status_code=302)
+    redirect.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
@@ -958,19 +1014,7 @@ async def process_google_session(request: Request, response: Response):
         path="/",
         max_age=7*24*60*60
     )
-    
-    # Generate JWT token for consistent auth (same as email/password login)
-    jwt_token = create_jwt_token(user_id, email, user.get("organization_id"))
-    
-    return {
-        "user_id": user_id,
-        "email": email,
-        "name": name,
-        "picture": picture,
-        "organization_id": user.get("organization_id"),
-        "role": user.get("role", "member"),
-        "token": jwt_token
-    }
+    return redirect
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
