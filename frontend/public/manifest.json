@@ -1,11 +1,11 @@
 {
-  "name": "earnrm - Your CRM that pAIs you back",
-  "short_name": "earnrm",
-  "description": "AI-powered CRM for managing leads, deals, and team collaboration",
+  "name": "TAKO – AI-Native CRM",
+  "short_name": "TAKO",
+  "description": "AI-native CRM for European sales teams. Eight agents, one platform, your data.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0B0B0B",
-  "theme_color": "#A100FF",
+  "theme_color": "#0EA5A0",
   "orientation": "any",
   "icons": [
     {
