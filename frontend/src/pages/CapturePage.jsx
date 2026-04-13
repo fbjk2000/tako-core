@@ -1,5 +1,5 @@
 import { useT } from '../useT';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth, API } from '../App';
 import { useParams } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -11,7 +11,7 @@ import { Switch } from '../components/ui/switch';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Camera, Upload, CheckSquare, Users, Zap, Mail, X } from 'lucide-react';
+import { Camera, Upload, CheckSquare, Users, Zap, Mail, X, SwitchCamera } from 'lucide-react';
 
 const CapturePage = () => {
   const { token, user } = useAuth();
@@ -24,6 +24,77 @@ const CapturePage = () => {
   const [preview, setPreview] = useState(null);
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
+
+  // Live camera state
+  const [cameraActive, setCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState('environment');
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const startCamera = useCallback(async (facing) => {
+    // Stop any existing stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing || facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      // Fallback: open file picker with camera hint (mobile)
+      if (cameraRef.current) cameraRef.current.click();
+    }
+  }, [facingMode]);
+
+  const toggleFacing = useCallback(() => {
+    const next = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(next);
+    if (cameraActive) startCamera(next);
+  }, [facingMode, cameraActive, startCamera]);
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const takeSnapshot = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+        setPreview(URL.createObjectURL(blob));
+        stopCamera();
+        handleCapture(file);
+      }
+    }, 'image/jpeg', 0.92);
+  }, [stopCamera]);
 
   const handleCapture = async (file) => {
     if (!file || !token) return;
@@ -97,14 +168,55 @@ const CapturePage = () => {
           </CardContent>
         </Card>
 
+        {/* Live Camera View */}
+        {cameraActive && !result && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0 relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full rounded-lg"
+                style={{ maxHeight: '400px', objectFit: 'cover' }}
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-4">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur"
+                  onClick={toggleFacing}
+                >
+                  <SwitchCamera className="w-5 h-5" />
+                </Button>
+                <Button
+                  className="w-16 h-16 rounded-full bg-white border-4 border-[#0EA5A0] hover:bg-slate-100"
+                  onClick={takeSnapshot}
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#0EA5A0]" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur"
+                  onClick={stopCamera}
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Capture Buttons */}
-        {!result && (
+        {!result && !cameraActive && (
           <div className="space-y-3">
-            <Button className="w-full h-16 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-lg" onClick={() => cameraRef.current?.click()} disabled={capturing} data-testid="camera-btn">
+            <Button className="w-full h-16 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-lg" onClick={() => startCamera()} disabled={capturing} data-testid="camera-btn">
               {capturing ? (
                 <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</span>
               ) : (
-                <span className="flex items-center gap-2"><Camera className="w-6 h-6" /> Take Photo</span>
+                <span className="flex items-center gap-2"><Camera className="w-6 h-6" /> Open Camera</span>
               )}
             </Button>
             <Button variant="outline" className="w-full h-12" onClick={() => fileRef.current?.click()} disabled={capturing}>
@@ -138,7 +250,7 @@ const CapturePage = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {preview && <img src={preview} alt="Card" className="w-full rounded-lg mb-3" />}
-              
+
               <div className="grid grid-cols-2 gap-2">
                 {result.extracted?.first_name && (
                   <div className="bg-white rounded-lg p-2"><p className="text-[10px] text-slate-500">Name</p><p className="text-sm font-medium">{result.extracted.first_name} {result.extracted.last_name}</p></div>
