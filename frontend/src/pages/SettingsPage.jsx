@@ -65,6 +65,13 @@ const SettingsPage = () => {
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const [newPipeline, setNewPipeline] = useState({ name: '', stages: [] });
   
+  // LLM / AI integration states
+  const [aiStatus, setAiStatus] = useState(null);
+  const [llmKeys, setLlmKeys] = useState({ anthropic_api_key: '', openai_api_key: '' });
+  const [savingLlm, setSavingLlm] = useState(false);
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
+
   // Invitation states
   const [inviteLink, setInviteLink] = useState(null);
   const [inviteEmails, setInviteEmails] = useState('');
@@ -81,6 +88,8 @@ const SettingsPage = () => {
     fetchInvoices();
     fetchAffiliateStatus();
     fetchApiKeysAndWebhooks();
+    fetchAiStatus();
+    fetchLlmKeys();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -115,6 +124,41 @@ const SettingsPage = () => {
       setDealStages(response.data.deal_stages || []);
     } catch (error) {
       console.error('Failed to fetch org settings');
+    }
+  };
+
+  const fetchAiStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/settings/ai-status`, { headers });
+      setAiStatus(response.data);
+    } catch (error) {
+      console.error('Failed to fetch AI status');
+    }
+  };
+
+  const fetchLlmKeys = async () => {
+    try {
+      const response = await axios.get(`${API}/settings/integrations`, { headers });
+      const integrations = response.data?.integrations || {};
+      setLlmKeys({
+        anthropic_api_key: integrations.anthropic_api_key || '',
+        openai_api_key: integrations.openai_api_key || '',
+      });
+    } catch (error) {
+      console.error('Failed to fetch LLM keys');
+    }
+  };
+
+  const saveLlmKeys = async () => {
+    setSavingLlm(true);
+    try {
+      await axios.put(`${API}/settings/integrations`, llmKeys, { headers });
+      toast.success('AI keys saved successfully');
+      fetchAiStatus();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save AI keys');
+    } finally {
+      setSavingLlm(false);
     }
   };
 
@@ -1180,6 +1224,94 @@ const SettingsPage = () => {
 
           {/* Integrations Tab */}
           <TabsContent value="integrations">
+            {/* AI / LLM Configuration */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-teal-600" />
+                  AI / LLM
+                </CardTitle>
+                <CardDescription>
+                  Configure your AI provider to enable smart features like lead scoring, enrichment, chat assistant, and card capture.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Status indicator */}
+                <div className={`p-3 rounded-lg border ${aiStatus?.ai_available ? 'border-emerald-200 bg-emerald-50/50' : 'border-amber-200 bg-amber-50/50'}`}>
+                  <div className="flex items-center gap-2">
+                    {aiStatus?.ai_available ? (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span className="text-sm font-medium text-emerald-700">
+                          AI active — using {aiStatus.provider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI'} ({aiStatus.source === 'platform' ? 'platform key' : 'your key'})
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm font-medium text-amber-700">
+                          AI features disabled — add an API key below to enable
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Anthropic key */}
+                <div className="space-y-2">
+                  <Label htmlFor="anthropic-key" className="flex items-center gap-2">
+                    Anthropic API Key
+                    <Badge variant="outline" className="text-xs">Recommended</Badge>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="anthropic-key"
+                        type={showAnthropicKey ? 'text' : 'password'}
+                        placeholder="sk-ant-api03-..."
+                        value={llmKeys.anthropic_api_key === 'connected' ? '' : llmKeys.anthropic_api_key}
+                        onChange={(e) => setLlmKeys(prev => ({ ...prev, anthropic_api_key: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                        onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                      >
+                        {showAnthropicKey ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Get your key at{' '}
+                    <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
+                      console.anthropic.com <ExternalLink className="w-3 h-3 inline" />
+                    </a>
+                  </p>
+                </div>
+
+                {/* OpenAI key (future) */}
+                <div className="space-y-2">
+                  <Label htmlFor="openai-key" className="flex items-center gap-2 text-slate-400">
+                    OpenAI API Key
+                    <Badge variant="outline" className="text-xs text-slate-400">Coming soon</Badge>
+                  </Label>
+                  <Input
+                    id="openai-key"
+                    type={showOpenaiKey ? 'text' : 'password'}
+                    placeholder="sk-..."
+                    disabled
+                    value={llmKeys.openai_api_key === 'connected' ? '' : llmKeys.openai_api_key}
+                    onChange={(e) => setLlmKeys(prev => ({ ...prev, openai_api_key: e.target.value }))}
+                  />
+                </div>
+
+                <Button onClick={saveLlmKeys} disabled={savingLlm} className="bg-teal-600 hover:bg-teal-700">
+                  <Save className="w-4 h-4 mr-2" />
+                  {savingLlm ? 'Saving...' : 'Save AI Keys'}
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Integrations</CardTitle>

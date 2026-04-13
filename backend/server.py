@@ -648,18 +648,31 @@ def _is_internal_user(email: str) -> bool:
     domain = email_lower.split("@")[-1]
     return domain in _TAKO_INTERNAL_DOMAINS
 
-async def tako_ai_text(system_prompt: str, user_prompt: str, user_email: str = "") -> str:
+async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
+    """Determine the Anthropic API key to use.
+    Priority: 1) internal team → platform key, 2) org-level key from DB, 3) reject."""
+    if _is_internal_user(user_email):
+        if ANTHROPIC_API_KEY:
+            return ANTHROPIC_API_KEY
+        raise HTTPException(status_code=500, detail="AI not configured — platform ANTHROPIC_API_KEY missing")
+
+    # Look up org-level key
+    if org_id:
+        settings = await db.org_integrations.find_one({"organization_id": org_id}, {"anthropic_api_key": 1})
+        if settings and settings.get("anthropic_api_key"):
+            return settings["anthropic_api_key"]
+
+    raise HTTPException(
+        status_code=403,
+        detail="AI features require an API key. Go to Settings → Integrations → AI / LLM to add your Anthropic API key."
+    )
+
+async def tako_ai_text(system_prompt: str, user_prompt: str, user_email: str = "", org_id: str | None = None) -> str:
     """Send a text-only request to Claude. Returns the response text.
     Raises HTTPException if user has no AI access."""
     import anthropic
 
-    api_key = ANTHROPIC_API_KEY
-    if not _is_internal_user(user_email):
-        # Future: look up org-level API key from DB
-        raise HTTPException(status_code=403, detail="AI features require an LLM API key. Contact your admin to configure one.")
-
-    if not api_key:
-        raise HTTPException(status_code=500, detail="AI not configured — ANTHROPIC_API_KEY missing")
+    api_key = await _resolve_ai_key(user_email, org_id)
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     message = await client.messages.create(
@@ -670,16 +683,11 @@ async def tako_ai_text(system_prompt: str, user_prompt: str, user_email: str = "
     )
     return message.content[0].text
 
-async def tako_ai_vision(system_prompt: str, user_prompt: str, image_b64: str, media_type: str = "image/jpeg", user_email: str = "") -> str:
+async def tako_ai_vision(system_prompt: str, user_prompt: str, image_b64: str, media_type: str = "image/jpeg", user_email: str = "", org_id: str | None = None) -> str:
     """Send an image + text request to Claude. Returns the response text."""
     import anthropic
 
-    api_key = ANTHROPIC_API_KEY
-    if not _is_internal_user(user_email):
-        raise HTTPException(status_code=403, detail="AI features require an LLM API key. Contact your admin to configure one.")
-
-    if not api_key:
-        raise HTTPException(status_code=500, detail="AI not configured — ANTHROPIC_API_KEY missing")
+    api_key = await _resolve_ai_key(user_email, org_id)
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     message = await client.messages.create(
@@ -2014,7 +2022,7 @@ async def get_org_integrations(current_user: dict = Depends(get_current_user)):
     org_id = current_user["organization_id"]
     settings = await db.org_integrations.find_one({"organization_id": org_id}, {"_id": 0})
     if not settings:
-        settings = {"organization_id": org_id, "resend_api_key": "", "resend_sender_email": "", "kit_api_key": "", "kit_api_secret": "", "twilio_sid": "", "twilio_token": "", "twilio_phone": "", "google_client_id": "", "google_client_secret": ""}
+        settings = {"organization_id": org_id, "resend_api_key": "", "resend_sender_email": "", "kit_api_key": "", "kit_api_secret": "", "twilio_sid": "", "twilio_token": "", "twilio_phone": "", "google_client_id": "", "google_client_secret": "", "anthropic_api_key": "", "openai_api_key": ""}
     role = current_user.get("role", "member")
     if role not in ["admin", "owner", "super_admin", "deputy_admin"]:
         # Members can see which integrations are connected, but not the keys
@@ -2032,11 +2040,27 @@ async def update_org_integrations(updates: dict, current_user: dict = Depends(ge
         org_id = await ensure_user_org(current_user)
         current_user["organization_id"] = org_id
     org_id = current_user["organization_id"]
-    allowed = {"resend_api_key", "resend_sender_email", "kit_api_key", "kit_api_secret", "twilio_sid", "twilio_token", "twilio_phone", "google_client_id", "google_client_secret"}
+    allowed = {"resend_api_key", "resend_sender_email", "kit_api_key", "kit_api_secret", "twilio_sid", "twilio_token", "twilio_phone", "google_client_id", "google_client_secret", "anthropic_api_key", "openai_api_key"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
     filtered["organization_id"] = org_id
     await db.org_integrations.update_one({"organization_id": org_id}, {"$set": filtered}, upsert=True)
     return {"message": "Integrations updated"}
+
+@api_router.get("/settings/ai-status")
+async def get_ai_status(current_user: dict = Depends(get_current_user)):
+    """Check whether AI features are available for the current user."""
+    email = current_user.get("email", "")
+    if _is_internal_user(email):
+        return {"ai_available": True, "source": "platform", "provider": "anthropic"}
+    org_id = current_user.get("organization_id")
+    if org_id:
+        settings = await db.org_integrations.find_one({"organization_id": org_id}, {"anthropic_api_key": 1, "openai_api_key": 1})
+        if settings:
+            if settings.get("anthropic_api_key"):
+                return {"ai_available": True, "source": "organization", "provider": "anthropic"}
+            if settings.get("openai_api_key"):
+                return {"ai_available": True, "source": "organization", "provider": "openai"}
+    return {"ai_available": False, "source": None, "provider": None}
 
 
 # ==================== CUSTOMIZABLE STAGES ====================
@@ -3221,7 +3245,7 @@ async def score_lead(lead_id: str, current_user: dict = Depends(get_current_user
         response = await tako_ai_text(
             "You are a lead scoring AI. Analyze lead data and return a score from 1-100 based on their potential value. Return ONLY a number.",
             f"Score this lead (return only a number 1-100):\n{lead_info}",
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
         
         try:
@@ -3275,7 +3299,7 @@ async def enrich_lead(lead_id: str, current_user: dict = Depends(get_current_use
 - recommended_approach: 1-2 sentence sales approach recommendation
 Return ONLY valid JSON, no markdown.""",
             f"Enrich this lead:\n{lead_info}",
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
 
         import json
@@ -3378,7 +3402,7 @@ Sender: {current_user.get('name', 'Sales Team')} from earnrm
 
 Write the email now. Start with a compelling subject line on the first line, then the email body."""
 
-        response = await tako_ai_text(system_msg, prompt, user_email=current_user.get("email", ""))
+        response = await tako_ai_text(system_msg, prompt, user_email=current_user.get("email", ""), org_id=current_user.get("organization_id"))
         
         # Parse subject from response
         lines = response.strip().split('\n')
@@ -3457,7 +3481,7 @@ Provide a comprehensive summary with:
 Focus on: engagement level, deal potential, recommended next steps, and key insights.
 Format your response with clear sections using markdown.""",
             context,
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
 
         return {
@@ -3496,7 +3520,7 @@ Analyze the user's natural language query and extract:
 Respond ONLY with valid JSON in this format:
 {"entity_type": "leads", "filters": {"status": "qualified"}, "keywords": ["enterprise", "tech"]}""",
             f"Query: {query}",
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
         
         # Parse the intent
@@ -3603,7 +3627,7 @@ Summarize what was found."""
             summary = await tako_ai_text(
                 "Provide a brief, helpful summary of search results. Be concise (2-3 sentences max).",
                 summary_prompt,
-                user_email=current_user.get("email", "")
+                user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
             )
             results["ai_summary"] = summary
         else:
@@ -6202,7 +6226,7 @@ async def bulk_enrich(request: BulkEnrichRequest, current_user: dict = Depends(g
             resp = await tako_ai_text(
                 "You are a B2B enrichment AI. Return ONLY valid JSON with: company_description, industry, company_size, website, job_title, location, technologies (array), interests (array), recommended_approach. Use null if unknown.",
                 f"Enrich: {info}",
-                user_email=current_user.get("email", "")
+                user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
             )
             
             import json
@@ -6813,7 +6837,7 @@ Provide your analysis."""
 - next_steps: array of 2-3 recommended follow-up actions
 Return ONLY valid JSON, no markdown.""",
             prompt,
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
 
         import json
@@ -7133,7 +7157,7 @@ async def upload_file(
             resp = await tako_ai_text(
                 "Summarize this document in 2-3 sentences. Then suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
                 f"File: {file.filename}\n\nContent:\n{text_content}",
-                user_email=current_user.get("email", "")
+                user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
             )
             try:
                 ai_summary = json.loads(resp.strip().strip('```json').strip('```'))
@@ -7146,7 +7170,7 @@ async def upload_file(
                 "Describe this image in 2-3 sentences. Suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
                 f"Analyze this file: {file.filename}",
                 img_b64,
-                user_email=current_user.get("email", "")
+                user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
             )
             try:
                 ai_summary = json.loads(resp.strip().strip('```json').strip('```'))
@@ -7253,7 +7277,7 @@ async def capture_business_card(
             "You extract business card information from images. Return ONLY valid JSON with these fields: first_name, last_name, email, phone, company, job_title, website, location. Use null for any field you cannot read. Do not guess or fabricate information.",
             "Extract all contact information from this business card image.",
             image_b64,
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
         
         import json
@@ -7300,7 +7324,7 @@ async def capture_business_card(
         enrich_resp = await tako_ai_text(
             "You are a B2B enrichment AI. Return ONLY valid JSON with: company_description, industry, company_size, technologies (array), interests (array), recommended_approach. Use null if unknown.",
             f"Enrich: {info}",
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
         
         try:
@@ -7631,7 +7655,7 @@ Generate transcription summary and follow-ups."""
 - next_meeting: suggested next meeting topic (1 sentence)
 Return ONLY valid JSON.""",
             prompt,
-            user_email=current_user.get("email", "")
+            user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
         )
         
         import json
