@@ -110,13 +110,13 @@ const CompaniesPage = () => {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowImport(true)}><Upload className="w-4 h-4 mr-2" />{ t('forms.importCsv') }</Button>
-            <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white" onClick={() => setShowAdd(true)} data-testid="add-company-btn"><Plus className="w-4 h-4 mr-2" />{ t('forms.newCompany') }</Button>
+            <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setShowAdd(true)} data-testid="add-company-btn"><Plus className="w-4 h-4 mr-2" />{ t('forms.newCompany') }</Button>
           </div>
         </div>
 
         {selectedIds.length > 0 && (
-          <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
-            <span className="text-sm font-medium text-purple-800">{selectedIds.length} {t('common.selected')}</span>
+          <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3">
+            <span className="text-sm font-medium text-teal-800">{selectedIds.length} {t('common.selected')}</span>
             <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={handleBulkDelete}><Trash2 className="w-3.5 h-3.5 mr-1" />{t('common.delete')}</Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>{t('common.clear')}</Button>
           </div>
@@ -131,12 +131,12 @@ const CompaniesPage = () => {
           <CardContent className="p-0">
             {!loading && filtered.length > 0 && (
               <div className="px-4 py-2 border-b bg-slate-50 flex items-center gap-3">
-                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={() => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(c => c.company_id))} className="w-4 h-4 accent-[#7C3AED]" />
+                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={() => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(c => c.company_id))} className="w-4 h-4 accent-[#0EA5A0]" />
                 <span className="text-xs text-slate-500">{t('forms.selectAll')} ({filtered.length})</span>
               </div>
             )}
             {loading ? (
-              <div className="p-8 text-center"><div className="w-8 h-8 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin mx-auto" /></div>
+              <div className="p-8 text-center"><div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filtered.length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 <Building className="w-12 h-12 mx-auto mb-3 text-slate-300" />
@@ -157,10 +157,10 @@ const CompaniesPage = () => {
                 <tbody>
                   {filtered.map((c, i) => (
                     <tr key={c.company_id} className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" data-testid={`company-row-${i}`}>
-                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(c.company_id)} onChange={() => toggleSelect(c.company_id)} className="w-4 h-4 accent-[#7C3AED]" /></td>
+                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(c.company_id)} onChange={() => toggleSelect(c.company_id)} className="w-4 h-4 accent-[#0EA5A0]" /></td>
                       <td className="py-3 px-4 font-medium" onClick={() => openDetail(c)}>{c.name}</td>
                       <td className="py-3 px-4 text-slate-500" onClick={() => openDetail(c)}>{c.industry || '-'}</td>
-                      <td className="py-3 px-4" onClick={() => openDetail(c)}>{c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer" className="text-[#7C3AED] hover:underline" onClick={e => e.stopPropagation()}>{c.website}</a> : '-'}</td>
+                      <td className="py-3 px-4" onClick={() => openDetail(c)}>{c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer" className="text-[#0EA5A0] hover:underline" onClick={e => e.stopPropagation()}>{c.website}</a> : '-'}</td>
                       <td className="py-3 px-4 text-slate-500" onClick={() => openDetail(c)}>{c.size || '-'}</td>
                       <td className="py-3 px-4 text-slate-500" onClick={() => openDetail(c)}>{c.location || '-'}</td>
                       <td className="py-3 px-4"><Button variant="ghost" size="sm" className="text-red-500 h-7" onClick={() => handleDelete(c.company_id)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
@@ -182,7 +182,7 @@ const CompaniesPage = () => {
               <div key={f.key}><Label>{f.label} {f.required && '*'}</Label><Input value={newCompany[f.key] || ''} onChange={e => setNewCompany({...newCompany, [f.key]: e.target.value})} required={f.required} /></div>
             ))}
             <div><Label>{t('forms.description')}</Label><Textarea value={newCompany.description} onChange={e => setNewCompany({...newCompany, description: e.target.value})} rows={2} /></div>
-            <Button type="submit" className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">{t('forms.createCompany')}</Button>
+            <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">{t('forms.createCompany')}</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -220,7 +220,7 @@ const CompaniesPage = () => {
                   ))}
                   <div><Label className="text-xs">{t('forms.description')}</Label><Textarea value={editData.description || ''} onChange={e => setEditData({...editData, description: e.target.value})} rows={2} /></div>
                   <div className="flex gap-2 pt-2">
-                    <Button onClick={handleSave} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white"><Save className="w-4 h-4 mr-2" />{t('forms.saveChanges')}</Button>
+                    <Button onClick={handleSave} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"><Save className="w-4 h-4 mr-2" />{t('forms.saveChanges')}</Button>
                     <Button variant="outline" onClick={() => { setEditMode(false); setEditData({...selectedCompany}); }}>{t('common.cancel')}</Button>
                   </div>
                 </div>
@@ -235,7 +235,7 @@ const CompaniesPage = () => {
                     ].filter(f => f.value).map(f => (
                       <div key={f.label} className="bg-slate-50 rounded-lg p-3">
                         <p className="text-xs text-slate-500 flex items-center gap-1">{f.icon}{f.label}</p>
-                        {f.link ? <a href={f.value.startsWith('http') ? f.value : `https://${f.value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#7C3AED] hover:underline truncate block">{f.value}</a>
+                        {f.link ? <a href={f.value.startsWith('http') ? f.value : `https://${f.value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#0EA5A0] hover:underline truncate block">{f.value}</a>
                           : <p className="text-sm font-medium text-slate-900">{f.value}</p>}
                       </div>
                     ))}

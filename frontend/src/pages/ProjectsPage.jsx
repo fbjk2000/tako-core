@@ -165,18 +165,18 @@ const ProjectsPage = () => {
             <h1 className="text-2xl font-bold text-slate-900">{ t('projects.title') }</h1>
             <p className="text-slate-500 text-sm mt-1">{ t('projects.subtitle') }</p>
           </div>
-          <Button className="bg-[#A100FF] hover:bg-purple-700" onClick={() => setShowCreate(true)} data-testid="new-project-btn">
+          <Button className="bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setShowCreate(true)} data-testid="new-project-btn">
             <Plus className="w-4 h-4 mr-2" /> New Project
           </Button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin" /></div>
+          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" /></div>
         ) : projects.length === 0 ? (
           <Card className="p-12 text-center">
             <p className="font-medium text-slate-600">{ t('projects.noProjects') }</p>
             <p className="text-sm text-slate-400 mt-1">Create a project to organize tasks around a deal</p>
-            <Button className="mt-4 bg-[#A100FF] hover:bg-purple-700" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-2" /> Create Project</Button>
+            <Button className="mt-4 bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-2" /> Create Project</Button>
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -195,7 +195,7 @@ const ProjectsPage = () => {
                     <span>{p.tasks_done}/{p.task_count} tasks done</span>
                     <span>{p.progress}%</span>
                   </div>
-                  {p.deal_id && <div className="mt-2 text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded inline-block"><Target className="w-3 h-3 inline mr-1" />Linked deal</div>}
+                  {p.deal_id && <div className="mt-2 text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded inline-block"><Target className="w-3 h-3 inline mr-1" />Linked deal</div>}
                 </CardContent>
               </Card>
             ))}
@@ -205,7 +205,7 @@ const ProjectsPage = () => {
         {/* Create Project Dialog */}
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle><Plus className="w-5 h-5 inline mr-2 text-[#A100FF]" />{ t('projects.newProject') }</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle><Plus className="w-5 h-5 inline mr-2 text-[#0EA5A0]" />{ t('projects.newProject') }</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div><Label>Project Name *</Label><Input value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} placeholder="Q2 Enterprise Onboarding" data-testid="project-name" /></div>
               <div><Label>Description</Label><Textarea value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} rows={2} placeholder="Project goals and scope..." /></div>
@@ -215,7 +215,7 @@ const ProjectsPage = () => {
                   <SelectContent><SelectItem value="none">No deal</SelectItem>{deals.map(d => <SelectItem key={d.deal_id} value={d.deal_id}>{d.name} — €{d.value?.toLocaleString()}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleCreate} className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="create-project-submit"><Plus className="w-4 h-4 mr-2" /> Create Project</Button>
+              <Button onClick={handleCreate} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-project-submit"><Plus className="w-4 h-4 mr-2" /> Create Project</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -247,15 +247,15 @@ const ProjectsPage = () => {
 
                 {/* Linked Deal */}
                 {selectedProject.deal && (
-                  <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 flex items-center justify-between">
-                    <div><p className="text-sm font-medium text-purple-900"><Target className="w-4 h-4 inline mr-1" />{selectedProject.deal.name}</p><p className="text-xs text-purple-600">€{selectedProject.deal.value?.toLocaleString()} — {selectedProject.deal.stage}</p></div>
+                  <div className="bg-teal-50 border border-teal-100 rounded-lg p-3 flex items-center justify-between">
+                    <div><p className="text-sm font-medium text-teal-900"><Target className="w-4 h-4 inline mr-1" />{selectedProject.deal.name}</p><p className="text-xs text-teal-600">€{selectedProject.deal.value?.toLocaleString()} — {selectedProject.deal.stage}</p></div>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedProject(null); navigate(`/deals`); }}>{ t('projects.viewDeal') }</Button>
                   </div>
                 )}
 
                 {/* Action buttons */}
                 <div className="flex gap-2">
-                  <Button size="sm" className="bg-[#A100FF] hover:bg-purple-700" onClick={() => setShowAddTask(true)} data-testid="add-task-to-project"><Plus className="w-4 h-4 mr-1" />{ t('projects.addTask') }</Button>
+                  <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setShowAddTask(true)} data-testid="add-task-to-project"><Plus className="w-4 h-4 mr-1" />{ t('projects.addTask') }</Button>
                   <Button size="sm" variant="outline" onClick={() => { setSelectedProject(null); navigate(`/chat?type=project&id=${selectedProject.project_id}`); }}><MessageSquare className="w-4 h-4 mr-1" />{ t('projects.projectChat') }</Button>
                 </div>
 
@@ -280,7 +280,7 @@ const ProjectsPage = () => {
                               <div className="flex items-center gap-2 mt-0.5">
                                 <div className={`w-1.5 h-1.5 rounded-full ${priorityColors[task.priority] || 'bg-slate-400'}`} />
                                 <span className="text-xs text-slate-500">{task.priority}</span>
-                                <span className="text-xs text-[#7C3AED] font-medium">{ownerName}</span>
+                                <span className="text-xs text-[#0EA5A0] font-medium">{ownerName}</span>
                                 {task.due_date && <span className="text-xs text-slate-400"><Calendar className="w-3 h-3 inline mr-0.5" />{new Date(task.due_date).toLocaleDateString()}</span>}
                                 {task.subtasks?.length > 0 && <span className="text-xs text-slate-400"><CheckSquare className="w-3 h-3 inline mr-0.5" />{task.subtasks.filter(s => s.done).length}/{task.subtasks.length}</span>}
                                 {task.comments?.length > 0 && <span className="text-xs text-slate-400"><MessageSquare className="w-3 h-3 inline mr-0.5" />{task.comments.length}</span>}
@@ -338,7 +338,7 @@ const ProjectsPage = () => {
                 </div>
               </div>
               <div><Label>Due Date</Label><Input type="date" value={newTask.due_date} onChange={e => setNewTask({ ...newTask, due_date: e.target.value })} /></div>
-              <Button onClick={handleAddTask} className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="submit-project-task"><Plus className="w-4 h-4 mr-2" />{ t('projects.addTask') }</Button>
+              <Button onClick={handleAddTask} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-project-task"><Plus className="w-4 h-4 mr-2" />{ t('projects.addTask') }</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -367,7 +367,7 @@ const ProjectsPage = () => {
                     <div><Label>{t('forms.priority')}</Label><Select value={taskEditData.priority} onValueChange={v => setTaskEditData({...taskEditData, priority: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent></Select></div>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button onClick={handleSaveTask} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white"><Save className="w-4 h-4 mr-2" />{t('common.save')}</Button>
+                    <Button onClick={handleSaveTask} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"><Save className="w-4 h-4 mr-2" />{t('common.save')}</Button>
                     <Button variant="outline" onClick={() => { setTaskEditMode(false); setTaskEditData({...taskDetail}); }}>{t('common.cancel')}</Button>
                   </div>
                 </div>
@@ -384,7 +384,7 @@ const ProjectsPage = () => {
                   {/* Tabs */}
                   <div className="flex gap-1 border-b">
                     {[['subtasks', t('tasks.subtasks')], ['comments', t('tasks.updates')], ['activity', t('tasks.history')]].map(([key, label]) => (
-                      <button key={key} onClick={() => setTaskTab(key)} className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${taskTab === key ? 'border-[#7C3AED] text-[#7C3AED]' : 'border-transparent text-slate-500'}`}>{label}
+                      <button key={key} onClick={() => setTaskTab(key)} className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${taskTab === key ? 'border-[#0EA5A0] text-[#0EA5A0]' : 'border-transparent text-slate-500'}`}>{label}
                         {key === 'subtasks' && taskDetail.subtasks?.length > 0 && <span className="ml-1 text-xs bg-slate-100 px-1.5 rounded-full">{taskDetail.subtasks.filter(s=>s.done).length}/{taskDetail.subtasks.length}</span>}
                         {key === 'comments' && taskDetail.comments?.length > 0 && <span className="ml-1 text-xs bg-slate-100 px-1.5 rounded-full">{taskDetail.comments.length}</span>}
                       </button>

@@ -451,8 +451,8 @@ const SettingsPage = () => {
                       className="w-16 h-16 rounded-full"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center">
-                      <span className="text-2xl font-semibold text-[#A100FF]">
+                    <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
+                      <span className="text-2xl font-semibold text-[#0EA5A0]">
                         {user?.name?.[0]?.toUpperCase() || 'U'}
                       </span>
                     </div>
@@ -497,16 +497,16 @@ const SettingsPage = () => {
                   {affiliateStatus?.enrolled ? (
                     <div className="space-y-4">
                       {/* Level and Commission Info */}
-                      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                      <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-[#7C3AED] text-white">{affiliateStatus.level_label || `Level ${affiliateStatus.level}`}</Badge>
-                            <span className="text-sm font-medium text-purple-900">Level {affiliateStatus.level}</span>
+                            <Badge className="bg-[#0EA5A0] text-white">{affiliateStatus.level_label || `Level ${affiliateStatus.level}`}</Badge>
+                            <span className="text-sm font-medium text-teal-900">Level {affiliateStatus.level}</span>
                           </div>
-                          <span className="text-sm font-bold text-purple-900">{affiliateStatus.affiliate?.commission_rate}% commission</span>
+                          <span className="text-sm font-bold text-teal-900">{affiliateStatus.affiliate?.commission_rate}% commission</span>
                         </div>
-                        <p className="text-xs text-purple-700">{affiliateStatus.commission_summary}</p>
-                        <p className="text-xs text-purple-600 mt-1">Your link gives new customers <strong>{affiliateStatus.customer_discount} off</strong></p>
+                        <p className="text-xs text-teal-700">{affiliateStatus.commission_summary}</p>
+                        <p className="text-xs text-teal-600 mt-1">Your link gives new customers <strong>{affiliateStatus.customer_discount} off</strong></p>
                       </div>
 
                       <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -548,10 +548,10 @@ const SettingsPage = () => {
                         <p className="text-xs text-slate-500">Copy and paste this HTML into your website to promote TAKO and earn commissions.</p>
                         <div className="relative">
                           <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto max-h-40" data-testid="affiliate-embed-code">{`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
-  <div style="background:linear-gradient(135deg,#A100FF,#7B00CC);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;">
+  <div style="background:linear-gradient(135deg,#0EA5A0,#0B8C88);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;">
     <p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p>
     <p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p>
-    <span style="background:#fff;color:#A100FF;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span>
+    <span style="background:#fff;color:#0EA5A0;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span>
   </div>
 </a>`}</pre>
                           <Button
@@ -559,7 +559,7 @@ const SettingsPage = () => {
                             variant="outline"
                             className="absolute top-2 right-2 h-7 text-xs"
                             data-testid="copy-embed-btn"
-                            onClick={() => copyToClipboard(`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#A100FF,#7B00CC);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;"><p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p><p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p><span style="background:#fff;color:#A100FF;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span></div></a>`)}
+                            onClick={() => copyToClipboard(`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#0EA5A0,#0B8C88);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;"><p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p><p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p><span style="background:#fff;color:#0EA5A0;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span></div></a>`)}
                           >
                             <Copy className="w-3 h-3 mr-1" /> Copy
                           </Button>
@@ -586,7 +586,7 @@ const SettingsPage = () => {
                                   download
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="mt-1.5 flex items-center justify-center gap-1 text-xs text-[#A100FF] font-medium hover:underline"
+                                  className="mt-1.5 flex items-center justify-center gap-1 text-xs text-[#0EA5A0] font-medium hover:underline"
                                   data-testid={`download-asset-${i}`}
                                 >
                                   <Download className="w-3 h-3" /> Download
@@ -625,7 +625,7 @@ const SettingsPage = () => {
                     <div className="text-center py-6">
                       <Gift className="w-12 h-12 mx-auto text-indigo-400 mb-3" />
                       <p className="text-slate-600 mb-4">Join our affiliate program and earn 20% commission on referrals!</p>
-                      <Button onClick={handleEnrollAffiliate} className="bg-[#A100FF] hover:bg-purple-700">
+                      <Button onClick={handleEnrollAffiliate} className="bg-[#0EA5A0] hover:bg-teal-700">
                         <Link className="w-4 h-4 mr-2" />
                         Become an Affiliate
                       </Button>
@@ -649,7 +649,7 @@ const SettingsPage = () => {
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : organization ? (
                   <div className="space-y-4">
@@ -668,12 +668,12 @@ const SettingsPage = () => {
                       )}
                     </div>
                     {(!organization.subscription_status || organization.subscription_status !== 'active') && (
-                      <div className="p-4 bg-purple-50 border border-indigo-200 rounded-lg">
-                        <p className="text-sm text-purple-800 mb-3">
+                      <div className="p-4 bg-teal-50 border border-indigo-200 rounded-lg">
+                        <p className="text-sm text-teal-800 mb-3">
                           Upgrade to Pro to add unlimited team members and unlock all features.
                         </p>
                         <Button 
-                          className="bg-[#A100FF] hover:bg-purple-700" 
+                          className="bg-[#0EA5A0] hover:bg-teal-700" 
                           size="sm"
                           onClick={() => navigate('/pricing')}
                         >
@@ -699,7 +699,7 @@ const SettingsPage = () => {
                       <Button
                         type="submit"
                         disabled={creatingOrg || !newOrgName.trim()}
-                        className="bg-[#A100FF] hover:bg-purple-700"
+                        className="bg-[#0EA5A0] hover:bg-teal-700"
                         data-testid="create-org-btn"
                       >
                         {creatingOrg ? (
@@ -735,8 +735,8 @@ const SettingsPage = () => {
                           {member.picture ? (
                             <img src={member.picture} alt={member.name} className="w-10 h-10 rounded-full" />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                              <span className="font-semibold text-[#A100FF]">{member.name?.[0]?.toUpperCase()}</span>
+                            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                              <span className="font-semibold text-[#0EA5A0]">{member.name?.[0]?.toUpperCase()}</span>
                             </div>
                           )}
                           <div>
@@ -798,7 +798,7 @@ const SettingsPage = () => {
                       <Button variant="outline" size="sm" onClick={() => { setEditingStages(false); setDealStages(orgSettings?.deal_stages || []); }}>
                         Cancel
                       </Button>
-                      <Button size="sm" className="bg-[#A100FF] hover:bg-purple-700" onClick={handleSaveDealStages}>
+                      <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={handleSaveDealStages}>
                         <Save className="w-4 h-4 mr-2" />
                         Save
                       </Button>
@@ -877,7 +877,7 @@ const SettingsPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <UserPlus className="w-5 h-5 text-[#A100FF]" />
+                    <UserPlus className="w-5 h-5 text-[#0EA5A0]" />
                     Invite Team Members
                   </CardTitle>
                   <CardDescription>
@@ -902,7 +902,7 @@ const SettingsPage = () => {
                   {/* Method 1: Invite Link */}
                   <div className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center gap-2">
-                      <Link className="w-4 h-4 text-[#A100FF]" />
+                      <Link className="w-4 h-4 text-[#0EA5A0]" />
                       <h4 className="font-medium">Share Invite Link</h4>
                     </div>
                     <p className="text-sm text-slate-600">Generate a link that anyone can use to join your organization</p>
@@ -927,7 +927,7 @@ const SettingsPage = () => {
                       <Button 
                         onClick={handleGenerateInviteLink} 
                         disabled={generatingLink}
-                        className="bg-[#A100FF] hover:bg-purple-700"
+                        className="bg-[#0EA5A0] hover:bg-teal-700"
                         data-testid="generate-invite-link"
                       >
                         {generatingLink ? 'Generating...' : 'Generate Invite Link'}
@@ -943,12 +943,12 @@ const SettingsPage = () => {
                   {/* Method 2: Email Invites */}
                   <div className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-[#A100FF]" />
+                      <Mail className="w-4 h-4 text-[#0EA5A0]" />
                       <h4 className="font-medium">Send Email Invitations</h4>
                     </div>
                     <p className="text-sm text-slate-600">Enter email addresses (one per line or comma-separated)</p>
                     <textarea
-                      className="w-full min-h-[100px] p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-[#A100FF] focus:border-transparent"
+                      className="w-full min-h-[100px] p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-[#0EA5A0] focus:border-transparent"
                       placeholder="email1@example.com&#10;email2@example.com"
                       value={inviteEmails}
                       onChange={(e) => setInviteEmails(e.target.value)}
@@ -957,7 +957,7 @@ const SettingsPage = () => {
                     <Button 
                       onClick={handleSendEmailInvites}
                       disabled={sendingInvites || !inviteEmails.trim()}
-                      className="bg-[#A100FF] hover:bg-purple-700"
+                      className="bg-[#0EA5A0] hover:bg-teal-700"
                       data-testid="send-email-invites"
                     >
                       <Send className="w-4 h-4 mr-2" />
@@ -968,7 +968,7 @@ const SettingsPage = () => {
                   {/* Method 3: CSV Import */}
                   <div className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center gap-2">
-                      <Upload className="w-4 h-4 text-[#A100FF]" />
+                      <Upload className="w-4 h-4 text-[#0EA5A0]" />
                       <h4 className="font-medium">Import from CSV</h4>
                     </div>
                     <p className="text-sm text-slate-600">Upload a CSV file with an "email" column</p>
@@ -1008,8 +1008,8 @@ const SettingsPage = () => {
                     {members.map((member) => (
                       <div key={member.user_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#A100FF]/10 flex items-center justify-center">
-                            <span className="text-[#A100FF] font-medium">
+                          <div className="w-10 h-10 rounded-full bg-[#0EA5A0]/10 flex items-center justify-center">
+                            <span className="text-[#0EA5A0] font-medium">
                               {member.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                             </span>
                           </div>
@@ -1019,7 +1019,7 @@ const SettingsPage = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant={member.role === 'owner' ? 'default' : 'outline'} className={member.role === 'owner' ? 'bg-[#A100FF]' : ''}>
+                          <Badge variant={member.role === 'owner' ? 'default' : 'outline'} className={member.role === 'owner' ? 'bg-[#0EA5A0]' : ''}>
                             {member.role === 'owner' && <Crown className="w-3 h-3 mr-1" />}
                             {member.role}
                           </Badge>
@@ -1117,7 +1117,7 @@ const SettingsPage = () => {
                         <p className="text-sm text-slate-500">Up to 3 users included</p>
                       </div>
                       <Button 
-                        className="bg-[#A100FF] hover:bg-purple-700"
+                        className="bg-[#0EA5A0] hover:bg-teal-700"
                         onClick={() => navigate('/pricing')}
                       >
                         Upgrade
@@ -1241,7 +1241,7 @@ const SettingsPage = () => {
                 </div>
                 <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center">
                       <span className="text-white font-bold text-sm">S</span>
                     </div>
                     <div>
@@ -1267,7 +1267,7 @@ const SettingsPage = () => {
                 <CardContent className="space-y-4">
                   <div className="flex gap-2">
                     <Input placeholder="Key name (e.g., n8n Production)" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} className="max-w-xs" data-testid="api-key-name" />
-                    <Button className="bg-[#A100FF] hover:bg-purple-700" onClick={async () => {
+                    <Button className="bg-[#0EA5A0] hover:bg-teal-700" onClick={async () => {
                       try {
                         const res = await axios.post(`${API}/api-keys?name=${encodeURIComponent(newKeyName || 'Default')}`, {}, { headers: { Authorization: `Bearer ${token}` } });
                         setGeneratedKey(res.data.key);
@@ -1375,14 +1375,14 @@ const SettingsPage = () => {
                 <CardDescription>Get the full CRM experience as an app on your phone, tablet, or desktop</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+                <div className="flex items-center gap-4 p-4 bg-teal-50 rounded-lg border border-teal-100">
                   <img src="/icon-192.png" alt="TAKO" className="w-16 h-16 rounded-2xl shadow-md" />
                   <div>
                     <h3 className="font-bold text-slate-900">TAKO PWA</h3>
                     <p className="text-sm text-slate-500">Works on iOS, Android & Desktop</p>
                   </div>
                   <Button
-                    className="ml-auto bg-[#A100FF] hover:bg-purple-700"
+                    className="ml-auto bg-[#0EA5A0] hover:bg-teal-700"
                     data-testid="pwa-install-settings-btn"
                     onClick={() => {
                       if (window.deferredPWAPrompt) {
@@ -1399,15 +1399,15 @@ const SettingsPage = () => {
                   <h4 className="font-medium text-slate-800">How to install</h4>
                   <div className="grid gap-3 text-sm">
                     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <span className="font-semibold text-[#A100FF] shrink-0">Chrome / Edge</span>
+                      <span className="font-semibold text-[#0EA5A0] shrink-0">Chrome / Edge</span>
                       <span className="text-slate-600">Click the install icon in the address bar, or go to Menu → Install app</span>
                     </div>
                     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <span className="font-semibold text-[#A100FF] shrink-0">Safari (iOS)</span>
+                      <span className="font-semibold text-[#0EA5A0] shrink-0">Safari (iOS)</span>
                       <span className="text-slate-600">Tap the Share button → Add to Home Screen</span>
                     </div>
                     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <span className="font-semibold text-[#A100FF] shrink-0">Android</span>
+                      <span className="font-semibold text-[#0EA5A0] shrink-0">Android</span>
                       <span className="text-slate-600">Tap the "Add to Home Screen" banner, or Menu → Install app</span>
                     </div>
                   </div>

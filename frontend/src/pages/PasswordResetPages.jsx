@@ -60,11 +60,11 @@ export const ForgotPasswordPage = () => {
                   <p className="text-sm text-amber-800 font-medium mb-1">{ t('auth.noAccountFound') }</p>
                   <p className="text-xs text-amber-600 mb-3">You need an account before you can reset your password.</p>
                   <Link to={`/signup?email=${encodeURIComponent(email)}`}>
-                    <Button size="sm" className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs">{ t('auth.signUpWith') }</Button>
+                    <Button size="sm" className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-xs">{ t('auth.signUpWith') }</Button>
                   </Link>
                 </div>
               )}
-              <Button type="submit" disabled={loading} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">
+              <Button type="submit" disabled={loading} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">
                 {loading ? 'Sending...' : 'Send reset link'}
               </Button>
               <Link to="/login"><Button variant="ghost" className="w-full">{ t('auth.backToSignIn') }</Button></Link>
@@ -120,13 +120,13 @@ export const ResetPasswordPage = () => {
           {done ? (
             <div className="text-center space-y-4">
               <p className="text-sm text-slate-600">Your password has been updated. You can now sign in.</p>
-              <Link to="/login"><Button className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">Sign in</Button></Link>
+              <Link to="/login"><Button className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">Sign in</Button></Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div><Label>New password</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="At least 6 characters" /></div>
               <div><Label>Confirm password</Label><Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Type it again" /></div>
-              <Button type="submit" disabled={loading} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">
+              <Button type="submit" disabled={loading} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">
                 {loading ? 'Resetting...' : 'Reset password'}
               </Button>
             </form>

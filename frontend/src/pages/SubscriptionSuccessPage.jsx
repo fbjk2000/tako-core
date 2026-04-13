@@ -70,7 +70,7 @@ const SubscriptionSuccessPage = () => {
       case 'loading':
         return (
           <div className="text-center py-12">
-            <Loader2 className="w-16 h-16 text-[#A100FF] animate-spin mx-auto mb-6" />
+            <Loader2 className="w-16 h-16 text-[#0EA5A0] animate-spin mx-auto mb-6" />
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Processing Payment</h2>
             <p className="text-slate-600">Please wait while we confirm your payment...</p>
           </div>
@@ -110,7 +110,7 @@ const SubscriptionSuccessPage = () => {
                       <span className="text-slate-600">Invoice</span>
                       <Link
                         to={`/settings?tab=billing`}
-                        className="text-[#A100FF] hover:text-purple-700 font-medium"
+                        className="text-[#0EA5A0] hover:text-teal-700 font-medium"
                       >
                         View Invoice
                       </Link>
@@ -123,7 +123,7 @@ const SubscriptionSuccessPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 onClick={() => navigate('/dashboard')}
-                className="bg-[#A100FF] hover:bg-purple-700"
+                className="bg-[#0EA5A0] hover:bg-teal-700"
                 data-testid="go-to-dashboard"
               >
                 Go to Dashboard
@@ -139,8 +139,8 @@ const SubscriptionSuccessPage = () => {
               </Button>
             </div>
 
-            <div className="mt-8 p-4 bg-purple-50 rounded-lg">
-              <div className="flex items-center justify-center gap-2 text-purple-700">
+            <div className="mt-8 p-4 bg-teal-50 rounded-lg">
+              <div className="flex items-center justify-center gap-2 text-teal-700">
                 <Mail className="w-5 h-5" />
                 <span>Invoice and Terms & Conditions have been sent to your email</span>
               </div>
@@ -161,7 +161,7 @@ const SubscriptionSuccessPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 onClick={() => navigate('/pricing')}
-                className="bg-[#A100FF] hover:bg-purple-700"
+                className="bg-[#0EA5A0] hover:bg-teal-700"
               >
                 Try Again
               </Button>
@@ -187,7 +187,7 @@ const SubscriptionSuccessPage = () => {
             </p>
             <Button
               onClick={() => navigate('/pricing')}
-              className="bg-[#A100FF] hover:bg-purple-700"
+              className="bg-[#0EA5A0] hover:bg-teal-700"
             >
               Return to Pricing
             </Button>

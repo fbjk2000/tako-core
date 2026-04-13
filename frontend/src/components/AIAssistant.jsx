@@ -55,14 +55,14 @@ export const SmartSearch = ({ onSelectResult }) => {
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2" data-testid="smart-search-btn">
           <Search className="w-4 h-4" />
-          <Sparkles className="w-3 h-3 text-[#A100FF]" />
+          <Sparkles className="w-3 h-3 text-[#0EA5A0]" />
           Smart Search
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#A100FF]" />
+            <Sparkles className="w-5 h-5 text-[#0EA5A0]" />
             AI Smart Search
           </DialogTitle>
           <DialogDescription>Search across leads, deals, tasks, and companies using natural language</DialogDescription>
@@ -78,7 +78,7 @@ export const SmartSearch = ({ onSelectResult }) => {
               className="flex-1"
               data-testid="smart-search-input"
             />
-            <Button onClick={handleSearch} disabled={loading} className="bg-[#A100FF] hover:bg-purple-700">
+            <Button onClick={handleSearch} disabled={loading} className="bg-[#0EA5A0] hover:bg-teal-700">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </Button>
           </div>
@@ -87,9 +87,9 @@ export const SmartSearch = ({ onSelectResult }) => {
             <div className="space-y-4">
               {/* AI Summary */}
               {results.ai_summary && (
-                <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                <div className="p-4 bg-teal-50 rounded-lg border border-teal-100">
                   <div className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-[#A100FF] mt-0.5" />
+                    <Sparkles className="w-4 h-4 text-[#0EA5A0] mt-0.5" />
                     <p className="text-sm text-slate-700">{results.ai_summary}</p>
                   </div>
                 </div>
@@ -234,7 +234,7 @@ export const AIEmailComposer = ({ leadId, leadName, onClose }) => {
         <DialogTrigger asChild>
           <Button variant="outline" className="gap-2" data-testid="ai-email-btn">
             <Mail className="w-4 h-4" />
-            <Sparkles className="w-3 h-3 text-[#A100FF]" />
+            <Sparkles className="w-3 h-3 text-[#0EA5A0]" />
             {leadId ? 'Draft Email' : 'AI Email'}
           </Button>
         </DialogTrigger>
@@ -242,7 +242,7 @@ export const AIEmailComposer = ({ leadId, leadName, onClose }) => {
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wand2 className="w-5 h-5 text-[#A100FF]" />
+            <Wand2 className="w-5 h-5 text-[#0EA5A0]" />
             AI Email Composer
             {leadName && <Badge variant="outline">{leadName}</Badge>}
           </DialogTitle>
@@ -293,7 +293,7 @@ export const AIEmailComposer = ({ leadId, leadName, onClose }) => {
             />
           </div>
 
-          <Button onClick={generateEmail} disabled={loading} className="w-full bg-[#A100FF] hover:bg-purple-700">
+          <Button onClick={generateEmail} disabled={loading} className="w-full bg-[#0EA5A0] hover:bg-teal-700">
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -338,7 +338,7 @@ export const AIEmailComposer = ({ leadId, leadName, onClose }) => {
                   <Copy className="w-4 h-4 mr-2" />
                   Copy All
                 </Button>
-                <Button className="flex-1 bg-[#A100FF] hover:bg-purple-700" onClick={() => window.open(`mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.content)}`)}>
+                <Button className="flex-1 bg-[#0EA5A0] hover:bg-teal-700" onClick={() => window.open(`mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.content)}`)}>
                   <Send className="w-4 h-4 mr-2" />
                   Open in Email Client
                 </Button>
@@ -377,14 +377,14 @@ export const LeadSummary = ({ leadId, leadName }) => {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2" data-testid="lead-summary-btn">
           <FileText className="w-4 h-4" />
-          <Sparkles className="w-3 h-3 text-[#A100FF]" />
+          <Sparkles className="w-3 h-3 text-[#0EA5A0]" />
           AI Summary
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#A100FF]" />
+            <Sparkles className="w-5 h-5 text-[#0EA5A0]" />
             AI Lead Summary
             <Badge variant="outline">{leadName}</Badge>
           </DialogTitle>
@@ -393,15 +393,15 @@ export const LeadSummary = ({ leadId, leadName }) => {
         
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#A100FF]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#0EA5A0]" />
             <span className="ml-3 text-slate-600">Analyzing lead data...</span>
           </div>
         ) : summary ? (
           <div className="space-y-4 pt-4">
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 bg-purple-50 rounded-lg text-center">
-                <p className="text-2xl font-bold text-[#A100FF]">{summary.deals_count}</p>
+              <div className="p-4 bg-teal-50 rounded-lg text-center">
+                <p className="text-2xl font-bold text-[#0EA5A0]">{summary.deals_count}</p>
                 <p className="text-xs text-slate-600">Deals</p>
               </div>
               <div className="p-4 bg-emerald-50 rounded-lg text-center">

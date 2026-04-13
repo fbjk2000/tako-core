@@ -311,17 +311,17 @@ const AdminPage = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" />
         </div>
       </DashboardLayout>
     );
   }
 
   const statCards = [
-    { title: 'Total Users', value: stats?.total_users || 0, icon: <Users className="w-5 h-5" />, color: 'bg-purple-100 text-[#A100FF]' },
+    { title: 'Total Users', value: stats?.total_users || 0, icon: <Users className="w-5 h-5" />, color: 'bg-teal-100 text-[#0EA5A0]' },
     { title: 'Organizations', value: stats?.total_organizations || 0, icon: <Building className="w-5 h-5" />, color: 'bg-emerald-100 text-emerald-600' },
     { title: 'Revenue', value: `€${(stats?.total_revenue || 0).toLocaleString()}`, icon: <DollarSign className="w-5 h-5" />, color: 'bg-rose-100 text-rose-600' },
-    { title: 'Affiliates', value: stats?.total_affiliates || 0, icon: <UserPlus className="w-5 h-5" />, color: 'bg-purple-100 text-purple-600' },
+    { title: 'Affiliates', value: stats?.total_affiliates || 0, icon: <UserPlus className="w-5 h-5" />, color: 'bg-teal-100 text-teal-600' },
     { title: 'Discount Codes', value: stats?.total_discount_codes || 0, icon: <Tag className="w-5 h-5" />, color: 'bg-amber-100 text-amber-600' },
     { title: 'Affiliate Earnings', value: `€${(stats?.total_affiliate_earnings || 0).toLocaleString()}`, icon: <Gift className="w-5 h-5" />, color: 'bg-cyan-100 text-cyan-600' }
   ];
@@ -377,7 +377,7 @@ const AdminPage = () => {
                   <CardTitle>All Users</CardTitle>
                   <CardDescription>Manage user accounts and roles</CardDescription>
                 </div>
-                <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white" onClick={() => setShowCreateUser(true)} data-testid="create-user-btn">
+                <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setShowCreateUser(true)} data-testid="create-user-btn">
                   <UserPlus className="w-4 h-4 mr-2" /> Create User
                 </Button>
               </CardHeader>
@@ -480,7 +480,7 @@ const AdminPage = () => {
                             <td className="py-3 px-4">
                               <p className="font-medium text-slate-900">{org.name}</p>
                               <p className="text-xs text-slate-500">{org.organization_id}</p>
-                              {org.email_domain && <p className="text-xs text-purple-600">@{org.email_domain}</p>}
+                              {org.email_domain && <p className="text-xs text-teal-600">@{org.email_domain}</p>}
                             </td>
                             <td className="py-3 px-4">
                               <span className={`text-xs px-2 py-1 rounded-full capitalize ${
@@ -585,7 +585,7 @@ const AdminPage = () => {
                 </div>
                 <Dialog open={isDiscountDialogOpen} onOpenChange={setIsDiscountDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#A100FF] hover:bg-purple-700" data-testid="create-discount-btn">
+                    <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-discount-btn">
                       <Tag className="w-4 h-4 mr-2" />
                       Create Code
                     </Button>
@@ -637,7 +637,7 @@ const AdminPage = () => {
                           data-testid="discount-valid-until"
                         />
                       </div>
-                      <Button type="submit" className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="submit-discount-btn">
+                      <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-discount-btn">
                         Create Discount Code
                       </Button>
                     </form>
@@ -676,7 +676,7 @@ const AdminPage = () => {
                               </div>
                             </td>
                             <td className="py-3 px-4">
-                              <span className="text-[#A100FF] font-semibold">{code.discount_percent}%</span>
+                              <span className="text-[#0EA5A0] font-semibold">{code.discount_percent}%</span>
                             </td>
                             <td className="py-3 px-4 text-slate-600">
                               {code.current_uses}/{code.max_uses || '∞'}
@@ -724,7 +724,7 @@ const AdminPage = () => {
                 </div>
                 <Dialog open={isAffiliateDialogOpen} onOpenChange={setIsAffiliateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#A100FF] hover:bg-purple-700" data-testid="create-affiliate-btn">
+                    <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-affiliate-btn">
                       <UserPlus className="w-4 h-4 mr-2" />
                       Add Affiliate
                     </Button>
@@ -793,7 +793,7 @@ const AdminPage = () => {
                           </div>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="submit-affiliate-btn">
+                      <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-affiliate-btn">
                         Create Affiliate
                       </Button>
                     </form>
@@ -802,16 +802,16 @@ const AdminPage = () => {
               </CardHeader>
               <CardContent>
                 {/* Commission Structure Info */}
-                <div className="mb-6 p-4 bg-purple-50 rounded-lg">
+                <div className="mb-6 p-4 bg-teal-50 rounded-lg">
                   <h4 className="font-semibold text-indigo-900 mb-2">Three-Tier Commission Structure</h4>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div className="text-center p-2 bg-white rounded">
-                      <p className="font-bold text-[#A100FF]">Tier 1</p>
+                      <p className="font-bold text-[#0EA5A0]">Tier 1</p>
                       <p className="text-slate-600">Direct Referral</p>
                       <p className="text-lg font-bold">20%</p>
                     </div>
                     <div className="text-center p-2 bg-white rounded">
-                      <p className="font-bold text-purple-600">Tier 2</p>
+                      <p className="font-bold text-teal-600">Tier 2</p>
                       <p className="text-slate-600">Sub-Referral</p>
                       <p className="text-lg font-bold">10%</p>
                     </div>
@@ -847,7 +847,7 @@ const AdminPage = () => {
                             </td>
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-[#A100FF]">{aff.affiliate_code}</span>
+                                <span className="font-mono font-bold text-[#0EA5A0]">{aff.affiliate_code}</span>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -911,7 +911,7 @@ const AdminPage = () => {
                 {!explorerCollection ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {Object.entries(explorerCollections).map(([name, count]) => (
-                      <button key={name} onClick={() => handleExploreCollection(name)} className="p-4 border border-slate-200 rounded-lg hover:bg-purple-50 hover:border-[#A100FF] transition-colors text-left" data-testid={`explorer-${name}`}>
+                      <button key={name} onClick={() => handleExploreCollection(name)} className="p-4 border border-slate-200 rounded-lg hover:bg-teal-50 hover:border-[#0EA5A0] transition-colors text-left" data-testid={`explorer-${name}`}>
                         <p className="font-medium text-slate-900 text-sm">{name}</p>
                         <p className="text-xs text-slate-500 mt-1">{count} records</p>
                       </button>
@@ -981,7 +981,7 @@ const AdminPage = () => {
             <div className="space-y-6">
               {!reportOverview ? (
                 <Card className="p-8 text-center">
-                  <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white" onClick={fetchReports} data-testid="load-reports-btn">Load Reports</Button>
+                  <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={fetchReports} data-testid="load-reports-btn">Load Reports</Button>
                 </Card>
               ) : (
                 <>
@@ -1119,7 +1119,7 @@ const AdminPage = () => {
                   {/* Support Email */}
                   <div className="space-y-4 border-b pb-6">
                     <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                      <Mail className="w-5 h-5 text-[#A100FF]" />
+                      <Mail className="w-5 h-5 text-[#0EA5A0]" />
                       Support Settings
                     </h3>
                     <div className="grid md:grid-cols-2 gap-4">
@@ -1151,7 +1151,7 @@ const AdminPage = () => {
                   {/* Stripe Settings */}
                   <div className="space-y-4 border-b pb-6">
                     <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                      <CreditCard className="w-5 h-5 text-purple-600" />
+                      <CreditCard className="w-5 h-5 text-teal-600" />
                       Stripe Integration
                     </h3>
                     <div className="space-y-2">
@@ -1215,7 +1215,7 @@ const AdminPage = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="bg-[#A100FF] hover:bg-purple-700" data-testid="save-settings-btn">
+                  <Button type="submit" className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="save-settings-btn">
                     <Save className="w-4 h-4 mr-2" />
                     Save All Settings
                   </Button>
@@ -1249,7 +1249,7 @@ const AdminPage = () => {
               </div>
               <div><Label className="text-xs">Organization ID</Label><Input value={newUser.organization_id} onChange={e => setNewUser({...newUser, organization_id: e.target.value})} placeholder="org_xxx (optional)" /></div>
             </div>
-            <Button onClick={handleCreateUser} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white" data-testid="submit-create-user">Create User</Button>
+            <Button onClick={handleCreateUser} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="submit-create-user">Create User</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1260,7 +1260,7 @@ const AdminPage = () => {
           <DialogHeader><DialogTitle>Reset Password</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <div><Label className="text-xs">New Password</Label><Input type="password" value={resetPw} onChange={e => setResetPw(e.target.value)} placeholder="Enter new password" data-testid="reset-pw-input" /></div>
-            <Button onClick={() => handleResetPassword(showResetPw)} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white" data-testid="submit-reset-pw">Reset Password</Button>
+            <Button onClick={() => handleResetPassword(showResetPw)} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="submit-reset-pw">Reset Password</Button>
           </div>
         </DialogContent>
       </Dialog>

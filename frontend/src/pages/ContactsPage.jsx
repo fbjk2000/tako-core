@@ -156,7 +156,7 @@ const ContactsPage = () => {
             <Button variant="outline" onClick={() => setShowImportDialog(true)} data-testid="import-contacts-btn">
               <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
-            <Button className="bg-[#A100FF] hover:bg-purple-700" onClick={() => setShowAddDialog(true)} data-testid="add-contact-btn">
+            <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88]" onClick={() => setShowAddDialog(true)} data-testid="add-contact-btn">
               <Plus className="w-4 h-4 mr-2" /> Add Contact
             </Button>
           </div>
@@ -164,8 +164,8 @@ const ContactsPage = () => {
 
         {/* Bulk actions bar */}
         {selectedIds.length > 0 && (
-          <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
-            <span className="text-sm font-medium text-purple-800">{selectedIds.length} selected</span>
+          <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3">
+            <span className="text-sm font-medium text-teal-800">{selectedIds.length} selected</span>
             <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={handleBulkDelete}>
               <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
             </Button>
@@ -186,7 +186,7 @@ const ContactsPage = () => {
             <div className="flex flex-wrap gap-4">
               {[{key:'company',label:'Company'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'job_title',label:'Job Title'},{key:'decision_maker',label:'Decision Maker'}].map(col => (
                 <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={visibleCols[col.key]} onChange={() => setVisibleCols(prev => ({...prev, [col.key]: !prev[col.key]}))} className="accent-[#A100FF]" />
+                  <input type="checkbox" checked={visibleCols[col.key]} onChange={() => setVisibleCols(prev => ({...prev, [col.key]: !prev[col.key]}))} className="accent-[#0EA5A0]" />
                   {col.label}
                 </label>
               ))}
@@ -198,12 +198,12 @@ const ContactsPage = () => {
           <CardContent className="pt-0">
             {!loading && filtered.length > 0 && (
               <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-3 bg-slate-50 rounded-t-lg">
-                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#A100FF]" data-testid="select-all-contacts" />
+                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#0EA5A0]" data-testid="select-all-contacts" />
                 <span className="text-xs text-slate-500">Select all {filtered.length} contacts{searchQuery ? ' (filtered)' : ''}</span>
               </div>
             )}
             {loading ? (
-              <div className="p-8 text-center"><div className="w-8 h-8 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin mx-auto" /></div>
+              <div className="p-8 text-center"><div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filtered.length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
@@ -214,7 +214,7 @@ const ContactsPage = () => {
               <div className="divide-y divide-slate-100">
                 {filtered.map((c, i) => (
                   <div key={c.contact_id} className="p-4 hover:bg-slate-50 cursor-pointer transition-colors flex items-center gap-3" data-testid={`contact-row-${i}`}>
-                    <input type="checkbox" checked={selectedIds.includes(c.contact_id)} onChange={() => toggleSelect(c.contact_id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-[#A100FF]" />
+                    <input type="checkbox" checked={selectedIds.includes(c.contact_id)} onChange={() => toggleSelect(c.contact_id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-[#0EA5A0]" />
                     <div className="flex-1" onClick={() => openDetail(c)}>
                       <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -233,7 +233,7 @@ const ContactsPage = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         {visibleCols.decision_maker && c.decision_maker && <Badge className="bg-amber-100 text-amber-700 text-xs">{ t('contacts.decisionMaker') }</Badge>}
-                        {c.ai_score && <Badge className="bg-purple-100 text-purple-700 text-xs">{c.ai_score}/100</Badge>}
+                        {c.ai_score && <Badge className="bg-teal-100 text-teal-700 text-xs">{c.ai_score}/100</Badge>}
                       </div>
                       </div>
                     </div>
@@ -287,7 +287,7 @@ const ContactsPage = () => {
                     <Textarea value={editData.notes || ''} onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))} rows={2} />
                   </div>
                   <div className="col-span-2 flex gap-2 pt-2">
-                    <Button onClick={handleSave} disabled={saving} className="bg-[#A100FF] hover:bg-purple-700" data-testid="save-contact-btn">
+                    <Button onClick={handleSave} disabled={saving} className="bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="save-contact-btn">
                       {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                       Save Changes
                     </Button>
@@ -303,7 +303,7 @@ const ContactsPage = () => {
                         {f.badge ? (
                           <Badge className={selectedContact[f.key] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}>{selectedContact[f.key] ? 'Yes' : 'No'}</Badge>
                         ) : f.link ? (
-                          <a href={String(selectedContact[f.key]).startsWith('http') ? selectedContact[f.key] : `https://${selectedContact[f.key]}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#A100FF] hover:underline truncate block">{selectedContact[f.key]}</a>
+                          <a href={String(selectedContact[f.key]).startsWith('http') ? selectedContact[f.key] : `https://${selectedContact[f.key]}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#0EA5A0] hover:underline truncate block">{selectedContact[f.key]}</a>
                         ) : (
                           <p className="text-sm font-medium text-slate-900 truncate">{f.key === 'ai_score' ? `${selectedContact[f.key]}/100` : selectedContact[f.key]}</p>
                         )}
@@ -317,8 +317,8 @@ const ContactsPage = () => {
                     <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-700">{selectedContact.notes}</p></div>
                   )}
                   {selectedContact.enrichment && (
-                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-100 space-y-2">
-                      <p className="text-sm font-medium text-purple-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> AI Enrichment</p>
+                    <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-2">
+                      <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> AI Enrichment</p>
                       {selectedContact.enrichment.recommended_approach && <p className="text-sm text-slate-700">{selectedContact.enrichment.recommended_approach}</p>}
                     </div>
                   )}
@@ -368,7 +368,7 @@ const ContactsPage = () => {
               <div><Label className="text-xs">Company</Label><Input value={newContact.company} onChange={(e) => setNewContact({ ...newContact, company: e.target.value })} /></div>
               <div><Label className="text-xs">Job Title</Label><Input value={newContact.job_title} onChange={(e) => setNewContact({ ...newContact, job_title: e.target.value })} /></div>
             </div>
-            <Button type="submit" className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="save-new-contact"><Plus className="w-4 h-4 mr-2" /> Create Contact</Button>
+            <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="save-new-contact"><Plus className="w-4 h-4 mr-2" /> Create Contact</Button>
           </form>
         </DialogContent>
       </Dialog>

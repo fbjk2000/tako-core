@@ -225,7 +225,7 @@ const PricingPage = () => {
                     htmlFor={`plan-${key}`}
                     className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all ${
                       selectedPlan === key
-                        ? 'border-[#A100FF] bg-purple-50'
+                        ? 'border-[#0EA5A0] bg-teal-50'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                     data-testid={`plan-${key}`}
@@ -241,10 +241,10 @@ const PricingPage = () => {
                     />
                     <div className="flex items-center gap-4">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedPlan === key ? 'border-[#A100FF]' : 'border-slate-300'
+                        selectedPlan === key ? 'border-[#0EA5A0]' : 'border-slate-300'
                       }`}>
                         {selectedPlan === key && (
-                          <div className="w-3 h-3 rounded-full bg-[#A100FF]" />
+                          <div className="w-3 h-3 rounded-full bg-[#0EA5A0]" />
                         )}
                       </div>
                       <div>
@@ -388,7 +388,7 @@ const PricingPage = () => {
                       </p>
                     </div>
                     <p className="text-xs text-slate-500">Requires MetaMask or a compatible Web3 wallet connected to Arbitrum One.</p>
-                    {unytStatus && <p className="text-sm text-[#7C3AED] font-medium animate-pulse">{unytStatus}</p>}
+                    {unytStatus && <p className="text-sm text-[#0EA5A0] font-medium animate-pulse">{unytStatus}</p>}
                   </div>
                 )}
               </CardContent>
@@ -438,7 +438,7 @@ const PricingPage = () => {
                   <div className="border-t pt-3">
                     <div className="flex justify-between text-lg">
                       <span className="font-semibold">Total</span>
-                      <span className="font-bold text-[#A100FF]" data-testid="total-price">
+                      <span className="font-bold text-[#0EA5A0]" data-testid="total-price">
                         {useCrypto ? '$' : '€'}{pricing.totalAmount.toFixed(2)}
                         <span className="text-xs font-normal text-slate-500 block text-right">
                           /{selectedPlan === 'annual' ? 'year' : 'month'}
@@ -449,7 +449,7 @@ const PricingPage = () => {
                 </div>
 
                 <Button
-                  className="w-full h-12 bg-[#A100FF] hover:bg-purple-700"
+                  className="w-full h-12 bg-[#0EA5A0] hover:bg-teal-700"
                   onClick={handleCheckout}
                   disabled={loading}
                   data-testid="checkout-btn"

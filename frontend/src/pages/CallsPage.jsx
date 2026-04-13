@@ -300,7 +300,7 @@ const CallsPage = () => {
             <Button onClick={() => setShowScheduleDialog(true)} variant="outline" data-testid="schedule-call-btn">
               <CalendarPlus className="w-4 h-4 mr-2" /> Schedule Call
             </Button>
-            <Button onClick={() => setShowCallDialog(true)} className="bg-[#A100FF] hover:bg-purple-700" data-testid="new-call-btn">
+            <Button onClick={() => setShowCallDialog(true)} className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="new-call-btn">
               <Phone className="w-4 h-4 mr-2" /> Call Now
             </Button>
           </div>
@@ -318,10 +318,10 @@ const CallsPage = () => {
 
         {/* Upcoming Calls Banner */}
         {upcomingCalls.length > 0 && (
-          <Card className="border-[#A100FF]/20 bg-purple-50/50">
+          <Card className="border-[#0EA5A0]/20 bg-teal-50/50">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Bell className="w-4 h-4 text-[#A100FF]" />
+                <Bell className="w-4 h-4 text-[#0EA5A0]" />
                 <span className="font-semibold text-sm text-slate-800">Upcoming Calls</span>
                 <Badge variant="secondary" className="ml-1">{upcomingCalls.length}</Badge>
               </div>
@@ -350,11 +350,11 @@ const CallsPage = () => {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Total Calls', value: stats.total_calls, icon: <Phone className="w-5 h-5 text-[#A100FF]" />, bg: 'bg-purple-100', testId: 'stat-total-calls' },
+              { label: 'Total Calls', value: stats.total_calls, icon: <Phone className="w-5 h-5 text-[#0EA5A0]" />, bg: 'bg-teal-100', testId: 'stat-total-calls' },
               { label: 'Completed', value: stats.completed_calls, icon: <PhoneCall className="w-5 h-5 text-emerald-600" />, bg: 'bg-emerald-100', testId: 'stat-completed' },
               { label: 'Avg Duration', value: formatDuration(Math.round(stats.avg_duration_seconds)), icon: <Clock className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-100', testId: 'stat-avg-duration' },
               { label: 'AI Analyzed', value: stats.analyzed_calls, icon: <Sparkles className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-100', testId: 'stat-analyzed' },
-              { label: 'Scheduled', value: scheduledCalls.length, icon: <CalendarDays className="w-5 h-5 text-violet-600" />, bg: 'bg-violet-100', testId: 'stat-scheduled' },
+              { label: 'Scheduled', value: scheduledCalls.length, icon: <CalendarDays className="w-5 h-5 text-teal-600" />, bg: 'bg-teal-100', testId: 'stat-scheduled' },
             ].map(s => (
               <Card key={s.label}>
                 <CardContent className="p-4">
@@ -394,7 +394,7 @@ const CallsPage = () => {
               <CardContent className="pt-4">
                 {loading ? (
                   <div className="flex justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : filteredCalls.length === 0 ? (
                   <div className="text-center py-12 text-slate-500">
@@ -418,7 +418,7 @@ const CallsPage = () => {
                         <div className="flex items-center gap-4 shrink-0">
                           <span className={`text-xs px-2 py-1 rounded-full ${statusColors[call.status] || 'bg-slate-100 text-slate-600'}`}>{call.status}</span>
                           <span className="text-xs text-slate-500 w-12 text-right">{formatDuration(call.duration)}</span>
-                          {call.recording_url && <Mic className="w-4 h-4 text-[#A100FF]" />}
+                          {call.recording_url && <Mic className="w-4 h-4 text-[#0EA5A0]" />}
                           {call.ai_analysis && <Sparkles className="w-4 h-4 text-amber-500" />}
                           <ChevronRight className="w-4 h-4 text-slate-300" />
                         </div>
@@ -439,7 +439,7 @@ const CallsPage = () => {
                     <CalendarDays className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                     <p className="font-medium">No scheduled calls</p>
                     <p className="text-sm mt-1">Schedule calls with your leads to stay organized</p>
-                    <Button onClick={() => setShowScheduleDialog(true)} className="mt-4 bg-[#A100FF] hover:bg-purple-700" data-testid="schedule-empty-btn">
+                    <Button onClick={() => setShowScheduleDialog(true)} className="mt-4 bg-[#0EA5A0] hover:bg-teal-700" data-testid="schedule-empty-btn">
                       <CalendarPlus className="w-4 h-4 mr-2" /> Schedule a Call
                     </Button>
                   </div>
@@ -450,8 +450,8 @@ const CallsPage = () => {
                       return (
                         <div key={sc.schedule_id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isPast ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 hover:bg-slate-50'}`} data-testid={`sched-row-${sc.schedule_id}`}>
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isToday(sc.scheduled_at) ? 'bg-red-100' : 'bg-purple-100'}`}>
-                              <CalendarDays className={`w-4 h-4 ${isToday(sc.scheduled_at) ? 'text-red-600' : 'text-[#A100FF]'}`} />
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isToday(sc.scheduled_at) ? 'bg-red-100' : 'bg-teal-100'}`}>
+                              <CalendarDays className={`w-4 h-4 ${isToday(sc.scheduled_at) ? 'text-red-600' : 'text-[#0EA5A0]'}`} />
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-slate-900 text-sm truncate">{sc.lead_name}</p>
@@ -491,7 +491,7 @@ const CallsPage = () => {
         <Dialog open={showScheduleDialog} onOpenChange={(open) => { setShowScheduleDialog(open); if (!open) resetScheduleForm(); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><CalendarPlus className="w-5 h-5 text-[#A100FF]" /> Schedule Call</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><CalendarPlus className="w-5 h-5 text-[#0EA5A0]" /> Schedule Call</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div>
@@ -547,7 +547,7 @@ const CallsPage = () => {
                 <label className="text-sm font-medium text-slate-700 mb-1.5 block">Notes (optional)</label>
                 <Textarea value={schedNotes} onChange={(e) => setSchedNotes(e.target.value)} placeholder="Talking points, goals..." rows={2} data-testid="sched-notes" />
               </div>
-              <Button onClick={scheduleCall} disabled={!schedLead || !schedDate || scheduling} className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="confirm-schedule-btn">
+              <Button onClick={scheduleCall} disabled={!schedLead || !schedDate || scheduling} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="confirm-schedule-btn">
                 {scheduling ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Scheduling...</span> :
                   <span className="flex items-center gap-2"><CalendarPlus className="w-4 h-4" /> Schedule Call</span>}
               </Button>
@@ -559,7 +559,7 @@ const CallsPage = () => {
         <Dialog open={!!editingSchedule} onOpenChange={() => setEditingSchedule(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Edit2 className="w-5 h-5 text-[#A100FF]" /> Edit Schedule</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Edit2 className="w-5 h-5 text-[#0EA5A0]" /> Edit Schedule</DialogTitle>
             </DialogHeader>
             {editingSchedule && (
               <div className="space-y-4 pt-2">
@@ -605,7 +605,7 @@ const CallsPage = () => {
                   <label className="text-sm font-medium text-slate-700 mb-1.5 block">Notes</label>
                   <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Talking points, goals..." rows={2} />
                 </div>
-                <Button onClick={updateSchedule} className="w-full bg-[#A100FF] hover:bg-purple-700">
+                <Button onClick={updateSchedule} className="w-full bg-[#0EA5A0] hover:bg-teal-700">
                   Save Changes
                 </Button>
               </div>
@@ -636,7 +636,7 @@ const CallsPage = () => {
                 <label className="text-sm font-medium text-slate-700 mb-1.5 block">Opening Message</label>
                 <Input value={callMessage} onChange={(e) => setCallMessage(e.target.value)} placeholder="Message to play when call connects" data-testid="call-message-input" />
               </div>
-              <Button onClick={initiateCall} disabled={!selectedLead || calling} className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="initiate-call-btn">
+              <Button onClick={initiateCall} disabled={!selectedLead || calling} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="initiate-call-btn">
                 {calling ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Calling...</span> :
                   <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> Make Call</span>}
               </Button>
@@ -650,7 +650,7 @@ const CallsPage = () => {
             {selectedCall && (
               <>
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2"><PhoneCall className="w-5 h-5 text-[#A100FF]" /> Call Details</DialogTitle>
+                  <DialogTitle className="flex items-center gap-2"><PhoneCall className="w-5 h-5 text-[#0EA5A0]" /> Call Details</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -669,8 +669,8 @@ const CallsPage = () => {
                     ))}
                   </div>
                   {selectedCall.recording_url && (
-                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                      <p className="text-sm font-medium text-purple-900 mb-2 flex items-center gap-2"><Mic className="w-4 h-4" /> Recording</p>
+                    <div className="bg-teal-50 rounded-lg p-4 border border-teal-100">
+                      <p className="text-sm font-medium text-teal-900 mb-2 flex items-center gap-2"><Mic className="w-4 h-4" /> Recording</p>
                       <audio controls className="w-full" data-testid="call-recording-player"><source src={`${selectedCall.recording_url}.mp3`} type="audio/mpeg" /></audio>
                     </div>
                   )}

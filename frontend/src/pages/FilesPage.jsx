@@ -141,7 +141,7 @@ const FilesPage = () => {
               )}
               <div><Label className="text-xs">Description</Label><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional" className="h-8 text-xs" /></div>
               <div className="flex items-end">
-                <Button className="w-full h-8 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Button className="w-full h-8 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-xs" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? 'Uploading...' : <><Upload className="w-3.5 h-3.5 mr-1" /> Upload File</>}
                 </Button>
                 <input ref={fileRef} type="file" onChange={handleUpload} className="hidden" />
@@ -159,7 +159,7 @@ const FilesPage = () => {
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin mx-auto" /></div>
+              <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filtered.length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 <Upload className="w-12 h-12 mx-auto mb-3 text-slate-300" />
@@ -193,7 +193,7 @@ const FilesPage = () => {
                         <div className="flex gap-1">
                           <a href={`${API}/files/${f.file_id}/download`} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="h-7 w-7 p-0"><Download className="w-3.5 h-3.5" /></Button></a>
                           {f.ai_summary?.follow_ups?.length > 0 && (
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#7C3AED]" onClick={() => handleCreateTasks(f.file_id)} title="Create follow-up tasks"><CheckSquare className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#0EA5A0]" onClick={() => handleCreateTasks(f.file_id)} title="Create follow-up tasks"><CheckSquare className="w-3.5 h-3.5" /></Button>
                           )}
                           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" onClick={() => handleDelete(f.file_id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
@@ -224,19 +224,19 @@ const FilesPage = () => {
                 {selectedFile.linked_type && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Linked to</p><Badge variant="secondary">{selectedFile.linked_type}: {selectedFile.linked_id}</Badge></div>}
                 {selectedFile.description && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">Description</p><p className="text-sm text-slate-700">{selectedFile.description}</p></div>}
                 {selectedFile.ai_summary && (
-                  <div className="bg-purple-50 rounded-lg p-4 border border-purple-100 space-y-2">
-                    <p className="text-sm font-medium text-purple-900 flex items-center gap-1"><Zap className="w-4 h-4" /> AI Summary</p>
+                  <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-2">
+                    <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Zap className="w-4 h-4" /> AI Summary</p>
                     <p className="text-sm text-slate-700">{selectedFile.ai_summary.summary}</p>
                     {selectedFile.ai_summary.follow_ups?.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-purple-700 mb-1">Suggested follow-ups</p>
+                        <p className="text-xs font-medium text-teal-700 mb-1">Suggested follow-ups</p>
                         {selectedFile.ai_summary.follow_ups.map((fu, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-purple-100 last:border-0">
+                          <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-teal-100 last:border-0">
                             <span className="text-slate-700">{fu.title}</span>
                             <span className={`px-1.5 py-0.5 rounded ${fu.priority === 'high' ? 'bg-red-100 text-red-700' : fu.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{fu.priority}</span>
                           </div>
                         ))}
-                        <Button size="sm" className="mt-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white" onClick={() => { handleCreateTasks(selectedFile.file_id); setSelectedFile(null); }}>
+                        <Button size="sm" className="mt-2 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => { handleCreateTasks(selectedFile.file_id); setSelectedFile(null); }}>
                           <CheckSquare className="w-3.5 h-3.5 mr-1" /> Create these tasks
                         </Button>
                       </div>

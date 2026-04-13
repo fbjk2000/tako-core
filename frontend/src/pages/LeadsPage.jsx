@@ -314,7 +314,7 @@ const LeadsPage = () => {
 
   const statusOptions = [
     { value: 'new', label: 'New', color: 'bg-slate-100 text-slate-700' },
-    { value: 'contacted', label: 'Contacted', color: 'bg-purple-100 text-purple-700' },
+    { value: 'contacted', label: 'Contacted', color: 'bg-teal-100 text-teal-700' },
     { value: 'qualified', label: 'Qualified', color: 'bg-emerald-100 text-emerald-700' },
     { value: 'unqualified', label: 'Unqualified', color: 'bg-rose-100 text-rose-700' },
     { value: 'converted', label: 'Converted', color: 'bg-blue-100 text-blue-700' }
@@ -365,7 +365,7 @@ const LeadsPage = () => {
 
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#A100FF] hover:bg-purple-700" data-testid="add-lead-btn">
+                <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="add-lead-btn">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Lead
                 </Button>
@@ -445,7 +445,7 @@ const LeadsPage = () => {
                     />
                   </div>
                   <div className="pt-4">
-                    <Button type="submit" className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="submit-lead-btn">
+                    <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-lead-btn">
                       Add Lead
                     </Button>
                   </div>
@@ -490,8 +490,8 @@ const LeadsPage = () => {
         {/* Bulk Actions & Column Settings */}
         <div className="flex items-center justify-between">
           {selectedIds.length > 0 ? (
-            <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3 flex-1">
-              <span className="text-sm font-medium text-purple-800">{selectedIds.length} selected</span>
+            <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3 flex-1">
+              <span className="text-sm font-medium text-teal-800">{selectedIds.length} selected</span>
               <Button size="sm" variant="outline" onClick={handleBulkEnrich} data-testid="bulk-enrich-btn"><Wand2 className="w-3.5 h-3.5 mr-1" /> Enrich</Button>
               <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={handleBulkDelete} data-testid="bulk-delete-btn"><X className="w-3.5 h-3.5 mr-1" />{ t('common.delete') }</Button>
               <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
@@ -507,7 +507,7 @@ const LeadsPage = () => {
             <div className="flex flex-wrap gap-4">
               {[{key:'company',label:'Company'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'job_title',label:'Job Title'},{key:'source',label:'Source'},{key:'ai_score',label:'AI Score'}].map(col => (
                 <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={visibleCols[col.key]} onChange={() => setVisibleCols(prev => ({...prev, [col.key]: !prev[col.key]}))} className="accent-[#A100FF]" />
+                  <input type="checkbox" checked={visibleCols[col.key]} onChange={() => setVisibleCols(prev => ({...prev, [col.key]: !prev[col.key]}))} className="accent-[#0EA5A0]" />
                   {col.label}
                 </label>
               ))}
@@ -520,13 +520,13 @@ const LeadsPage = () => {
           <CardContent className="p-0">
             {!loading && filteredLeads.length > 0 && (
               <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-3 bg-slate-50">
-                <input type="checkbox" checked={selectedIds.length === filteredLeads.length && filteredLeads.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredLeads.length ? [] : filteredLeads.map(l => l.lead_id))} className="w-4 h-4 accent-[#A100FF]" data-testid="select-all-leads" />
+                <input type="checkbox" checked={selectedIds.length === filteredLeads.length && filteredLeads.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredLeads.length ? [] : filteredLeads.map(l => l.lead_id))} className="w-4 h-4 accent-[#0EA5A0]" data-testid="select-all-leads" />
                 <span className="text-xs text-slate-500">Select all {filteredLeads.length} leads{searchQuery || statusFilter !== 'all' ? ' (filtered)' : ''}</span>
               </div>
             )}
             {loading ? (
               <div className="p-8 text-center">
-                <div className="w-8 h-8 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin mx-auto" />
+                <div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" />
               </div>
             ) : filteredLeads.length === 0 ? (
               <div className="p-8 text-center">
@@ -542,9 +542,9 @@ const LeadsPage = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <input type="checkbox" checked={selectedIds.includes(lead.lead_id)} onChange={() => toggleSelect(lead.lead_id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-[#A100FF]" />
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center cursor-pointer" onClick={() => openLeadDetail(lead)}>
-                          <span className="text-[#A100FF] font-medium">
+                        <input type="checkbox" checked={selectedIds.includes(lead.lead_id)} onChange={() => toggleSelect(lead.lead_id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-[#0EA5A0]" />
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center cursor-pointer" onClick={() => openLeadDetail(lead)}>
+                          <span className="text-[#0EA5A0] font-medium">
                             {lead.first_name?.[0]}{lead.last_name?.[0]}
                           </span>
                         </div>
@@ -687,8 +687,8 @@ const LeadsPage = () => {
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                      <span className="text-[#A100FF] font-medium text-sm">{selectedLead.first_name?.[0]}{selectedLead.last_name?.[0]}</span>
+                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
+                      <span className="text-[#0EA5A0] font-medium text-sm">{selectedLead.first_name?.[0]}{selectedLead.last_name?.[0]}</span>
                     </div>
                     {editMode ? 'Edit Lead' : `${selectedLead.first_name} ${selectedLead.last_name}`}
                   </span>
@@ -702,7 +702,7 @@ const LeadsPage = () => {
                           <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEnrichLead(selectedLead.lead_id)} disabled={enriching} data-testid="enrich-lead-btn">
-                          {enriching ? <div className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />}
+                          {enriching ? <div className="w-3.5 h-3.5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />}
                           Enrich
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleScoreLead(selectedLead.lead_id)} disabled={scoring === selectedLead.lead_id} data-testid="score-lead-btn">
@@ -750,7 +750,7 @@ const LeadsPage = () => {
                     />
                   </div>
                   <div className="col-span-2 flex gap-2 pt-2">
-                    <Button onClick={handleSaveLead} disabled={saving} className="bg-[#A100FF] hover:bg-purple-700" data-testid="save-lead-btn">
+                    <Button onClick={handleSaveLead} disabled={saving} className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="save-lead-btn">
                       {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                       Save Changes
                     </Button>
@@ -778,7 +778,7 @@ const LeadsPage = () => {
                       <div key={f.label} className="bg-slate-50 rounded-lg p-3">
                         <p className="text-xs text-slate-500 flex items-center gap-1">{f.icon}{f.label}</p>
                         {f.link ? (
-                          <a href={f.value.startsWith('http') ? f.value : `https://${f.value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#A100FF] hover:underline truncate block">{f.value}</a>
+                          <a href={f.value.startsWith('http') ? f.value : `https://${f.value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#0EA5A0] hover:underline truncate block">{f.value}</a>
                         ) : (
                           <p className="text-sm font-medium text-slate-900 truncate">{f.value}</p>
                         )}
@@ -804,8 +804,8 @@ const LeadsPage = () => {
 
                   {/* AI Enrichment Data */}
                   {selectedLead.enrichment && (
-                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-100 space-y-2">
-                      <p className="text-sm font-medium text-purple-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> AI Enrichment</p>
+                    <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-2">
+                      <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> AI Enrichment</p>
                       {selectedLead.enrichment.recommended_approach && (
                         <p className="text-sm text-slate-700"><strong>Approach:</strong> {selectedLead.enrichment.recommended_approach}</p>
                       )}
@@ -836,7 +836,7 @@ const LeadsPage = () => {
                       </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => handleEnrichLead(selectedLead.lead_id)} disabled={enriching}>
-                      {enriching ? <div className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />} Enrich
+                      {enriching ? <div className="w-3.5 h-3.5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />} Enrich
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setEmailLeadId(selectedLead.lead_id); setEmailLeadName(`${selectedLead.first_name} ${selectedLead.last_name}`); setSelectedLead(null); }}>
                       <Mail className="w-3.5 h-3.5 mr-1" /> Draft Email
@@ -867,7 +867,7 @@ const LeadsPage = () => {
       <Dialog open={showConvertDialog} onOpenChange={() => { setShowConvertDialog(false); setConvertLead(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[#A100FF]" /> Convert Lead to Contact</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[#0EA5A0]" /> Convert Lead to Contact</DialogTitle>
           </DialogHeader>
           {convertLead && (
             <div className="space-y-4 pt-2">
@@ -886,7 +886,7 @@ const LeadsPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleConvertToContact} disabled={converting} className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="confirm-convert-btn">
+              <Button onClick={handleConvertToContact} disabled={converting} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="confirm-convert-btn">
                 {converting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
                 Convert to Contact
               </Button>

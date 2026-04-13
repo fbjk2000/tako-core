@@ -49,8 +49,8 @@ const CHANNEL_CONFIG = {
   lead: { icon: UserCircle, color: 'text-blue-600', bg: 'bg-blue-100' },
   deal: { icon: Target, color: 'text-emerald-600', bg: 'bg-emerald-100' },
   task: { icon: CheckSquare, color: 'text-orange-600', bg: 'bg-orange-100' },
-  project: { icon: Hash, color: 'text-violet-600', bg: 'bg-violet-100' },
-  company: { icon: Building, color: 'text-purple-600', bg: 'bg-purple-100' }
+  project: { icon: Hash, color: 'text-teal-600', bg: 'bg-teal-100' },
+  company: { icon: Building, color: 'text-teal-600', bg: 'bg-teal-100' }
 };
 
 const ChatPage = () => {
@@ -371,7 +371,7 @@ const ChatPage = () => {
         parts.push(content.substring(lastIndex, match.index));
       }
       parts.push(
-        <span key={match.index} className="bg-purple-100 text-[#A100FF] px-1 rounded font-medium">
+        <span key={match.index} className="bg-teal-100 text-[#0EA5A0] px-1 rounded font-medium">
           @{match[1]}
         </span>
       );
@@ -403,7 +403,7 @@ const ChatPage = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#A100FF]" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#0EA5A0]" />
         </div>
       </DashboardLayout>
     );
@@ -417,7 +417,7 @@ const ChatPage = () => {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-[#A100FF]" />
+                <MessageSquare className="w-5 h-5 text-[#0EA5A0]" />
                 Team Chat
               </CardTitle>
               <Dialog open={showNewChannelDialog} onOpenChange={setShowNewChannelDialog}>
@@ -451,7 +451,7 @@ const ChatPage = () => {
                         onChange={(e) => setNewChannel({ ...newChannel, description: e.target.value })}
                       />
                     </div>
-                    <Button type="submit" className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="create-channel-btn">
+                    <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-channel-btn">
                       Create Channel
                     </Button>
                   </form>
@@ -474,7 +474,7 @@ const ChatPage = () => {
                       const config = CHANNEL_CONFIG[channel.channel_type || 'general'];
                       const Icon = config.icon;
                       return (
-                        <button key={channel.channel_id} onClick={() => handleChannelSelect(channel)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${activeChannel?.channel_id === channel.channel_id ? 'bg-purple-100 text-[#A100FF]' : 'hover:bg-slate-100 text-slate-700'}`} data-testid={`channel-${channel.channel_id}`}>
+                        <button key={channel.channel_id} onClick={() => handleChannelSelect(channel)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${activeChannel?.channel_id === channel.channel_id ? 'bg-teal-100 text-[#0EA5A0]' : 'hover:bg-slate-100 text-slate-700'}`} data-testid={`channel-${channel.channel_id}`}>
                           <Icon className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate">{channel.name}</span>
                         </button>
@@ -534,8 +534,8 @@ const ChatPage = () => {
                   {!collapsedSections.projects && (
                     <div className="space-y-1 mt-1">
                       {projectChannels.map((channel) => (
-                        <button key={channel.channel_id} onClick={() => handleChannelSelect(channel)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${activeChannel?.channel_id === channel.channel_id ? 'bg-violet-100 text-violet-700' : 'hover:bg-slate-100 text-slate-700'}`} data-testid={`channel-${channel.channel_id}`}>
-                          <Hash className="w-4 h-4 flex-shrink-0 text-violet-600" />
+                        <button key={channel.channel_id} onClick={() => handleChannelSelect(channel)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${activeChannel?.channel_id === channel.channel_id ? 'bg-teal-100 text-teal-700' : 'hover:bg-slate-100 text-slate-700'}`} data-testid={`channel-${channel.channel_id}`}>
+                          <Hash className="w-4 h-4 flex-shrink-0 text-teal-600" />
                           <span className="truncate">{channel.name}</span>
                         </button>
                       ))}
@@ -565,7 +565,7 @@ const ChatPage = () => {
                   >
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={member.picture} />
-                      <AvatarFallback className="text-xs bg-purple-100 text-[#A100FF]">
+                      <AvatarFallback className="text-xs bg-teal-100 text-[#0EA5A0]">
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -610,7 +610,7 @@ const ChatPage = () => {
                     {activeChannel.channel_type && activeChannel.channel_type !== 'general' && getEntityLink() && (
                       <Link
                         to={getEntityLink()}
-                        className="flex items-center gap-1 text-sm text-slate-600 hover:text-[#A100FF] transition-colors"
+                        className="flex items-center gap-1 text-sm text-slate-600 hover:text-[#0EA5A0] transition-colors"
                       >
                         <ExternalLink className="w-4 h-4" />
                         View {activeChannel.channel_type}
@@ -690,7 +690,7 @@ const ChatPage = () => {
                           {showAvatar ? (
                             <Avatar className="h-8 w-8 flex-shrink-0">
                               <AvatarImage src={message.sender_picture} />
-                              <AvatarFallback className="bg-purple-100 text-[#A100FF] text-sm">
+                              <AvatarFallback className="bg-teal-100 text-[#0EA5A0] text-sm">
                                 {getInitials(message.sender_name)}
                               </AvatarFallback>
                             </Avatar>
@@ -758,7 +758,7 @@ const ChatPage = () => {
                                     onClick={() => handleReaction(message.message_id, emoji)}
                                     className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-sm transition-colors ${
                                       users.includes(user?.user_id)
-                                        ? 'bg-purple-100 text-[#A100FF]'
+                                        ? 'bg-teal-100 text-[#0EA5A0]'
                                         : 'bg-slate-100 hover:bg-slate-200'
                                     }`}
                                   >
@@ -870,7 +870,7 @@ const ChatPage = () => {
                             className="w-full flex items-center gap-2 px-2 py-1 text-sm rounded hover:bg-slate-100"
                           >
                             <Avatar className="h-5 w-5">
-                              <AvatarFallback className="text-xs bg-purple-100 text-[#A100FF]">
+                              <AvatarFallback className="text-xs bg-teal-100 text-[#0EA5A0]">
                                 {getInitials(member.name)}
                               </AvatarFallback>
                             </Avatar>
@@ -893,7 +893,7 @@ const ChatPage = () => {
                   <Button
                     type="submit"
                     disabled={!newMessage.trim() || sending}
-                    className="bg-[#A100FF] hover:bg-purple-700"
+                    className="bg-[#0EA5A0] hover:bg-teal-700"
                     data-testid="send-message-btn"
                   >
                     {sending ? (

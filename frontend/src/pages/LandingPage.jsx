@@ -217,11 +217,11 @@ const LandingPage = () => {
 
   const features = [
     { title: t('landing.feat1Title'), desc: t('landing.feat1Desc'), accent: '#D4A853' },
-    { title: t('landing.feat2Title'), desc: t('landing.feat2Desc'), accent: '#7C3AED' },
-    { title: t('landing.feat3Title'), desc: t('landing.feat3Desc'), accent: '#3B0764' },
+    { title: t('landing.feat2Title'), desc: t('landing.feat2Desc'), accent: '#0EA5A0' },
+    { title: t('landing.feat3Title'), desc: t('landing.feat3Desc'), accent: '#0C1024' },
     { title: t('landing.feat4Title'), desc: t('landing.feat4Desc'), accent: '#D4A853' },
-    { title: t('landing.feat5Title'), desc: t('landing.feat5Desc'), accent: '#7C3AED' },
-    { title: t('landing.feat6Title'), desc: t('landing.feat6Desc'), accent: '#3B0764' },
+    { title: t('landing.feat5Title'), desc: t('landing.feat5Desc'), accent: '#0EA5A0' },
+    { title: t('landing.feat6Title'), desc: t('landing.feat6Desc'), accent: '#0C1024' },
   ];
 
   return (
@@ -241,7 +241,7 @@ const LandingPage = () => {
           <div className="hidden md:flex items-center gap-3">
             <button onClick={toggleLang} className="px-2 py-1 text-xs font-semibold rounded bg-[#0F0A1E]/5 hover:bg-[#0F0A1E]/10 text-[#0F0A1E]/60" data-testid="landing-lang-toggle">{i18n.language === 'en' ? 'DE' : 'EN'}</button>
             <Link to="/login"><Button variant="ghost" className="text-sm h-9 text-[#0F0A1E]/70 hover:text-[#0F0A1E]">{t('common.signIn')}</Button></Link>
-            <Link to="/signup"><Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm h-9 px-5 rounded-lg" data-testid="nav-cta">{t('common.startFree')}</Button></Link>
+            <Link to="/signup"><Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-sm h-9 px-5 rounded-lg" data-testid="nav-cta">{t('common.startFree')}</Button></Link>
           </div>
           <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="mobile-menu-btn">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeWidth={2} d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
@@ -252,7 +252,7 @@ const LandingPage = () => {
             <a href="#features" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
             <a href="#pricing" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
             <Link to="/login" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
-            <Link to="/signup"><Button className="w-full bg-[#7C3AED] text-white rounded-lg">Start free</Button></Link>
+            <Link to="/signup"><Button className="w-full bg-[#0EA5A0] text-white rounded-lg">Start free</Button></Link>
           </div>
         )}
       </nav>
@@ -261,20 +261,20 @@ const LandingPage = () => {
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-[#3B0764]/5 border border-[#3B0764]/10 rounded-full px-4 py-1.5 mb-8">
+            <div className="inline-flex items-center gap-2 bg-[#0C1024]/5 border border-[#0C1024]/10 rounded-full px-4 py-1.5 mb-8">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
-              <span className="text-xs tracking-widest uppercase text-[#3B0764]/70 font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{t('landing.badge')}</span>
+              <span className="text-xs tracking-widest uppercase text-[#0C1024]/70 font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{t('landing.badge')}</span>
             </div>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" style={{ fontFamily: "'Syne', sans-serif" }} data-testid="hero-title">
               {t('landing.heroTitle1')}<br />
-              <span className="text-[#7C3AED]">{t('landing.heroTitle2')}</span>
+              <span className="text-[#0EA5A0]">{t('landing.heroTitle2')}</span>
             </h1>
             <p className="text-lg md:text-xl text-[#0F0A1E]/60 leading-relaxed max-w-xl mb-10" data-testid="hero-description">
               {t('landing.heroDesc')}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link to="/signup">
-                <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white h-12 px-8 rounded-lg text-base font-medium" data-testid="hero-cta-primary">
+                <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white h-12 px-8 rounded-lg text-base font-medium" data-testid="hero-cta-primary">
                   {t('landing.startTrial')}
                 </Button>
               </Link>
@@ -285,7 +285,7 @@ const LandingPage = () => {
           </div>
 
           {/* Product Preview */}
-          <div className="mt-16 bg-[#0F0A1E] rounded-2xl p-2 shadow-2xl shadow-[#3B0764]/10" id="product" data-testid="hero-image">
+          <div className="mt-16 bg-[#0F0A1E] rounded-2xl p-2 shadow-2xl shadow-[#0C1024]/10" id="product" data-testid="hero-image">
             <div className="bg-[#1a1230] rounded-xl p-6 md:p-8">
               <div className="grid grid-cols-4 gap-4 mb-6">
                 {[{ label: 'Active Leads', value: '284', change: '+12%' }, { label: 'Pipeline Value', value: '428,500', change: '+8%', prefix: '\u20AC' }, { label: 'Win Rate', value: '34%', change: '+3pp' }, { label: 'Avg. Deal Size', value: '18,200', prefix: '\u20AC', change: '+5%' }].map((s, i) => (
@@ -340,7 +340,7 @@ const LandingPage = () => {
       <section className="py-24 px-6" id="features">
         <div className="max-w-5xl mx-auto">
           <div className="max-w-2xl mb-16">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#7C3AED] mb-4">{t('landing.featuresTag')}</p>
+            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#0EA5A0] mb-4">{t('landing.featuresTag')}</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ fontFamily: "'Syne'" }}>
               Everything a sales team needs. Nothing it does not.
             </h2>
@@ -391,7 +391,7 @@ const LandingPage = () => {
       <section className="py-24 px-6" id="pricing">
         <div className="max-w-5xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#7C3AED] mb-4">Pricing</p>
+            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#0EA5A0] mb-4">Pricing</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ fontFamily: "'Syne'" }}>
               Simple, fair pricing
             </h2>
@@ -403,8 +403,8 @@ const LandingPage = () => {
               { plan: 'Pro', price: '15', desc: 'For growing sales teams', features: ['Unlimited users', 'Unlimited leads', 'AI scoring and enrichment', 'Outbound calling', 'Calendar booking', 'Priority support'], cta: 'Start free trial', primary: true },
               { plan: 'Enterprise', price: 'Custom', desc: 'For organisations with complex needs', features: ['Everything in Pro', 'Custom integrations', 'Dedicated account manager', 'SSO and audit logs', 'SLA guarantee'], cta: 'Talk to sales', primary: false },
             ].map((p, i) => (
-              <div key={i} className={`rounded-xl p-6 border ${p.primary ? 'bg-[#3B0764] border-[#3B0764] text-white' : 'bg-white border-[#0F0A1E]/5'}`} data-testid={`pricing-${p.plan.toLowerCase()}`}>
-                <p className={`text-sm font-medium mb-1 ${p.primary ? 'text-[#D4A853]' : 'text-[#7C3AED]'}`}>{p.plan}</p>
+              <div key={i} className={`rounded-xl p-6 border ${p.primary ? 'bg-[#0C1024] border-[#0C1024] text-white' : 'bg-white border-[#0F0A1E]/5'}`} data-testid={`pricing-${p.plan.toLowerCase()}`}>
+                <p className={`text-sm font-medium mb-1 ${p.primary ? 'text-[#D4A853]' : 'text-[#0EA5A0]'}`}>{p.plan}</p>
                 <div className="flex items-baseline gap-1 mb-2">
                   {p.price !== 'Custom' ? (
                     <>
@@ -419,7 +419,7 @@ const LandingPage = () => {
                 <ul className="space-y-2.5 mb-6">
                   {p.features.map((f, j) => (
                     <li key={j} className={`text-sm flex items-start gap-2 ${p.primary ? 'text-white/80' : 'text-[#0F0A1E]/70'}`}>
-                      <svg className={`w-4 h-4 mt-0.5 shrink-0 ${p.primary ? 'text-[#D4A853]' : 'text-[#7C3AED]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <svg className={`w-4 h-4 mt-0.5 shrink-0 ${p.primary ? 'text-[#D4A853]' : 'text-[#0EA5A0]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                       {f}
                     </li>
                   ))}
@@ -439,7 +439,7 @@ const LandingPage = () => {
       <LaunchEdition />
 
       {/* Final CTA */}
-      <section className="py-24 px-6 bg-[#3B0764]">
+      <section className="py-24 px-6 bg-[#0C1024]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-4" style={{ fontFamily: "'Syne'" }}>
             Ready to sell smarter?
@@ -510,7 +510,7 @@ const LandingPage = () => {
           {downloadReady ? (
             <div className="text-center py-4">
               <p className="text-[#0F0A1E]/70 mb-4">Your guide is ready to download.</p>
-              <Button onClick={handleDownload} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg">Download PDF</Button>
+              <Button onClick={handleDownload} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white rounded-lg">Download PDF</Button>
             </div>
           ) : (
             <form onSubmit={handleLeadMagnetSubmit} className="space-y-4 pt-2">
@@ -522,7 +522,7 @@ const LandingPage = () => {
                 <label className="text-sm text-[#0F0A1E]/60 mb-1 block">Work email</label>
                 <Input type="email" value={leadMagnetEmail} onChange={(e) => setLeadMagnetEmail(e.target.value)} required placeholder="you@company.com" />
               </div>
-              <Button type="submit" disabled={submitting} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg">
+              <Button type="submit" disabled={submitting} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white rounded-lg">
                 {submitting ? 'Sending...' : 'Get the playbook'}
               </Button>
             </form>

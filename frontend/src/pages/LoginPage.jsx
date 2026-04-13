@@ -110,7 +110,7 @@ const LoginPage = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-slate-700">{ t('auth.password') }</Label>
-                  <Link to="/forgot-password" className="text-sm text-[#7C3AED] hover:text-purple-700">{ t('auth.forgotPassword') }</Link>
+                  <Link to="/forgot-password" className="text-sm text-[#0EA5A0] hover:text-teal-700">{ t('auth.forgotPassword') }</Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -137,7 +137,7 @@ const LoginPage = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-[#A100FF] hover:bg-purple-700"
+                className="w-full h-12 bg-[#0EA5A0] hover:bg-teal-700"
                 disabled={loading}
                 data-testid="login-submit-btn"
               >
@@ -151,7 +151,7 @@ const LoginPage = () => {
 
             <p className="text-center text-sm text-slate-600">
               { t('auth.noAccount') }{' '}
-              <Link to="/signup" className="text-[#A100FF] hover:text-purple-700 font-medium" data-testid="signup-link">
+              <Link to="/signup" className="text-[#0EA5A0] hover:text-teal-700 font-medium" data-testid="signup-link">
                 {t('auth.signUpFree')}
               </Link>
             </p>

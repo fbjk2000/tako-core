@@ -155,7 +155,7 @@ const CalendarPage = () => {
 
   const formatTime = (iso) => { try { return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
-  const typeColors = { call: '#7C3AED', task: '#f59e0b', deal: '#6366f1', event: '#3B0764', google: '#4285f4', team: '#94a3b8' };
+  const typeColors = { call: '#0EA5A0', task: '#f59e0b', deal: '#6366f1', event: '#0C1024', google: '#4285f4', team: '#94a3b8' };
 
   return (
     <DashboardLayout>
@@ -180,13 +180,13 @@ const CalendarPage = () => {
               {Array.from({length:12}, (_,i) => <option key={i+12} value={i+12}>{String(i+12).padStart(2,'0')}:00</option>)}
             </select>
             <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-              <button onClick={() => setView('month')} className={`px-3 py-1.5 text-sm ${view === 'month' ? 'bg-[#3B0764] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{ t('calendar.month') }</button>
-              <button onClick={() => setView('week')} className={`px-3 py-1.5 text-sm ${view === 'week' ? 'bg-[#3B0764] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{ t('calendar.week') }</button>
+              <button onClick={() => setView('month')} className={`px-3 py-1.5 text-sm ${view === 'month' ? 'bg-[#0C1024] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{ t('calendar.month') }</button>
+              <button onClick={() => setView('week')} className={`px-3 py-1.5 text-sm ${view === 'week' ? 'bg-[#0C1024] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{ t('calendar.week') }</button>
             </div>
             {!googleConnected ? (
               <Button variant="outline" size="sm" onClick={connectGoogle}><svg className="w-4 h-4 mr-1" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Google</Button>
             ) : <Badge className="bg-blue-100 text-blue-700 text-xs">Google</Badge>}
-            <Button className="bg-[#3B0764] hover:bg-[#2e0550] text-white" onClick={() => setShowCreate(true)} data-testid="new-event-btn"><Plus className="w-4 h-4 mr-1" /> { t('calendar.newEvent') }</Button>
+            <Button className="bg-[#0C1024] hover:bg-[#2e0550] text-white" onClick={() => setShowCreate(true)} data-testid="new-event-btn"><Plus className="w-4 h-4 mr-1" /> { t('calendar.newEvent') }</Button>
           </div>
         </div>
 
@@ -201,16 +201,16 @@ const CalendarPage = () => {
             {view === 'month' ? `${MONTHS[month]} ${year}` : `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} \u2013 ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
           </h2>
           <div className="flex gap-3 text-xs text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#7C3AED]" />Calls</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0EA5A0]" />Calls</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />Tasks</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3B0764]" />Events</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0C1024]" />Events</span>
             {showTeam && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-400" />Team</span>}
             {googleConnected && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Google</span>}
           </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#3B0764] border-t-transparent rounded-full animate-spin" /></div>
+          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#0C1024] border-t-transparent rounded-full animate-spin" /></div>
         ) : view === 'month' ? (
           /* Month View */
           <Card>
@@ -223,9 +223,9 @@ const CalendarPage = () => {
                   const dayDate = new Date(year, month, day);
                   const dayEvents = getEventsForDay(dayDate);
                   return (
-                    <div key={day} className={`min-h-[90px] border-r border-b p-1 hover:bg-slate-50 cursor-pointer ${isToday(dayDate) ? 'bg-purple-50/50' : ''}`}
+                    <div key={day} className={`min-h-[90px] border-r border-b p-1 hover:bg-slate-50 cursor-pointer ${isToday(dayDate) ? 'bg-teal-50/50' : ''}`}
                       onClick={() => { const dt = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}T09:00`; setNewEvent({...newEvent, date: dt, end_date: `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}T10:00`}); setShowCreate(true); }}>
-                      <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday(dayDate) ? 'bg-[#3B0764] text-white' : 'text-slate-700'}`}>{day}</div>
+                      <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday(dayDate) ? 'bg-[#0C1024] text-white' : 'text-slate-700'}`}>{day}</div>
                       <div className="space-y-0.5">
                         {dayEvents.slice(0, 3).map(evt => (
                           <div key={evt.id} className="text-[10px] px-1 py-0.5 rounded truncate cursor-pointer" style={{ backgroundColor: (typeColors[evt.type] || '#64748b') + '18', color: typeColors[evt.type] || '#64748b' }}
@@ -249,9 +249,9 @@ const CalendarPage = () => {
               <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b sticky top-0 z-10 bg-white">
                 <div className="py-2 border-r" />
                 {weekDays.map((d, i) => (
-                  <div key={i} className={`py-2 text-center border-r last:border-r-0 ${isToday(d) ? 'bg-[#3B0764]/5' : ''}`}>
+                  <div key={i} className={`py-2 text-center border-r last:border-r-0 ${isToday(d) ? 'bg-[#0C1024]/5' : ''}`}>
                     <div className="text-xs text-slate-500">{DAYS[i]}</div>
-                    <div className={`text-lg font-semibold ${isToday(d) ? 'text-[#3B0764]' : 'text-slate-900'}`}>{d.getDate()}</div>
+                    <div className={`text-lg font-semibold ${isToday(d) ? 'text-[#0C1024]' : 'text-slate-900'}`}>{d.getDate()}</div>
                   </div>
                 ))}
               </div>
@@ -265,7 +265,7 @@ const CalendarPage = () => {
                         <span className="text-[10px] text-slate-400">{String(hour).padStart(2, '0')}:00</span>
                       </div>
                       {weekDays.map((d, di) => (
-                        <div key={`${hour}-${di}`} className={`h-16 border-r border-b last:border-r-0 ${isToday(d) ? 'bg-[#3B0764]/[0.02]' : ''}`}
+                        <div key={`${hour}-${di}`} className={`h-16 border-r border-b last:border-r-0 ${isToday(d) ? 'bg-[#0C1024]/[0.02]' : ''}`}
                           onClick={() => { const dt = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(hour).padStart(2,'0')}:00`; const et = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(hour+1).padStart(2,'0')}:00`; setNewEvent({...newEvent, date: dt, end_date: et}); setShowCreate(true); }} />
                       ))}
                     </React.Fragment>
@@ -278,9 +278,9 @@ const CalendarPage = () => {
                       const colStart = di + 2; // grid column (1-indexed, +1 for time label col)
                       return (
                         <div key={`${evt.id}-${di}`} className="rounded px-1.5 py-0.5 cursor-pointer overflow-hidden hover:opacity-90 transition-opacity z-10"
-                          style={{ position: 'absolute', top: `${pos.top}px`, height: `${pos.height}px`, left: `calc(60px + ${(di / 7) * 100}% * 7 / 7)`, width: `calc((100% - 60px) / 7 - 4px)`, marginLeft: `calc(${di} * (100% - 60px) / 7 + 2px)`, backgroundColor: (typeColors[evt.type] || '#3B0764') + '20', borderLeft: `3px solid ${typeColors[evt.type] || '#3B0764'}` }}
+                          style={{ position: 'absolute', top: `${pos.top}px`, height: `${pos.height}px`, left: `calc(60px + ${(di / 7) * 100}% * 7 / 7)`, width: `calc((100% - 60px) / 7 - 4px)`, marginLeft: `calc(${di} * (100% - 60px) / 7 + 2px)`, backgroundColor: (typeColors[evt.type] || '#0C1024') + '20', borderLeft: `3px solid ${typeColors[evt.type] || '#0C1024'}` }}
                           onClick={(e) => { e.stopPropagation(); evt.type === 'event' || evt.type === 'team' ? openEventDetail(evt) : navigate(evt.entity_type === 'lead' ? `/leads?detail=${evt.entity_id}` : '/tasks'); }}>
-                          <p className="text-[10px] font-medium truncate" style={{ color: typeColors[evt.type] || '#3B0764' }}>{evt.title}</p>
+                          <p className="text-[10px] font-medium truncate" style={{ color: typeColors[evt.type] || '#0C1024' }}>{evt.title}</p>
                           <p className="text-[9px] text-slate-500">{formatTime(evt.date)}{evt.end_date ? ` \u2013 ${formatTime(evt.end_date)}` : ''}</p>
                           {pos.height > 50 && evt.location && <p className="text-[9px] text-slate-400 truncate">{evt.location}</p>}
                           {pos.height > 40 && evt.blocks_booking === false && <span className="text-[8px] bg-slate-200 text-slate-500 px-1 rounded">non-blocking</span>}
@@ -338,7 +338,7 @@ const CalendarPage = () => {
                 )}
               </div>
             </div>
-            <Button onClick={handleCreateEvent} className="w-full bg-[#3B0764] hover:bg-[#2e0550] text-white" data-testid="create-event-submit"><Plus className="w-4 h-4 mr-2" /> Create Event</Button>
+            <Button onClick={handleCreateEvent} className="w-full bg-[#0C1024] hover:bg-[#2e0550] text-white" data-testid="create-event-submit"><Plus className="w-4 h-4 mr-2" /> Create Event</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -351,7 +351,7 @@ const CalendarPage = () => {
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: typeColors[selectedEvent.type] || '#3B0764' }} />
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: typeColors[selectedEvent.type] || '#0C1024' }} />
                     <span>{editingEvent ? 'Edit Event' : selectedEvent.title}</span>
                   </div>
                   {!editingEvent && selectedEvent.type === 'event' && <Button size="sm" variant="outline" onClick={() => setEditingEvent(true)}>{t('common.edit')}</Button>}
@@ -365,7 +365,7 @@ const CalendarPage = () => {
                     <div><Label>End</Label><Input type="datetime-local" value={editEventData.end_date ? editEventData.end_date.slice(0, 16) : ''} onChange={e => setEditEventData({...editEventData, end_date: e.target.value})} /></div>
                   </div>
                   <div><Label>Notes</Label><Input value={editEventData.notes || ''} onChange={e => setEditEventData({...editEventData, notes: e.target.value})} /></div>
-                  <div className="flex gap-2"><Button onClick={handleSaveEvent} className="bg-[#3B0764] text-white">{t('common.save')}</Button><Button variant="outline" onClick={() => setEditingEvent(false)}>{t('common.cancel')}</Button></div>
+                  <div className="flex gap-2"><Button onClick={handleSaveEvent} className="bg-[#0C1024] text-white">{t('common.save')}</Button><Button variant="outline" onClick={() => setEditingEvent(false)}>{t('common.cancel')}</Button></div>
                 </div>
               ) : (
                 <div className="space-y-3 pt-2">
@@ -379,7 +379,7 @@ const CalendarPage = () => {
                   {selectedEvent.type === 'event' && (
                     <div className="border-t pt-3 space-y-2">
                       <p className="text-xs font-medium text-slate-700">Invite people</p>
-                      <div className="flex gap-2"><Input value={inviteEmails} onChange={e => setInviteEmails(e.target.value)} placeholder="email@example.com" className="text-xs h-8" /><Button size="sm" className="h-8 bg-[#3B0764] text-white" onClick={handleInvite}>Send</Button></div>
+                      <div className="flex gap-2"><Input value={inviteEmails} onChange={e => setInviteEmails(e.target.value)} placeholder="email@example.com" className="text-xs h-8" /><Button size="sm" className="h-8 bg-[#0C1024] text-white" onClick={handleInvite}>Send</Button></div>
                     </div>
                   )}
                   {selectedEvent.type === 'event' && <Button variant="outline" size="sm" className="text-red-500" onClick={() => handleDeleteEvent(selectedEvent.id)}><X className="w-3.5 h-3.5 mr-1" />{t('common.delete')}</Button>}

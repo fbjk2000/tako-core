@@ -67,9 +67,9 @@ const PipelineReportPage = () => {
   const getStageColor = (stageId) => {
     const colors = {
       lead: 'bg-slate-100 text-slate-700',
-      qualified: 'bg-purple-100 text-purple-700',
+      qualified: 'bg-teal-100 text-teal-700',
       proposal: 'bg-amber-100 text-amber-700',
-      negotiation: 'bg-purple-100 text-purple-700',
+      negotiation: 'bg-teal-100 text-teal-700',
       won: 'bg-emerald-100 text-emerald-700',
       lost: 'bg-rose-100 text-rose-700'
     };
@@ -80,7 +80,7 @@ const PipelineReportPage = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" />
         </div>
       </DashboardLayout>
     );
@@ -110,7 +110,7 @@ const PipelineReportPage = () => {
               </Badge>
             )}
             {pipelineData?.is_admin_view && (
-              <Badge className="bg-[#A100FF]">
+              <Badge className="bg-[#0EA5A0]">
                 <Users className="w-3 h-3 mr-1" />
                 Admin View
               </Badge>
@@ -127,8 +127,8 @@ const PipelineReportPage = () => {
           <Card data-testid="total-value-card">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Euro className="w-6 h-6 text-[#A100FF]" />
+                <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                  <Euro className="w-6 h-6 text-[#0EA5A0]" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Total Pipeline Value</p>
@@ -159,8 +159,8 @@ const PipelineReportPage = () => {
           <Card data-testid="deals-count-card">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Target className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                  <Target className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Total Deals</p>
@@ -209,7 +209,7 @@ const PipelineReportPage = () => {
                       <div className="mt-3">
                         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-purple-500 rounded-full transition-all"
+                            className="h-full bg-teal-500 rounded-full transition-all"
                             style={{ 
                               width: `${pipelineData.total_value > 0 
                                 ? (stage.value / pipelineData.total_value * 100) 
@@ -355,7 +355,7 @@ const PipelineReportPage = () => {
                                 <p className="text-xs text-slate-500">{member.email}</p>
                               </td>
                               <td className="py-3 px-4">
-                                <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-sm font-medium">
+                                <span className="bg-teal-100 text-teal-700 px-2 py-1 rounded-full text-sm font-medium">
                                   {member.deal_count}
                                 </span>
                               </td>

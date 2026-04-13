@@ -271,7 +271,7 @@ const SupportPage = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-[#A100FF] rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#0EA5A0] rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">U</span>
               </div>
               <span className="text-xl font-semibold text-slate-900">TAKO</span>
@@ -284,7 +284,7 @@ const SupportPage = () => {
                 </Button>
               </Link>
               <Link to="/login">
-                <Button className="bg-[#A100FF] hover:bg-purple-700" size="sm">
+                <Button className="bg-[#0EA5A0] hover:bg-teal-700" size="sm">
                   Sign In
                 </Button>
               </Link>
@@ -295,12 +295,12 @@ const SupportPage = () => {
       )}
 
       {/* Hero */}
-      <section className="bg-gradient-to-r from-tako-teal to-purple-600 py-16 px-6">
+      <section className="bg-gradient-to-r from-tako-teal to-teal-600 py-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl font-bold text-white mb-4" data-testid="support-title">
             How Can We Help?
           </h1>
-          <p className="text-purple-100 text-lg">
+          <p className="text-teal-100 text-lg">
             Find answers, learn best practices, and get in touch with our team.
           </p>
         </div>
@@ -334,7 +334,7 @@ const SupportPage = () => {
               <h2 className="text-2xl font-bold text-slate-900 mb-6">Frequently Asked Questions</h2>
               {faqs.map((category, idx) => (
                 <div key={idx} className="mb-8">
-                  <h3 className="text-lg font-semibold text-[#A100FF] mb-4">{category.category}</h3>
+                  <h3 className="text-lg font-semibold text-[#0EA5A0] mb-4">{category.category}</h3>
                   <Accordion type="single" collapsible className="space-y-2">
                     {category.questions.map((item, qIdx) => (
                       <AccordionItem key={qIdx} value={`${idx}-${qIdx}`} className="bg-white rounded-lg border border-slate-200">
@@ -362,7 +362,7 @@ const SupportPage = () => {
                   {trainingModules.map((module, idx) => (
                     <Card key={idx} className="hover:shadow-lg transition-shadow" data-testid={`training-module-${idx}`}>
                       <CardHeader>
-                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-[#A100FF] mb-3">
+                        <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center text-[#0EA5A0] mb-3">
                           {module.icon}
                         </div>
                         <CardTitle className="text-lg">{module.title}</CardTitle>
@@ -372,7 +372,7 @@ const SupportPage = () => {
                         <ul className="space-y-2">
                           {module.steps.map((step, sIdx) => (
                             <li key={sIdx} className="flex items-start gap-2 text-sm text-slate-600">
-                              <span className="w-5 h-5 rounded-full bg-purple-100 text-[#A100FF] flex items-center justify-center flex-shrink-0 text-xs font-medium">
+                              <span className="w-5 h-5 rounded-full bg-teal-100 text-[#0EA5A0] flex items-center justify-center flex-shrink-0 text-xs font-medium">
                                 {sIdx + 1}
                               </span>
                               {step}
@@ -388,7 +388,7 @@ const SupportPage = () => {
               {/* Sales Methodologies */}
               <div>
                 <div className="flex items-center gap-3 mb-6">
-                  <TrendingUp className="w-8 h-8 text-[#A100FF]" />
+                  <TrendingUp className="w-8 h-8 text-[#0EA5A0]" />
                   <h2 className="text-2xl font-bold text-slate-900">Sales Methodologies</h2>
                 </div>
                 <p className="text-slate-600 mb-6 max-w-3xl">
@@ -401,7 +401,7 @@ const SupportPage = () => {
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg flex items-center gap-2">
-                            <Award className="w-5 h-5 text-[#A100FF]" />
+                            <Award className="w-5 h-5 text-[#0EA5A0]" />
                             {method.name}
                           </CardTitle>
                         </div>
@@ -418,12 +418,12 @@ const SupportPage = () => {
                           </p>
                           <p className="text-sm text-amber-700 mt-1">{method.when_to_use}</p>
                         </div>
-                        <div className="p-3 bg-purple-50 rounded-lg">
-                          <p className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                        <div className="p-3 bg-teal-50 rounded-lg">
+                          <p className="text-sm font-medium text-teal-800 flex items-center gap-2">
                             <Lightbulb className="w-4 h-4" />
                             In TAKO:
                           </p>
-                          <p className="text-sm text-purple-700 mt-1">{method.in_tako}</p>
+                          <p className="text-sm text-teal-700 mt-1">{method.in_tako}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -441,7 +441,7 @@ const SupportPage = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Mail className="w-5 h-5 text-[#A100FF]" />
+                      <Mail className="w-5 h-5 text-[#0EA5A0]" />
                       Send Us a Message
                     </CardTitle>
                     <CardDescription>
@@ -490,7 +490,7 @@ const SupportPage = () => {
                       </div>
                       <Button
                         type="submit"
-                        className="w-full bg-[#A100FF] hover:bg-purple-700"
+                        className="w-full bg-[#0EA5A0] hover:bg-teal-700"
                         disabled={sending}
                         data-testid="contact-submit"
                       >
@@ -514,16 +514,16 @@ const SupportPage = () => {
                       <h3 className="font-semibold text-slate-900 mb-4">Contact Information</h3>
                       <div className="space-y-4">
                         <div className="flex items-start gap-3">
-                          <Mail className="w-5 h-5 text-[#A100FF] mt-0.5" />
+                          <Mail className="w-5 h-5 text-[#0EA5A0] mt-0.5" />
                           <div>
                             <p className="font-medium text-slate-900">Email</p>
-                            <a href="mailto:support@tako.software" className="text-[#A100FF] hover:text-purple-700">
+                            <a href="mailto:support@tako.software" className="text-[#0EA5A0] hover:text-teal-700">
                               support@tako.software
                             </a>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <MapPin className="w-5 h-5 text-[#A100FF] mt-0.5" />
+                          <MapPin className="w-5 h-5 text-[#0EA5A0] mt-0.5" />
                           <div>
                             <p className="font-medium text-slate-900">Address</p>
                             <p className="text-slate-600 text-sm">
@@ -536,7 +536,7 @@ const SupportPage = () => {
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <Clock className="w-5 h-5 text-[#A100FF] mt-0.5" />
+                          <Clock className="w-5 h-5 text-[#0EA5A0] mt-0.5" />
                           <div>
                             <p className="font-medium text-slate-900">Business Hours</p>
                             <p className="text-slate-600 text-sm">
@@ -549,14 +549,14 @@ const SupportPage = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-purple-50 border-purple-100">
+                  <Card className="bg-teal-50 border-teal-100">
                     <CardContent className="p-6">
                       <h3 className="font-semibold text-indigo-900 mb-2">Need Urgent Help?</h3>
-                      <p className="text-sm text-purple-700 mb-4">
+                      <p className="text-sm text-teal-700 mb-4">
                         For urgent technical issues, email us with "URGENT" in the subject line.
                       </p>
                       <a href="mailto:support@tako.software?subject=URGENT:">
-                        <Button variant="outline" className="border-indigo-300 text-purple-700 hover:bg-purple-100">
+                        <Button variant="outline" className="border-indigo-300 text-teal-700 hover:bg-teal-100">
                           <Mail className="w-4 h-4 mr-2" />
                           Send Urgent Request
                         </Button>
@@ -575,7 +575,7 @@ const SupportPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Building className="w-5 h-5 text-[#A100FF]" />
+                    <Building className="w-5 h-5 text-[#0EA5A0]" />
                     Company Information
                   </CardTitle>
                 </CardHeader>
@@ -605,7 +605,7 @@ const SupportPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-[#A100FF]" />
+                    <FileText className="w-5 h-5 text-[#0EA5A0]" />
                     Terms of Service
                   </CardTitle>
                 </CardHeader>
@@ -648,7 +648,7 @@ const SupportPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-[#A100FF]" />
+                    <Shield className="w-5 h-5 text-[#0EA5A0]" />
                     Privacy Policy
                   </CardTitle>
                 </CardHeader>

@@ -134,10 +134,10 @@ const SignupPage = () => {
           <CardContent className="space-y-6 pt-4">
             {/* Invitation Banner */}
             {inviteInfo && (
-              <div className="p-4 bg-purple-50 border border-purple-100 rounded-lg">
+              <div className="p-4 bg-teal-50 border border-teal-100 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#A100FF]/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-[#A100FF]" />
+                  <div className="w-10 h-10 rounded-full bg-[#0EA5A0]/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-[#0EA5A0]" />
                   </div>
                   <div>
                     <p className="font-medium text-slate-900">Joining {inviteInfo.organization_name}</p>
@@ -255,7 +255,7 @@ const SignupPage = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-[#A100FF] hover:bg-purple-700"
+                className="w-full h-12 bg-[#0EA5A0] hover:bg-teal-700"
                 disabled={loading}
                 data-testid="signup-submit-btn"
               >
@@ -273,7 +273,7 @@ const SignupPage = () => {
 
             <p className="text-center text-sm text-slate-600">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#A100FF] hover:text-purple-700 font-medium" data-testid="login-link">
+              <Link to="/login" className="text-[#0EA5A0] hover:text-teal-700 font-medium" data-testid="login-link">
                 Sign in
               </Link>
             </p>

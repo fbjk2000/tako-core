@@ -1,10 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="earnrm favicon">
-  <rect width="32" height="32" rx="7" fill="#3B0764"/>
-  <g fill="none" stroke-linecap="round" shape-rendering="geometricPrecision">
-    <line x1="7" y1="7.5" x2="17.5" y2="7.5" stroke="#FFFFFF" stroke-width="3" stroke-opacity="0.95"/>
-    <line x1="7" y1="7.5" x2="7" y2="24.5" stroke="#FFFFFF" stroke-width="3" stroke-opacity="0.95"/>
-    <path d="M7 24.5 Q13.5 24.5 19.3 23" stroke="#FFFFFF" stroke-width="3" stroke-opacity="0.95"/>
-    <line x1="7" y1="16" x2="22" y2="16" stroke="#D4A853" stroke-width="3"/>
-  </g>
-  <circle cx="22" cy="16" r="2.8" fill="#D4A853"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="TAKO favicon">
+  <rect width="32" height="32" rx="7" fill="#0C1024"/>
+  <text x="16" y="23" font-family="'DM Serif Display', Georgia, serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="middle">T</text>
+  <circle cx="26" cy="7" r="2.5" fill="#0EA5A0"/>
 </svg>

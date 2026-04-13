@@ -81,9 +81,9 @@ const DealsPage = () => {
 
   const stages = [
     { id: 'lead', name: 'Lead', color: 'bg-slate-100 border-slate-300', probability: 10 },
-    { id: 'qualified', name: 'Qualified', color: 'bg-purple-50 border-indigo-300', probability: 30 },
+    { id: 'qualified', name: 'Qualified', color: 'bg-teal-50 border-indigo-300', probability: 30 },
     { id: 'proposal', name: 'Proposal', color: 'bg-amber-50 border-amber-300', probability: 50 },
-    { id: 'negotiation', name: 'Negotiation', color: 'bg-purple-50 border-purple-300', probability: 70 },
+    { id: 'negotiation', name: 'Negotiation', color: 'bg-teal-50 border-teal-300', probability: 70 },
     { id: 'won', name: 'Won', color: 'bg-emerald-50 border-emerald-300', probability: 100 },
     { id: 'lost', name: 'Lost', color: 'bg-rose-50 border-rose-300', probability: 0 }
   ];
@@ -295,16 +295,16 @@ const DealsPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-              <button onClick={() => setViewMode('kanban')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'kanban' ? 'bg-[#A100FF] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="kanban-view-btn">
+              <button onClick={() => setViewMode('kanban')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'kanban' ? 'bg-[#0EA5A0] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="kanban-view-btn">
                 <LayoutGrid className="w-3.5 h-3.5" /> Kanban
               </button>
-              <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'list' ? 'bg-[#A100FF] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="list-view-btn">
+              <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'list' ? 'bg-[#0EA5A0] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="list-view-btn">
                 <List className="w-3.5 h-3.5" /> List
               </button>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#A100FF] hover:bg-purple-700" data-testid="add-deal-btn">
+              <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="add-deal-btn">
                 <Plus className="w-4 h-4 mr-2" />
                 New Deal
               </Button>
@@ -491,12 +491,12 @@ const DealsPage = () => {
                 </div>
                 
                 {/* Mandatory Task Section */}
-                <div className="space-y-4 bg-purple-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-indigo-900 flex items-center gap-2">
+                <div className="space-y-4 bg-teal-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-teal-900 flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     Initial Task (Required)
                   </h3>
-                  <p className="text-xs text-purple-700">Every deal must have an initial task and owner</p>
+                  <p className="text-xs text-teal-700">Every deal must have an initial task and owner</p>
                   
                   <div className="space-y-2">
                     <Label>Task Title *</Label>
@@ -556,7 +556,7 @@ const DealsPage = () => {
                   </div>
                 </div>
                 
-                <Button type="submit" className="w-full bg-[#A100FF] hover:bg-purple-700" data-testid="submit-deal-btn">
+                <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="submit-deal-btn">
                   Create Deal with Task
                 </Button>
               </form>
@@ -620,8 +620,8 @@ const DealsPage = () => {
 
         {/* Bulk actions */}
         {selectedDealIds.length > 0 && (
-          <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
-            <span className="text-sm font-medium text-purple-800">{selectedDealIds.length} selected</span>
+          <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3">
+            <span className="text-sm font-medium text-teal-800">{selectedDealIds.length} selected</span>
             <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={async () => {
               try { await axios.post(`${API}/bulk/delete`, { entity_type: 'deal', entity_ids: selectedDealIds }, { headers, withCredentials: true }); toast.success('Deals deleted'); setSelectedDealIds([]); fetchDeals(); } catch { toast.error('Failed'); }
             }} data-testid="bulk-delete-deals"><Trash2 className="w-3.5 h-3.5 mr-1" /> Delete</Button>
@@ -632,7 +632,7 @@ const DealsPage = () => {
         {/* Pipeline Board */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-[#A100FF] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : viewMode === 'list' ? (
           /* List View */
@@ -641,7 +641,7 @@ const DealsPage = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-slate-50">
-                    <th className="py-3 px-4 text-left w-10"><input type="checkbox" checked={selectedDealIds.length === deals.length && deals.length > 0} onChange={() => setSelectedDealIds(selectedDealIds.length === deals.length ? [] : deals.map(d => d.deal_id))} className="accent-[#A100FF]" /></th>
+                    <th className="py-3 px-4 text-left w-10"><input type="checkbox" checked={selectedDealIds.length === deals.length && deals.length > 0} onChange={() => setSelectedDealIds(selectedDealIds.length === deals.length ? [] : deals.map(d => d.deal_id))} className="accent-[#0EA5A0]" /></th>
                     <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Deal</th>
                     <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Value</th>
                     <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Stage</th>
@@ -653,7 +653,7 @@ const DealsPage = () => {
                 <tbody>
                   {deals.map((deal) => (
                     <tr key={deal.deal_id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => openDealDetail(deal)} data-testid={`deal-list-row-${deal.deal_id}`}>
-                      <td className="py-3 px-4"><input type="checkbox" checked={selectedDealIds.includes(deal.deal_id)} onChange={() => setSelectedDealIds(prev => prev.includes(deal.deal_id) ? prev.filter(x => x !== deal.deal_id) : [...prev, deal.deal_id])} className="accent-[#A100FF]" /></td>
+                      <td className="py-3 px-4"><input type="checkbox" checked={selectedDealIds.includes(deal.deal_id)} onChange={() => setSelectedDealIds(prev => prev.includes(deal.deal_id) ? prev.filter(x => x !== deal.deal_id) : [...prev, deal.deal_id])} className="accent-[#0EA5A0]" /></td>
                       <td className="py-3 px-4">
                         <p className="font-medium text-slate-900">{deal.name}</p>
                         {deal.notes && <p className="text-xs text-slate-500 truncate max-w-[200px]">{deal.notes}</p>}
@@ -691,7 +691,7 @@ const DealsPage = () => {
                   <Droppable droppableId={stage.id} key={stage.id}>
                     {(provided, snapshot) => (
                       <div className="w-72 flex-shrink-0" data-testid={`stage-${stage.id}`}>
-                        <Card className={`border-t-4 ${stage.color} ${snapshot.isDraggingOver ? 'ring-2 ring-[#A100FF]/30' : ''}`}>
+                        <Card className={`border-t-4 ${stage.color} ${snapshot.isDraggingOver ? 'ring-2 ring-[#0EA5A0]/30' : ''}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                               <CardTitle className="text-sm font-semibold">{stage.name}</CardTitle>
@@ -713,7 +713,7 @@ const DealsPage = () => {
                                   <div
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
-                                    className={`bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-[#A100FF]/20' : ''}`}
+                                    className={`bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-[#0EA5A0]/20' : ''}`}
                                     data-testid={`deal-card-${deal.deal_id}`}
                                   >
                                     <div className="p-3">
@@ -723,7 +723,7 @@ const DealsPage = () => {
                                         </div>
                                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openDealDetail(deal)}>
                                           <p className="font-medium text-slate-900 text-sm truncate">{deal.name}</p>
-                                          <p className="text-lg font-bold text-[#A100FF] mt-1">€{(deal.value || 0).toLocaleString()}</p>
+                                          <p className="text-lg font-bold text-[#0EA5A0] mt-1">€{(deal.value || 0).toLocaleString()}</p>
                                           <div className="flex items-center gap-2 mt-1">
                                             <Badge variant={deal.probability >= 70 ? "default" : deal.probability >= 40 ? "secondary" : "outline"} className="text-xs">{deal.probability || 0}%</Badge>
                                             {deal.expected_close_date && (
@@ -815,14 +815,14 @@ const DealsPage = () => {
                   </div>
                   <div><Label>{t('forms.notes')}</Label><Textarea value={dealEditData.notes || ''} onChange={e => setDealEditData({...dealEditData, notes: e.target.value})} rows={2} /></div>
                   <div className="flex gap-2 pt-2">
-                    <Button onClick={handleSaveDeal} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white"><Save className="w-4 h-4 mr-2" />{t('common.save')}</Button>
+                    <Button onClick={handleSaveDeal} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"><Save className="w-4 h-4 mr-2" />{t('common.save')}</Button>
                     <Button variant="outline" onClick={() => { setDealEditMode(false); setDealEditData({...selectedDeal}); }}>{t('common.cancel')}</Button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4 pt-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.value')}</p><p className="text-lg font-bold text-[#7C3AED]">{'\u20AC'}{(selectedDeal.value || 0).toLocaleString()}</p></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.value')}</p><p className="text-lg font-bold text-[#0EA5A0]">{'\u20AC'}{(selectedDeal.value || 0).toLocaleString()}</p></div>
                     <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.stage')}</p><p className="text-sm font-medium capitalize">{selectedDeal.stage}</p></div>
                     <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.probability')}</p><p className="text-sm font-medium">{selectedDeal.probability || 0}%</p></div>
                     {selectedDeal.expected_close_date && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.expectedCloseDate')}</p><p className="text-sm font-medium">{new Date(selectedDeal.expected_close_date).toLocaleDateString()}</p></div>}

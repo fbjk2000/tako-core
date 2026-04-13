@@ -84,7 +84,7 @@ const DashboardLayout = ({ children }) => {
         </Link>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="w-10 h-10 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center active:bg-[#6D28D9]"
+          className="w-10 h-10 rounded-lg bg-[#0EA5A0] text-white flex items-center justify-center active:bg-[#0B8C88]"
           data-testid="mobile-menu-toggle"
         >
           {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -127,7 +127,7 @@ const DashboardLayout = ({ children }) => {
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
                       isActive(item.path)
-                        ? 'bg-purple-50 text-[#A100FF] font-medium'
+                        ? 'bg-teal-50 text-[#0EA5A0] font-medium'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                     data-testid={`nav-${item.label.toLowerCase()}`}
@@ -153,8 +153,8 @@ const DashboardLayout = ({ children }) => {
                   className="w-10 h-10 rounded-full"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <span className="text-[#A100FF] font-medium">
+                <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                  <span className="text-[#0EA5A0] font-medium">
                     {user?.name?.[0]?.toUpperCase() || 'U'}
                   </span>
                 </div>

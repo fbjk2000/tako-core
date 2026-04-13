@@ -100,7 +100,7 @@ const CapturePage = () => {
         {/* Capture Buttons */}
         {!result && (
           <div className="space-y-3">
-            <Button className="w-full h-16 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-lg" onClick={() => cameraRef.current?.click()} disabled={capturing} data-testid="camera-btn">
+            <Button className="w-full h-16 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-lg" onClick={() => cameraRef.current?.click()} disabled={capturing} data-testid="camera-btn">
               {capturing ? (
                 <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</span>
               ) : (
@@ -120,8 +120,8 @@ const CapturePage = () => {
           <Card>
             <CardContent className="p-4">
               <img src={preview} alt="Card" className="w-full rounded-lg" />
-              <div className="flex items-center gap-2 mt-3 text-sm text-[#7C3AED]">
-                <div className="w-4 h-4 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin" />
+              <div className="flex items-center gap-2 mt-3 text-sm text-[#0EA5A0]">
+                <div className="w-4 h-4 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" />
                 Extracting contact info with AI...
               </div>
             </CardContent>
@@ -158,10 +158,10 @@ const CapturePage = () => {
               </div>
 
               <div className="flex gap-2 flex-wrap">
-                <Badge className="bg-[#7C3AED] text-white">{result.event}</Badge>
+                <Badge className="bg-[#0EA5A0] text-white">{result.event}</Badge>
                 {result.follow_up === 'email_sent' && <Badge className="bg-emerald-100 text-emerald-700"><Mail className="w-3 h-3 mr-1" />Email sent</Badge>}
                 {result.follow_up === 'task_created' && <Badge className="bg-amber-100 text-amber-700"><CheckSquare className="w-3 h-3 mr-1" />Task created</Badge>}
-                {result.enrichment && <Badge className="bg-purple-100 text-purple-700"><Zap className="w-3 h-3 mr-1" />Enriched</Badge>}
+                {result.enrichment && <Badge className="bg-teal-100 text-teal-700"><Zap className="w-3 h-3 mr-1" />Enriched</Badge>}
               </div>
 
               {result.enrichment?.recommended_approach && (
@@ -171,7 +171,7 @@ const CapturePage = () => {
                 </div>
               )}
 
-              <Button className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white" onClick={reset} data-testid="capture-another">
+              <Button className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={reset} data-testid="capture-another">
                 <Camera className="w-4 h-4 mr-2" /> Capture Another Card
               </Button>
             </CardContent>

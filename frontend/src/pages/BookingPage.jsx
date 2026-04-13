@@ -83,17 +83,17 @@ const BookingPage = () => {
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowSettings(true)} data-testid="booking-settings-btn"><Settings className="w-4 h-4 mr-1" /> { t('bookings.settings') }</Button>
             <Button variant="outline" onClick={copyLink} data-testid="copy-booking-link"><Copy className="w-4 h-4 mr-1" /> { t('bookings.copyLink') }</Button>
-            <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white" onClick={() => { if (user) window.open(`/book/${user.user_id}`, '_blank'); }} data-testid="preview-booking">{ t('bookings.preview') }</Button>
+            <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => { if (user) window.open(`/book/${user.user_id}`, '_blank'); }} data-testid="preview-booking">{ t('bookings.preview') }</Button>
           </div>
         </div>
 
         {bookingLink && (
-          <Card className="bg-purple-50 border-purple-200">
+          <Card className="bg-teal-50 border-teal-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-900">{ t('bookings.bookingPage') }</p>
-                  <p className="text-sm text-purple-700 font-mono mt-1">{bookingLink}</p>
+                  <p className="text-sm font-medium text-teal-900">{ t('bookings.bookingPage') }</p>
+                  <p className="text-sm text-teal-700 font-mono mt-1">{bookingLink}</p>
                 </div>
                 <Button size="sm" variant="outline" onClick={copyLink}><Copy className="w-3.5 h-3.5 mr-1" /> { t('bookings.copyLink') }</Button>
               </div>
@@ -107,7 +107,7 @@ const BookingPage = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin" /></div>
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin" /></div>
             ) : bookings.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
                 <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
@@ -119,8 +119,8 @@ const BookingPage = () => {
                 {bookings.map(b => (
                   <div key={b.booking_id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`booking-${b.booking_id}`}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-[#7C3AED]" />
+                      <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-[#0EA5A0]" />
                       </div>
                       <div>
                         <p className="font-medium text-slate-900">{b.guest_name || 'Guest'}</p>
@@ -152,7 +152,7 @@ const BookingPage = () => {
               <div><Label>Buffer (min)</Label><Input type="number" value={editSettings?.buffer_minutes || 15} onChange={e => setEditSettings({...editSettings, buffer_minutes: parseInt(e.target.value) || 15})} /></div>
               <div><Label>Timezone</Label><Input value={editSettings?.timezone || 'Europe/London'} onChange={e => setEditSettings({...editSettings, timezone: e.target.value})} /></div>
               <div><Label>Welcome Message</Label><Textarea value={editSettings?.welcome_message || ''} onChange={e => setEditSettings({...editSettings, welcome_message: e.target.value})} rows={2} /></div>
-              <Button onClick={saveSettings} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">{ t('common.save') }</Button>
+              <Button onClick={saveSettings} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">{ t('common.save') }</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -227,7 +227,7 @@ export const PublicBookingPage = () => {
                 <div className="flex gap-2">
                   {[15, 30, 60].map(d => (
                     <Button key={d} variant={duration === d ? 'default' : 'outline'} size="sm" onClick={() => { setDuration(d); if (selectedDate) fetchSlots(selectedDate); }}
-                      className={duration === d ? 'bg-[#7C3AED]' : ''}>{d} min</Button>
+                      className={duration === d ? 'bg-[#0EA5A0]' : ''}>{d} min</Button>
                   ))}
                 </div>
               </div>
@@ -247,7 +247,7 @@ export const PublicBookingPage = () => {
                       <div className="grid grid-cols-3 gap-2 max-h-[200px] overflow-y-auto">
                         {slots.map(s => (
                           <Button key={s.start} variant={selectedSlot?.start === s.start ? 'default' : 'outline'} size="sm"
-                            className={selectedSlot?.start === s.start ? 'bg-[#7C3AED]' : ''} onClick={() => setSelectedSlot(s)}>
+                            className={selectedSlot?.start === s.start ? 'bg-[#0EA5A0]' : ''} onClick={() => setSelectedSlot(s)}>
                             {s.display}
                           </Button>
                         ))}
@@ -260,7 +260,7 @@ export const PublicBookingPage = () => {
                       <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="john@example.com" /></div>
                       <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+44..." /></div>
                       <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="What would you like to discuss?" /></div>
-                      <Button onClick={handleBook} disabled={loading || !form.name || !form.email} className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">
+                      <Button onClick={handleBook} disabled={loading || !form.name || !form.email} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">
                         {loading ? 'Booking...' : `Confirm ${duration}min Meeting`}
                       </Button>
                     </div>
