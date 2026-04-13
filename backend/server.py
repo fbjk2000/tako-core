@@ -7728,10 +7728,17 @@ async def health():
 # Include the router in the main app
 app.include_router(api_router)
 
+_cors_origins = [
+    os.environ.get("FRONTEND_URL", "http://localhost:3000"),
+]
+# During transition, also allow the old domain
+if os.environ.get("CORS_EXTRA_ORIGINS"):
+    _cors_origins.extend(os.environ["CORS_EXTRA_ORIGINS"].split(","))
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_origin_regex=r"https?://.*",
     allow_methods=["*"],
     allow_headers=["*"],
 )

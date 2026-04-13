@@ -1,15 +1,25 @@
 # TAKO Production Caddyfile
-# Replace YOUR_DOMAIN with actual domain (e.g., app.tako.software)
 # Caddy automatically provisions and renews Let's Encrypt SSL certificates.
+# DNS A record for tako.software must point to this server's IP.
 
-YOUR_DOMAIN {
-    # Frontend — serves the React app
+tako.software {
+    # Backend API — match /api/* and proxy with path preserved
+    handle /api/* {
+        reverse_proxy backend:8001
+    }
+
+    # Twilio webhooks — must be accessible
+    handle /webhooks/* {
+        reverse_proxy backend:8001
+    }
+
+    # Frontend — everything else
     handle {
         reverse_proxy frontend:3000
     }
+}
 
-    # Backend API — proxied under /api path
-    handle_path /api/* {
-        reverse_proxy backend:8001
-    }
+# Temporary bridge: redirect old domain to new
+clients.earnrm.com {
+    redir https://tako.software{uri} permanent
 }
