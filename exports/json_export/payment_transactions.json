@@ -1,0 +1,108 @@
+[
+  {
+    "_id": {
+      "$oid": "6998c2e1fde464c34936434c"
+    },
+    "transaction_id": "txn_ef0bdd516f01",
+    "organization_id": "org_18fe2a1045cb",
+    "user_id": "user_94f29e283210",
+    "email": "test@example.com",
+    "amount": 144.0,
+    "currency": "eur",
+    "plan_id": "annual",
+    "user_count": 1,
+    "discount_code": null,
+    "discount_amount": 0.0,
+    "vat_amount": 28.8,
+    "vat_rate": 20.0,
+    "total_amount": 172.8,
+    "stripe_session_id": "cs_test_a1czofuHin7GpJNvZmAhyfZGd8S6B17fJtu2ORwz68RPMEwlL6kMo5o7Ym",
+    "payment_status": "pending",
+    "created_at": "2026-02-20T20:24:01.650641+00:00",
+    "updated_at": "2026-02-20T20:24:01.650641+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998c2eafde464c34936434d"
+    },
+    "transaction_id": "txn_21f1f87453a3",
+    "organization_id": "org_18fe2a1045cb",
+    "user_id": "user_94f29e283210",
+    "email": "test@example.com",
+    "amount": 15.0,
+    "currency": "eur",
+    "plan_id": "monthly",
+    "user_count": 1,
+    "discount_code": null,
+    "discount_amount": 0.75,
+    "vat_amount": 2.85,
+    "vat_rate": 20.0,
+    "total_amount": 18.468000000000004,
+    "stripe_session_id": "cs_test_a14o8GhdvVomCQSgsELOyAZBaTtaUn0gnDX80d2Md6wHQyphQVUOduSCEp",
+    "payment_status": "pending",
+    "created_at": "2026-02-20T20:24:10.033832+00:00",
+    "updated_at": "2026-02-20T20:24:10.033832+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c430fc5020cd382064e419"
+    },
+    "transaction_id": "txn_35b7bce2b78d",
+    "deal_id": "deal_1732a0f33959",
+    "session_id": "cs_test_a1qIUi6pmbo9J20aZe8L8BN4n92NEjbo5vmEX4IaXNxnBfBS2aOMmSBI22",
+    "product": "launch_edition",
+    "amount": 4999.0,
+    "currency": "eur",
+    "status": "pending",
+    "buyer_name": "Test Buyer",
+    "buyer_email": "test@buyer.com",
+    "created_at": "2026-03-25T19:01:16.841155+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c431075020cd382064e41c"
+    },
+    "transaction_id": "txn_40c9cfbe1428",
+    "deal_id": "deal_b65016247afa",
+    "session_id": "cs_test_a1OEBJ8dQ0Xj3ZXqsW7tRHPLLw5uV1aEAavB449kXlq7AMcFDinP30IEji",
+    "product": "launch_edition",
+    "amount": 4999.0,
+    "currency": "eur",
+    "status": "pending",
+    "buyer_name": "Test Buyer",
+    "buyer_email": "test@buyer.com",
+    "created_at": "2026-03-25T19:01:27.698849+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c431534d5e03cdad5f96f0"
+    },
+    "transaction_id": "txn_883f565ec68b",
+    "deal_id": "deal_3513382544c1",
+    "session_id": "cs_test_a1pdy9lhbXFgdek1aPWcQIqCqYdSnGObAlPjnAaRf3MVIWunvsmQKKQZnj",
+    "product": "launch_edition",
+    "amount": 4999.0,
+    "currency": "eur",
+    "status": "pending",
+    "buyer_name": "Test Buyer",
+    "buyer_email": "test@buyer.com",
+    "created_at": "2026-03-25T19:02:43.103922+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69cd4b7b954fe45f9a7c2268"
+    },
+    "transaction_id": "txn_ff6235b7d3a7",
+    "deal_id": "deal_1eaabff85f2f",
+    "product": "launch_edition",
+    "amount": 4999.0,
+    "currency": "eur",
+    "payment_method": "unyt",
+    "unyt_amount": 9998.0,
+    "buyer_wallet": "0x1234567890abcdef",
+    "buyer_name": "Test Buyer",
+    "buyer_email": "test@unyt.shop",
+    "status": "pending",
+    "created_at": "2026-04-01T16:44:43.005359+00:00"
+  }
+]

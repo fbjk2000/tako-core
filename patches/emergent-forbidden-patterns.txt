@@ -1,0 +1,9 @@
+# Format: <scope>::<regex>
+# If a regex matches inside the scoped file/path, sync verification fails.
+
+# Prevent reintroduction of the Stripe checkout dependency path tied to the issue.
+backend/server.py::emergentintegrations\.payments\.stripe\.checkout
+
+# Prevent reintroduction of direct package pin if your fix removes this dependency.
+backend/requirements.txt::^emergentintegrations==
+

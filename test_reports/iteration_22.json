@@ -1,0 +1,146 @@
+{
+  "summary": "Comprehensive regression + fix verification for earnrm CRM - Iteration 22. CRITICAL FIXES VERIFIED: (1) Login with email/password works, (2) Add new lead works (POST /api/leads), (3) All main pages load without error. CORS uses allow_origin_regex for Safari support. Admin sidebar visible before Settings. Lead detail has all cross-linked actions.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: POST /api/auth/login - login with valid credentials (200)",
+    "Backend: POST /api/auth/login - invalid credentials returns 401",
+    "Backend: POST /api/auth/session - endpoint exists, validates session_id",
+    "Backend: GET /api/leads - returns lead list",
+    "Backend: POST /api/leads - CRITICAL: Create lead works",
+    "Backend: GET /api/leads/{id} - returns single lead",
+    "Backend: GET /api/contacts - returns contacts",
+    "Backend: POST /api/contacts - create contact works",
+    "Backend: GET /api/deals - returns deals",
+    "Backend: GET /api/deals/tags - returns tags",
+    "Backend: GET /api/tasks - returns tasks",
+    "Backend: GET /api/companies - returns companies",
+    "Backend: GET /api/chat/channels - returns channels",
+    "Backend: GET /api/calls - returns calls",
+    "Backend: GET /api/calls/stats/overview - returns stats",
+    "Backend: GET /api/admin/stats - returns admin stats",
+    "Backend: GET /api/admin/users - returns users",
+    "Backend: GET /api/admin/organizations - returns organizations",
+    "Backend: GET /api/admin/data-explorer - returns collections (Data Explorer)",
+    "Backend: GET /api/dashboard/stats - returns dashboard stats",
+    "Backend: POST /api/bulk/delete - endpoint exists",
+    "Backend: CORS OPTIONS - allow_origin_regex working",
+    "Backend: GET /api/health - healthy",
+    "Frontend: Login page - email/password form works",
+    "Frontend: Dashboard - loads with sidebar, stats cards",
+    "Frontend: Leads page - Add Lead dialog opens, form submits, lead created (CRITICAL FIX VERIFIED)",
+    "Frontend: Leads page - Select All checkbox, bulk Enrich/Delete buttons",
+    "Frontend: Lead detail dialog - shows Convert to Contact, Enrich, Draft Email, Add Deal, Add Task, Discuss, Call",
+    "Frontend: Contacts page - Add Contact, Import CSV, Select All, bulk delete",
+    "Frontend: Deals page - Kanban/List toggle, list view with Select All and bulk delete",
+    "Frontend: Tasks page - Kanban board with To Do/In Progress/Done",
+    "Frontend: Companies page - shows companies with Add Company",
+    "Frontend: Chat page - CHANNELS and LEAD DISCUSSIONS sections",
+    "Frontend: Calls page - Schedule Call button, stats (4 Scheduled)",
+    "Frontend: Settings page - 6 tabs (Profile, Organization, Team & Invites, Billing & Invoices, Integrations, Mobile App)",
+    "Frontend: Admin page - 7 tabs including Data Explorer, Admin link visible in sidebar before Settings"
+  ],
+
+  "critical_fixes_verified": {
+    "safari_google_login": {
+      "status": "CORS CONFIG VERIFIED",
+      "evidence": "CORS uses allow_origin_regex=r'https?://.*' instead of wildcard '*'. AuthCallback checks both hash and query params for session_id. Cannot fully test Safari OAuth without Safari browser.",
+      "cors_config": "allow_origin_regex=r'https?://.*', allow_credentials=True"
+    },
+    "chrome_add_lead": {
+      "status": "FIXED AND VERIFIED",
+      "evidence": [
+        "POST /api/leads returns 200 with lead_id",
+        "Playwright test: filled form, clicked submit, dialog closed, toast 'Lead added successfully' shown",
+        "New lead TEST_PlaywrightLead appeared in list"
+      ]
+    },
+    "session_endpoint_token": {
+      "status": "VERIFIED",
+      "evidence": "POST /api/auth/session returns token field (jwt_token) for Google OAuth sessions"
+    },
+    "admin_sidebar_fix": {
+      "status": "VERIFIED",
+      "evidence": "Admin link visible in sidebar before Settings for super_admin user"
+    },
+    "scrollable_dialogs": {
+      "status": "VERIFIED",
+      "evidence": "DialogContent has max-h-[85vh] overflow-y-auto in dialog.jsx"
+    },
+    "lead_cross_linked_actions": {
+      "status": "VERIFIED",
+      "evidence": "Lead detail shows: Convert to Contact, Enrich, Draft Email, Add Deal, Add Task, Discuss buttons"
+    }
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_v22_comprehensive.py",
+    "/app/test_reports/pytest/v22_comprehensive_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_v22_comprehensive.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (23/23 tests passed)",
+    "frontend": "100% (All pages verified, critical Add Lead flow working)"
+  },
+
+  "test_credentials": {
+    "email": "florian@unyted.world",
+    "password": "DavidConstantin18",
+    "role": "super_admin"
+  },
+
+  "seed_data_creation": "Test lead 'TEST_PlaywrightLead TestSurname' created during testing",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "All critical fixes verified: (1) CORS uses allow_origin_regex for Safari support, (2) POST /api/leads works - Add Lead bug FIXED, (3) Admin sidebar visible before Settings, (4) Lead detail has all cross-linked actions. All 23 backend tests pass. Safari Google login fix cannot be fully tested without Safari browser but CORS config is correct.",
+
+  "features_verified": {
+    "login": {
+      "status": "WORKING",
+      "email_password": "200 - returns token",
+      "session_endpoint": "Exists and returns token field"
+    },
+    "leads_crud": {
+      "status": "WORKING",
+      "get_leads": "200 - returns list",
+      "create_lead": "200 - CRITICAL BUG FIXED",
+      "detail_dialog": "Cross-linked actions visible"
+    },
+    "deals_page": {
+      "status": "WORKING",
+      "kanban_list_toggle": true,
+      "select_all": true,
+      "bulk_delete": true
+    },
+    "admin_page": {
+      "status": "WORKING",
+      "tabs": ["Users", "Organizations", "Support", "Discount Codes", "Affiliates", "Data Explorer", "Settings"],
+      "sidebar_link": "Visible before Settings"
+    },
+    "cors_config": {
+      "status": "CORRECT",
+      "allow_origin_regex": "https?://.*",
+      "allow_credentials": true
+    }
+  }
+}

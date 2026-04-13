@@ -1,0 +1,128 @@
+{
+  "summary": "Comprehensive regression testing of earnrm CRM - Iteration 21. User-reported Companies page issue NOT REPRODUCIBLE - Companies page loads correctly with all companies visible. All 18 backend API tests pass. Frontend UI verification confirms all pages working correctly.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: POST /api/auth/login - login with valid credentials (200)",
+    "Backend: POST /api/auth/login - invalid credentials returns 401/404",
+    "Backend: GET /api/companies - returns company list (3 companies found)",
+    "Backend: POST /api/companies - create company works",
+    "Backend: GET /api/leads - returns lead list (8 leads)",
+    "Backend: GET /api/contacts - returns contact list (1 contact)",
+    "Backend: GET /api/deals - returns deal list (7 deals)",
+    "Backend: GET /api/tasks - returns task list (8 tasks)",
+    "Backend: GET /api/calls - returns call list",
+    "Backend: GET /api/calls/stats/overview - returns stats",
+    "Backend: GET /api/chat/channels - returns channels",
+    "Backend: GET /api/dashboard/stats - returns dashboard stats",
+    "Backend: GET /api/admin/users - returns users with count (9 users)",
+    "Backend: GET /api/admin/organizations - returns orgs (6 orgs)",
+    "Backend: GET /api/admin/contact-requests - returns support requests",
+    "Backend: POST /api/bulk/delete - endpoint exists and accepts requests",
+    "Backend: POST /api/bulk/update - endpoint exists and accepts requests",
+    "Backend: GET /api/health - returns healthy status",
+    "Frontend: Login page - email/password form works",
+    "Frontend: Dashboard - loads with stats (8 leads, 7 deals, 8 tasks, €65,000 pipeline)",
+    "Frontend: Companies page - loads correctly, shows 3 companies, Add Company works",
+    "Frontend: Leads page - loads with lead list, checkboxes, AI Summary, Draft Email, status dropdowns",
+    "Frontend: Leads detail dialog - Edit, Enrich, Score buttons visible",
+    "Frontend: Bulk selection - '1 selected' bar with Enrich, Delete, Clear buttons",
+    "Frontend: Contacts page - loads with Add Contact, Import CSV, Columns toggle",
+    "Frontend: Deals page - pipeline view with Lead/Qualified/Proposal/Negotiation/Won/Lost stages",
+    "Frontend: Tasks page - Kanban board with To Do/In Progress/Done columns, filter by owner",
+    "Frontend: Chat page - collapsible CHANNELS and LEAD DISCUSSIONS sections",
+    "Frontend: Calls page - stats (0 calls, 4 scheduled), Schedule Call button",
+    "Frontend: Settings page - 6 tabs (Profile, Organization, Team & Invites, Billing & Invoices, Integrations, Mobile App)",
+    "Frontend: Support page - FAQ/Training/Contact/Legal tabs with accordion questions",
+    "Frontend: Admin page - 6 tabs (Users, Organizations, Support, Discount Codes, Affiliates, Settings)",
+    "Frontend: Admin Users - shows Last Login and Joined columns",
+    "Frontend: Admin role dropdown - includes Member, Admin, Owner, Deputy Admin, Support, Super Admin",
+    "Frontend: Landing page - logo visible, PWA install section visible"
+  ],
+
+  "user_reported_issue_resolution": {
+    "issue": "Companies page showing 'Failed to load companies' and 'Failed to add company' errors",
+    "status": "NOT REPRODUCIBLE",
+    "evidence": [
+      "GET /api/companies returns 200 with 3 companies",
+      "POST /api/companies successfully creates companies",
+      "UI screenshot shows Companies page loading correctly with all companies",
+      "Add Company dialog opens and works correctly"
+    ],
+    "possible_causes": [
+      "Transient network issue",
+      "Expired/invalid token (session issue)",
+      "Browser cache issue"
+    ],
+    "recommendation": "User should try clearing browser cache and logging in again"
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_comprehensive_v21.py",
+    "/app/test_reports/pytest/v21_comprehensive_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_comprehensive_v21.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (18/18 tests passed)",
+    "frontend": "100% (All pages and features verified)"
+  },
+
+  "test_credentials": {
+    "email": "florian@unyted.world",
+    "password": "DavidConstantin18",
+    "role": "super_admin"
+  },
+
+  "seed_data_creation": "Test company created during testing (TEST_Company_*)",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "All earnrm CRM features verified working. Companies page issue NOT REPRODUCIBLE - API and UI both working. Admin has 6 tabs including Support with status management. Role dropdown includes all roles: member, admin, owner, deputy_admin, support, super_admin. Leads page has bulk operations (select, delete, enrich), column visibility, and detail dialog. Chat has collapsible sections. Calls has Schedule Call and stats. All 18 backend tests pass.",
+
+  "features_verified": {
+    "companies_page": {
+      "status": "WORKING",
+      "get_companies": "200 - returns 3 companies",
+      "create_company": "200 - creates company",
+      "ui_loads": true,
+      "add_company_dialog": "Opens and works"
+    },
+    "admin_page": {
+      "status": "WORKING",
+      "tabs": ["Users", "Organizations", "Support", "Discount Codes", "Affiliates", "Settings"],
+      "users_columns": ["User", "Email", "Role", "Organization", "Last Login", "Joined"],
+      "role_dropdown_options": ["Member", "Admin", "Owner", "Deputy Admin", "Support", "Super Admin"],
+      "support_tab": "Shows Support Requests management"
+    },
+    "leads_page": {
+      "status": "WORKING",
+      "features": ["Checkboxes", "AI Summary", "Draft Email", "Status dropdown", "Columns toggle"],
+      "bulk_operations": ["Select", "Enrich", "Delete", "Clear"],
+      "detail_dialog": ["Edit", "Enrich", "Score", "Discuss", "Draft Email"]
+    },
+    "chat_page": {
+      "status": "WORKING",
+      "sections": ["CHANNELS", "LEAD DISCUSSIONS"],
+      "message_input": true
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"26e6faddf26f4f22b64c6e177f2d35b7","collectionName":"calendar_events","type":"collection"}

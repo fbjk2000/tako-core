@@ -1,0 +1,19 @@
+[
+  {
+    "_id": {
+      "$oid": "69c1202324f4ba2d96e7a39e"
+    },
+    "project_id": "proj_9a869bb4c43c",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Q2 Enterprise Onboarding",
+    "description": "Onboard Acme Corp to enterprise plan",
+    "status": "completed",
+    "deal_id": "deal_ee6751eef1eb",
+    "members": [
+      "user_976038f616e3"
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-23T11:12:35.618659+00:00",
+    "updated_at": "2026-04-01T15:10:47.604208+00:00"
+  }
+]

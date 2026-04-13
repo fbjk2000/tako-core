@@ -1,0 +1,97 @@
+{
+  "summary": "Comprehensive testing of 4 new CRM features: Pipeline management, User list & role management, Admin menu platform settings, and Affiliate toggle & self-enrollment. Backend APIs working with 88.9% success rate. Frontend UI mostly functional with role permission limitations.",
+  
+  "backend_issues": {
+    "role_permission": [
+      {
+        "endpoint": "PUT /api/organizations/settings (affiliate toggle)",
+        "issue": "Super admin user has 'member' role in organization context, cannot update org settings",
+        "impact": "Cannot toggle affiliate program from super admin account",
+        "fix_priority": "MEDIUM",
+        "error": "403 - Only owners/admins can update organization settings"
+      }
+    ]
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "component": "Settings Organization Tab",
+        "issue": "Pipeline Stages editor not visible to users with 'member' role",
+        "impact": "Super admin cannot see/edit pipeline stages in organization settings",
+        "fix_priority": "MEDIUM",
+        "note": "This is by design - only owner/admin roles can edit pipeline stages"
+      }
+    ]
+  },
+  
+  "passed_tests": [
+    "✅ Feature 1: Pipeline Management - GET /api/organizations/settings returns deal_stages, task_stages, affiliate_enabled",
+    "✅ Feature 1: Pipeline Management - PUT /api/organizations/settings successfully updates deal_stages (added custom stage)",
+    "✅ Feature 2: User List - GET /api/organizations/{org_id}/members returns member list with roles",
+    "✅ Feature 2: Role Management - PUT /api/organizations/members/{user_id}/role successfully changes member roles",
+    "✅ Feature 4: Affiliate Self-Enrollment - POST /api/affiliate/enroll works when org has affiliate enabled",
+    "✅ Feature 4: Affiliate Status - GET /api/affiliate/me returns affiliate status and referral link",
+    "✅ Feature 4: Affiliate Unenroll - POST /api/affiliate/unenroll successfully removes affiliate status",
+    "✅ Frontend: Settings Profile tab shows Affiliate Program section with enrollment button",
+    "✅ Frontend: Settings Organization tab shows Team Members list with user details",
+    "✅ Frontend: Admin page displays 'upmuch Platform Settings' label and platform-specific settings"
+  ],
+  
+  "test_report_links": [
+    "/app/backend_test.py"
+  ],
+  
+  "action_items": [
+    "Consider granting super admin users 'owner' role in their organization context to access all organization settings",
+    "Verify if Pipeline Stages editor should be visible to super admin users regardless of org role"
+  ],
+  
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  
+  "success_rate": {
+    "backend": "88.9% (8/9 tests passed)",
+    "frontend": "75% (3/4 features fully working, 1 with role limitations)"
+  },
+  
+  "feature_verification": {
+    "pipeline_management": {
+      "status": "✅ WORKING",
+      "backend_api": "✅ GET/PUT /api/organizations/settings working",
+      "frontend_ui": "⚠️ PARTIAL - visible only to owner/admin roles",
+      "notes": "Deal stages can be retrieved and updated via API. Frontend editor requires owner/admin role."
+    },
+    "user_list_role_management": {
+      "status": "✅ WORKING", 
+      "backend_api": "✅ GET /api/organizations/{org_id}/members and PUT role endpoints working",
+      "frontend_ui": "✅ Team Members section visible in Settings Organization tab",
+      "notes": "Member list displays correctly with role management functionality."
+    },
+    "admin_menu_platform_settings": {
+      "status": "✅ WORKING",
+      "backend_api": "✅ Admin endpoints accessible to super admin",
+      "frontend_ui": "✅ 'upmuch Platform Settings' label visible in Admin page Settings tab",
+      "notes": "Platform settings clearly separated from organization settings."
+    },
+    "affiliate_toggle_self_enrollment": {
+      "status": "⚠️ MOSTLY WORKING",
+      "backend_api": "⚠️ Affiliate APIs working, org settings toggle requires owner/admin role",
+      "frontend_ui": "✅ Affiliate Program section visible in Profile tab when enabled",
+      "notes": "Self-enrollment works. Org-level affiliate toggle requires proper role permissions."
+    }
+  },
+  
+  "test_credentials": {
+    "super_admin_email": "florian@unyted.world",
+    "super_admin_password": "DavidConstantin18",
+    "organization": "Fintery Ltd (org_d932cdbf37f8)",
+    "user_role_in_org": "member (should be owner for full access)"
+  },
+  
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_test_itself": true
+}

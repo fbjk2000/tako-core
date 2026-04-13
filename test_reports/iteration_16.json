@@ -1,0 +1,108 @@
+{
+  "summary": "Bug fix testing complete. All 3 reported bugs have been fixed and verified. (1) Support page now renders inside DashboardLayout when logged in - user stays logged in. (2) JWT_EXPIRY_HOURS is set to 168 (7 days) for session persistence. (3) Settings page has new 'Mobile App' tab with PWA install button. Regression tests for Calls page passed.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Bug Fix 1: /support page shows Sign In button for non-authenticated users",
+    "Bug Fix 1: /support page does NOT show sidebar for non-authenticated users",
+    "Bug Fix 1: /support page renders inside DashboardLayout with sidebar when logged in",
+    "Bug Fix 1: Clicking Support in sidebar does NOT log user out",
+    "Bug Fix 1: Sign In button is NOT visible for authenticated users on /support",
+    "Bug Fix 2: JWT_EXPIRY_HOURS=168 confirmed in backend/.env",
+    "Bug Fix 2: server.py correctly reads JWT_EXPIRY_HOURS from environment",
+    "Bug Fix 3: Settings page 'Mobile App' tab visible",
+    "Bug Fix 3: PWA Install button present with correct data-testid",
+    "Bug Fix 3: PWA install instructions for Chrome/Edge, Safari iOS, Android visible",
+    "Regression: Dashboard loads correctly after login",
+    "Regression: /calls page loads with 'Calls' header",
+    "Regression: 'Call History' tab visible with badge count",
+    "Regression: 'Scheduled' tab visible with badge count (4)",
+    "Regression: 'Schedule Call' button in header",
+    "Regression: 'Call Now' button in header",
+    "Regression: 'Upcoming Calls' banner showing scheduled calls",
+    "Regression: Stats cards visible (Total Calls, Completed, Avg Duration, AI Analyzed, Scheduled)",
+    "Regression: Scheduled calls list with edit/delete buttons"
+  ],
+  
+  "test_report_links": [
+    "/app/test_reports/iteration_16.json"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [],
+  
+  "success_rate": {
+    "backend": "100% (JWT config verified)",
+    "frontend": "100% (All bug fixes working, regression passed)"
+  },
+  
+  "test_credentials": {
+    "email": "florian@unyted.world",
+    "password": "DavidConstantin18"
+  },
+  
+  "seed_data_creation": "",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "All 3 user-reported bugs are FIXED: (1) Support page uses DashboardLayout when logged in - no logout issue. (2) JWT tokens expire in 7 days (168 hours). (3) Mobile App tab in Settings has PWA install button. App.js checkAuth only clears token on 401 response, not network errors. Previous Calls/Scheduling features still working (4 scheduled calls in system).",
+  
+  "features_verified": {
+    "support_page_authenticated": {
+      "status": "WORKING",
+      "behavior": "Renders inside DashboardLayout with sidebar, no logout on navigation"
+    },
+    "support_page_non_authenticated": {
+      "status": "WORKING", 
+      "behavior": "Shows public header with 'Sign In' button, no sidebar"
+    },
+    "jwt_session_persistence": {
+      "status": "CONFIGURED",
+      "expiry": "168 hours (7 days)",
+      "config_location": "backend/.env JWT_EXPIRY_HOURS=168"
+    },
+    "settings_mobile_app_tab": {
+      "status": "WORKING",
+      "elements": ["Tab visible with data-testid", "PWA Install button", "Install instructions for all platforms"]
+    },
+    "calls_page_regression": {
+      "status": "WORKING",
+      "elements": ["History/Scheduled tabs", "Stats cards", "Upcoming calls banner", "Schedule Call button", "Call Now button"]
+    }
+  },
+  
+  "bugs_fixed": [
+    {
+      "bug": "Clicking Support in sidebar logs user out",
+      "root_cause": "SupportPage was not using DashboardLayout for authenticated users",
+      "fix": "SupportPage now uses useAuth() hook and conditionally renders in DashboardLayout when user is logged in",
+      "status": "FIXED"
+    },
+    {
+      "bug": "Session doesn't persist after closing browser",
+      "root_cause": "JWT tokens expired after 24 hours, also checkAuth cleared token on any error including network issues",
+      "fix": "JWT_EXPIRY_HOURS changed to 168 (7 days), checkAuth only clears token on 401 response",
+      "status": "FIXED"
+    },
+    {
+      "bug": "Can't find mobile app/PWA install from within dashboard",
+      "root_cause": "No PWA install option was available in the app",
+      "fix": "Added 'Mobile App' tab in Settings with PWA install button and instructions",
+      "status": "FIXED"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "_id": {
+      "$oid": "699a580bde950225de659fdd"
+    },
+    "contact_id": "contact_a323789360a8",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "John155321",
+    "last_name": "Doe155321",
+    "email": "john.doe155321@example.com",
+    "phone": "+1234567890",
+    "company": "Test Company 155321",
+    "job_title": "CEO",
+    "linkedin_url": "https://linkedin.com/in/johndoe",
+    "website": "https://www.testcompany155321.com",
+    "location": "United States",
+    "industry": "Professional Services",
+    "company_size": "11-50",
+    "company_description": "Test Company 155321 is a privately held business providing professional services and solutions to small and mid-sized organizations, focused on improving operational efficiency and growth.",
+    "source": "lead_conversion",
+    "notes": "Updated by super_admin at 2026-02-20T15:53:22.742107",
+    "decision_maker": false,
+    "budget": null,
+    "timeline": null,
+    "pain_points": null,
+    "preferred_contact_method": null,
+    "lead_id": "lead_5b88f995ea51",
+    "deal_id": null,
+    "enrichment": {
+      "technologies": [
+        "Google Workspace",
+        "Microsoft 365",
+        "Slack",
+        "Zoom",
+        "Salesforce",
+        "HubSpot",
+        "WordPress",
+        "Google Analytics"
+      ],
+      "interests": [
+        "Revenue growth",
+        "Operational efficiency",
+        "Digital transformation",
+        "Customer acquisition",
+        "Partnerships and alliances",
+        "Cost optimization"
+      ],
+      "recommended_approach": "Approach with a concise, ROI-focused message tailored to CEO priorities (growth, efficiency, risk reduction) and include a clear value hypothesis plus a short request for a 15-minute discovery call. Use a relevant case study or benchmark to validate impact and offer a low-friction next step (audit/assessment/pilot).",
+      "enriched_at": "2026-02-22T00:50:35.869611+00:00"
+    },
+    "ai_score": 12,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T01:12:43.124358+00:00",
+    "updated_at": "2026-02-22T01:12:43.124358+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69bab5ae3ec3ecc9f936c200"
+    },
+    "contact_id": "contact_b3fdde90f4bd",
+    "organization_id": "org_7f0d0c96016b",
+    "first_name": "Test",
+    "last_name": "Contact",
+    "email": "contact@test.com",
+    "phone": null,
+    "company": null,
+    "job_title": null,
+    "linkedin_url": null,
+    "website": null,
+    "location": null,
+    "industry": null,
+    "company_size": null,
+    "source": "manual",
+    "notes": null,
+    "decision_maker": false,
+    "budget": null,
+    "timeline": null,
+    "pain_points": null,
+    "preferred_contact_method": null,
+    "lead_id": null,
+    "deal_id": null,
+    "created_by": "user_bd114b12648b",
+    "created_at": "2026-03-18T14:24:46.460006+00:00",
+    "updated_at": "2026-03-18T14:24:46.460006+00:00"
+  }
+]

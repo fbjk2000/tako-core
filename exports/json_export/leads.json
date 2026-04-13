@@ -1,0 +1,425 @@
+[
+  {
+    "_id": {
+      "$oid": "699882807b9faf8424b5e7c8"
+    },
+    "lead_id": "lead_fa6bac977e91",
+    "organization_id": "org_a54bfdea6cb4",
+    "first_name": "Other",
+    "last_name": "OrgLead",
+    "email": "otherlead@otherorg.com",
+    "phone": null,
+    "company": "Other Company",
+    "job_title": null,
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T15:49:20.260976+00:00",
+    "updated_at": "2026-02-20T15:49:20.260976+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883727b9faf8424b5e7cc"
+    },
+    "lead_id": "lead_f25c6483d6b1",
+    "organization_id": "org_d920abc6b585",
+    "first_name": "John155322",
+    "last_name": "Doe155322",
+    "email": "john.doe155322@example.com",
+    "phone": "+1234567890",
+    "company": "Test Company 155322",
+    "job_title": "CEO",
+    "linkedin_url": "https://linkedin.com/in/johndoe",
+    "source": "manual",
+    "notes": "Updated by test_user at 2026-02-20T15:53:22.884013",
+    "status": "contacted",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_9cd1d8b5d59f",
+    "created_at": "2026-02-20T15:53:22.169546+00:00",
+    "updated_at": "2026-02-20T15:53:22.976634+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699884cc7b9faf8424b5e7d5"
+    },
+    "lead_id": "lead_40a126d9e446",
+    "organization_id": "org_a54bfdea6cb4",
+    "first_name": "API",
+    "last_name": "Test",
+    "email": "apitest@example.com",
+    "phone": null,
+    "company": "API Test Company",
+    "job_title": null,
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T15:59:08.020164+00:00",
+    "updated_at": "2026-02-20T15:59:08.020164+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699884e87b9faf8424b5e7d6"
+    },
+    "lead_id": "lead_551f7d4997b3",
+    "organization_id": "org_a54bfdea6cb4",
+    "first_name": "Full",
+    "last_name": "Test",
+    "email": "fulltest@example.com",
+    "phone": null,
+    "company": "Full Test Corp",
+    "job_title": null,
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T15:59:36.264328+00:00",
+    "updated_at": "2026-02-20T15:59:36.264328+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998855029b05f22a5546343"
+    },
+    "lead_id": "lead_dd192b2a6371",
+    "organization_id": "org_a54bfdea6cb4",
+    "first_name": "Final",
+    "last_name": "Test",
+    "email": "final@test.com",
+    "phone": null,
+    "company": null,
+    "job_title": null,
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:20.483162+00:00",
+    "updated_at": "2026-02-20T16:01:20.483162+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989696939d0873f09c74bd"
+    },
+    "lead_id": "lead_6d6b2e2039b0",
+    "organization_id": "org_18fe2a1045cb",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john@techcorp.com",
+    "phone": null,
+    "company": "Tech Corp",
+    "job_title": "CTO",
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:15:02.687235+00:00",
+    "updated_at": "2026-02-20T17:15:02.687235+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989753e47e898a6bd3810e"
+    },
+    "lead_id": "lead_4c413a4d0c54",
+    "organization_id": "org_18fe2a1045cb",
+    "first_name": "TEST_Summary",
+    "last_name": "Lead",
+    "email": "summarytest@techcorp.com",
+    "phone": null,
+    "company": "Tech Corp",
+    "job_title": "CTO",
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:18:11.922409+00:00",
+    "updated_at": "2026-02-20T17:18:11.922409+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989760e47e898a6bd3810f"
+    },
+    "lead_id": "lead_c93bca6a46a6",
+    "organization_id": "org_18fe2a1045cb",
+    "first_name": "TEST_John",
+    "last_name": "Doe",
+    "email": "johndoe@enterprise.com",
+    "phone": null,
+    "company": "Enterprise Corp",
+    "job_title": "VP of Sales",
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:18:24.261962+00:00",
+    "updated_at": "2026-02-20T17:18:24.261962+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69bab5ae3ec3ecc9f936c1ff"
+    },
+    "lead_id": "lead_db9908da7e5b",
+    "organization_id": "org_7f0d0c96016b",
+    "first_name": "Test",
+    "last_name": "Lead",
+    "email": "lead@test.com",
+    "phone": null,
+    "company": null,
+    "job_title": null,
+    "linkedin_url": null,
+    "source": "manual",
+    "notes": null,
+    "status": "new",
+    "ai_score": null,
+    "assigned_to": null,
+    "created_by": "user_bd114b12648b",
+    "created_at": "2026-03-18T14:24:46.294919+00:00",
+    "updated_at": "2026-03-18T14:24:46.294919+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69cd4b7b954fe45f9a7c2267"
+    },
+    "lead_id": "lead_16b923f374e7",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "Test",
+    "last_name": "Buyer",
+    "email": "test@unyt.shop",
+    "source": "launch_edition_unyt",
+    "status": "qualified",
+    "notes": "UNYT payment initiated. Wallet: 0x1234567890abcdef",
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-01T16:44:43.005359+00:00",
+    "updated_at": "2026-04-01T16:44:43.005359+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d79cc76bfd02c42be133fe"
+    },
+    "lead_id": "lead_8d41e4f1ec70",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "Unknown",
+    "last_name": "Card",
+    "email": null,
+    "phone": null,
+    "company": null,
+    "job_title": null,
+    "website": null,
+    "location": null,
+    "source": "card_capture:General",
+    "status": "new",
+    "notes": "Captured at General",
+    "tags": [
+      "general"
+    ],
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:34:15.678100+00:00",
+    "updated_at": "2026-04-09T12:34:15.678100+00:00",
+    "enrichment": {
+      "technologies": [],
+      "interests": [],
+      "recommended_approach": "",
+      "enriched_at": "2026-04-09T12:34:15.678100+00:00"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69d79d196bfd02c42be13400"
+    },
+    "lead_id": "lead_a23f00f4c2c7",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "Unknown",
+    "last_name": "Card",
+    "email": null,
+    "phone": null,
+    "company": null,
+    "job_title": null,
+    "website": null,
+    "location": null,
+    "source": "card_capture:Test Event",
+    "status": "new",
+    "notes": "Captured at Test Event",
+    "tags": [
+      "test-event"
+    ],
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:35:37.652518+00:00",
+    "updated_at": "2026-04-09T12:35:37.652518+00:00",
+    "enrichment": {
+      "technologies": [],
+      "interests": [],
+      "recommended_approach": "",
+      "enriched_at": "2026-04-09T12:35:37.652518+00:00"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69d79d6ef457bd76bb44c86b"
+    },
+    "lead_id": "lead_98863dfed2a0",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "Unknown",
+    "last_name": "Card",
+    "email": null,
+    "phone": null,
+    "company": null,
+    "job_title": null,
+    "website": null,
+    "location": null,
+    "source": "card_capture:Test Event",
+    "status": "new",
+    "notes": "Captured at Test Event",
+    "tags": [
+      "test-event"
+    ],
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:37:02.239609+00:00",
+    "updated_at": "2026-04-09T12:37:02.239609+00:00",
+    "enrichment": {
+      "technologies": [],
+      "interests": [],
+      "recommended_approach": "",
+      "enriched_at": "2026-04-09T12:37:02.239609+00:00"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69d79dc8eaf7e7965b5a6c02"
+    },
+    "lead_id": "lead_36b12b6c63a9",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "John",
+    "last_name": "Smith",
+    "email": "john@acme.com",
+    "phone": "+447700900123",
+    "company": "Acme Corp",
+    "job_title": "CEO",
+    "website": "www.acme.com",
+    "location": "London, UK",
+    "source": "card_capture:Test Event",
+    "status": "new",
+    "notes": "Captured at Test Event",
+    "tags": [
+      "test-event"
+    ],
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:38:32.688336+00:00",
+    "updated_at": "2026-04-09T12:38:32.688336+00:00",
+    "enrichment": {
+      "technologies": [],
+      "interests": [],
+      "recommended_approach": "As CEO, John likely cares about revenue growth, cost reduction, risk mitigation, and time-to-value. Open with a concise executive summary (2\u20133 sentences) tied to measurable business outcomes, include 1 relevant customer proof point, and propose a short discovery call focused on strategic priorities and decision criteria. Keep technical detail minimal unless requested; offer to loop in operations/IT stakeholders for implementation specifics.",
+      "enriched_at": "2026-04-09T12:38:32.688336+00:00"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69d7a247eaf7e7965b5a6c04"
+    },
+    "lead_id": "lead_64cf136ee52c",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "John",
+    "last_name": "Smith",
+    "email": "john@acme.com",
+    "phone": "+447700900123",
+    "company": "Acme Corp",
+    "job_title": "CEO",
+    "website": "www.acme.com",
+    "location": "London, UK",
+    "source": "card_capture:Test",
+    "status": "new",
+    "notes": "Captured at Test",
+    "tags": [
+      "test"
+    ],
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:57:43.184463+00:00",
+    "updated_at": "2026-04-09T12:57:43.184463+00:00",
+    "enrichment": {
+      "technologies": null,
+      "interests": null,
+      "recommended_approach": "As CEO, John is likely focused on growth, efficiency, risk management, and strategic initiatives. Lead with a concise ROI-driven value proposition and an executive summary (1-2 paragraphs) tailored to Acme Corp\u2019s likely priorities. Ask 1-2 discovery questions to confirm industry and current tooling (e.g., key KPIs, current stack, procurement timeline). Offer a brief call with a clear agenda and optional case study/benchmark relevant to their market.",
+      "enriched_at": "2026-04-09T12:57:43.184463+00:00"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69d7af399c5f96a27d6ea075"
+    },
+    "lead_id": "lead_a923a3883467",
+    "organization_id": "org_d932cdbf37f8",
+    "first_name": "Jan",
+    "last_name": "Knieriemen",
+    "email": "jan.knieriemen@zreality.com",
+    "phone": "+49 (0) 631 343 596 83; +49 (0) 176 649 967 44",
+    "company": "ZREALITY GmbH",
+    "job_title": "COO & Managing Director",
+    "website": "www.zreality.com",
+    "location": "Zollamtstr. 11, 67663 Kaiserslautern, Germany",
+    "source": "card_capture:General",
+    "status": "new",
+    "notes": "Captured at General",
+    "tags": [
+      "general"
+    ],
+    "ai_score": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T13:52:57.959919+00:00",
+    "updated_at": "2026-04-09T13:52:57.959919+00:00",
+    "company_description": "ZREALITY GmbH is a Germany-based technology company focused on augmented reality (AR), virtual reality (VR), and 3D product visualization solutions for digital commerce, enabling interactive product experiences such as configurators and immersive 3D/AR presentations.",
+    "enrichment": {
+      "technologies": [
+        "WebAR",
+        "WebXR",
+        "3D product configurators",
+        "AR/VR applications",
+        "3D visualization for e-commerce"
+      ],
+      "interests": [
+        "3D commerce and product visualization",
+        "Augmented reality shopping experiences",
+        "Virtual reality experiences",
+        "Product configurators and interactive UX",
+        "E-commerce conversion optimization",
+        "Retail and brand digital transformation"
+      ],
+      "recommended_approach": "Reach out with a partnership-oriented angle tailored to a COO/Managing Director: propose how your product/service can help ZREALITY scale deployments for retail/e-commerce clients (faster time-to-launch, easier content/asset pipelines, performance/quality improvements, analytics on 3D/AR engagement, or enterprise procurement/security needs). Offer a short call to map their current delivery process (3D asset creation \u2192 integration \u2192 measurement) and identify one concrete pilot use case with clear commercial KPIs.",
+      "enriched_at": "2026-04-09T13:52:57.959919+00:00"
+    },
+    "industry": "Augmented Reality (AR) / Virtual Reality (VR) / 3D Commerce Software"
+  }
+]

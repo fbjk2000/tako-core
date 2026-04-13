@@ -1,0 +1,283 @@
+[
+  {
+    "_id": {
+      "$oid": "6998a99b401ed581f4cf9c5f"
+    },
+    "invite_id": "invite_8f51f29812df",
+    "invite_code": "inv_04626efb452740ac",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:36:11.978801+00:00",
+    "expires_at": "2026-02-27T18:36:11.978801+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998a9a2401ed581f4cf9c60"
+    },
+    "invite_id": "invite_d43ef54eda2a",
+    "invite_code": "inv_a0d38eddd9d9440e",
+    "organization_id": "org_18fe2a1045cb",
+    "email": "newuser@example.com",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:36:18.478484+00:00",
+    "expires_at": "2026-02-27T18:36:18.478484+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa2ee6888218ebf7f694"
+    },
+    "invite_id": "invite_4f71416b368d",
+    "invite_code": "inv_c8b00abb4cae41f0",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:38.238198+00:00",
+    "expires_at": "2026-02-27T18:38:38.238198+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa2ee6888218ebf7f695"
+    },
+    "invite_id": "invite_5cab0fbbeba7",
+    "invite_code": "inv_1aa7940d615b4045",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "admin",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:38.658931+00:00",
+    "expires_at": "2026-02-27T18:38:38.658931+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa30e6888218ebf7f696"
+    },
+    "invite_id": "invite_2df9735ec99a",
+    "invite_code": "inv_fed3f2ddd7b441ff",
+    "organization_id": "org_18fe2a1045cb",
+    "email": "test_invite_eacadc43@example.com",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:40.009026+00:00",
+    "expires_at": "2026-02-27T18:38:40.009026+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa30e6888218ebf7f697"
+    },
+    "invite_id": "invite_6ad50e29849d",
+    "invite_code": "inv_34efb248f2ba4c62",
+    "organization_id": "org_18fe2a1045cb",
+    "email": "bulk_test_0ff860@example.com",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:40.736423+00:00",
+    "expires_at": "2026-02-27T18:38:40.736423+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa30e6888218ebf7f698"
+    },
+    "invite_id": "invite_925c49fd69e3",
+    "invite_code": "inv_9ae75e683ae64a53",
+    "organization_id": "org_18fe2a1045cb",
+    "email": "bulk_test_532167@example.com",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:40.736423+00:00",
+    "expires_at": "2026-02-27T18:38:40.736423+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa33e6888218ebf7f699"
+    },
+    "invite_id": "invite_b589fb0583bf",
+    "invite_code": "inv_cdd6c808425e4cd9",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:43.410481+00:00",
+    "expires_at": "2026-02-27T18:38:43.410481+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": false
+  },
+  {
+    "_id": {
+      "$oid": "6998aa34e6888218ebf7f69a"
+    },
+    "invite_id": "invite_11b44949a0b5",
+    "invite_code": "inv_d70633911e434dd1",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:44.760114+00:00",
+    "expires_at": "2026-02-27T18:38:44.760114+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa36e6888218ebf7f69b"
+    },
+    "invite_id": "invite_0a61a61cb296",
+    "invite_code": "inv_94cf0bb2b26d4034",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:46.341295+00:00",
+    "expires_at": "2026-02-27T18:38:46.341295+00:00",
+    "type": "link",
+    "used_count": 1,
+    "max_uses": 100,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa39e6888218ebf7f6a0"
+    },
+    "invite_id": "invite_5fae07dedf40",
+    "invite_code": "inv_eac30d1d14c641eb",
+    "organization_id": "org_18fe2a1045cb",
+    "email": "csv_test1@example.com",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:49.231675+00:00",
+    "expires_at": "2026-02-27T18:38:49.231675+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa39e6888218ebf7f6a1"
+    },
+    "invite_id": "invite_ddbc0eea4f4e",
+    "invite_code": "inv_c2a5285f9343487a",
+    "organization_id": "org_18fe2a1045cb",
+    "email": "csv_test2@example.com",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:38:49.231675+00:00",
+    "expires_at": "2026-02-27T18:38:49.231675+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6998aa69e6888218ebf7f6a2"
+    },
+    "invite_id": "invite_2130b14e263c",
+    "invite_code": "inv_8de683479aa44110",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T18:39:37.238536+00:00",
+    "expires_at": "2026-02-27T18:39:37.238536+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "69cbec16ca25e2366a83c0c0"
+    },
+    "invite_id": "invite_5f55e8a84ad2",
+    "invite_code": "inv_1ee1d137a70547e6",
+    "organization_id": "org_d932cdbf37f8",
+    "email": "florian@fintery.com",
+    "role": "member",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-31T15:45:26.394244+00:00",
+    "expires_at": "2026-04-07T15:45:26.394244+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "69cbee372d38b83e9a20aef3"
+    },
+    "invite_id": "invite_b7a999270556",
+    "invite_code": "inv_67f96ae960fa4dd5",
+    "organization_id": "org_d932cdbf37f8",
+    "email": "freeuser@test.com",
+    "role": "member",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-31T15:54:31.632816+00:00",
+    "expires_at": "2026-04-07T15:54:31.632816+00:00",
+    "type": "email",
+    "used_count": 1,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "69d4cf2573fcef714170579e"
+    },
+    "invite_id": "invite_735aad852b1c",
+    "invite_code": "inv_301f27391a5e4777",
+    "organization_id": "org_d932cdbf37f8",
+    "email": "test@example.com",
+    "role": "member",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-07T09:32:21.363035+00:00",
+    "expires_at": "2026-04-14T09:32:21.363035+00:00",
+    "type": "email",
+    "used_count": 0,
+    "max_uses": 1,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "69d4cf2573fcef714170579f"
+    },
+    "invite_id": "invite_cb5f3f9c7ada",
+    "invite_code": "inv_f3527d25eccf41c2",
+    "organization_id": "org_d932cdbf37f8",
+    "role": "member",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-07T09:32:21.739280+00:00",
+    "expires_at": "2026-04-14T09:32:21.739280+00:00",
+    "type": "link",
+    "used_count": 0,
+    "max_uses": 100,
+    "is_active": true
+  }
+]

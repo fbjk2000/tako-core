@@ -1,0 +1,114 @@
+[
+  {
+    "_id": {
+      "$oid": "699aebe16b9dc38926a6eb1c"
+    },
+    "notification_id": "notif_27b5dcf0d45d",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 15 minutes - Discuss pricing options",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-02-22T11:43:29.970819+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aebe16b9dc38926a6eb1e"
+    },
+    "notification_id": "notif_8967beedc087",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 30 minutes - Test scheduling",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-02-22T11:43:29.970819+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aebe16b9dc38926a6eb1d"
+    },
+    "notification_id": "notif_f64820f1f091",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 15 minutes - Discuss pricing options",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-02-22T11:43:29.976271+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aebe26b9dc38926a6eb1f"
+    },
+    "notification_id": "notif_498a7a417758",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 30 minutes - Test scheduling",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-02-22T11:43:29.976271+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69a44d95f817018de4c7390f"
+    },
+    "notification_id": "notif_201a895e3527",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 60 minutes - Updated test notes for call",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-03-01T14:30:45.226008+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69a44d95f817018de4c7390e"
+    },
+    "notification_id": "notif_9353ba978a58",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 60 minutes - Updated test notes for call",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-03-01T14:30:45.229664+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69a44d95f817018de4c73910"
+    },
+    "notification_id": "notif_75b8a7e63d5e",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 15 minutes - TEST_Z-index fixed - scheduled via UI",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-03-01T14:30:45.229664+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69a44d95f817018de4c73911"
+    },
+    "notification_id": "notif_3528f81b4e3f",
+    "user_id": "user_976038f616e3",
+    "organization_id": "org_d932cdbf37f8",
+    "type": "call_reminder",
+    "title": "Upcoming call with John155321 Doe155321",
+    "content": "Scheduled in 15 minutes - TEST_Z-index fixed - scheduled via UI",
+    "link": "/calls",
+    "is_read": false,
+    "created_at": "2026-03-01T14:30:45.226008+00:00"
+  }
+]

@@ -1,0 +1,183 @@
+diff --git a/backend/requirements.txt b/backend/requirements.txt
+index b7567ac..347c8c1 100644
+--- a/backend/requirements.txt
++++ b/backend/requirements.txt
+@@ -18,7 +18,6 @@ distro==1.9.0
+ dnspython==2.8.0
+ ecdsa==0.19.1
+ email-validator==2.3.0
+-emergentintegrations==0.1.0
+ fastapi==0.110.1
+ fastuuid==0.14.0
+ filelock==3.20.3
+diff --git a/backend/server.py b/backend/server.py
+index 2aa1372..f0e5e35 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -5,6 +5,7 @@ from dotenv import load_dotenv
+ from starlette.middleware.cors import CORSMiddleware
+ from motor.motor_asyncio import AsyncIOMotorClient
+ import os
++import json
+ import logging
+ import re
+ from pathlib import Path
+@@ -20,7 +21,7 @@ import csv
+ import io
+ import asyncio
+ import resend
+-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
++import stripe
+ 
+ ROOT_DIR = Path(__file__).parent
+ load_dotenv(ROOT_DIR / '.env')
+@@ -44,6 +45,106 @@ if RESEND_API_KEY:
+ # Stripe Configuration
+ STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
+ 
++
++class CheckoutSessionRequest(BaseModel):
++    amount: float
++    currency: str
++    success_url: str
++    cancel_url: str
++    metadata: Dict[str, str] = Field(default_factory=dict)
++    payment_methods: List[str] = Field(default_factory=lambda: ["card"])
++
++
++class CheckoutSessionResponse(BaseModel):
++    url: str
++    session_id: str
++
++
++class CheckoutStatusResponse(BaseModel):
++    status: str
++    payment_status: str
++    amount_total: int
++    currency: str
++
++
++class StripeWebhookResponse(BaseModel):
++    event_type: str
++    session_id: Optional[str] = None
++    payment_status: Optional[str] = None
++
++
++class StripeCheckout:
++    def __init__(self, api_key: str, webhook_url: str):
++        self.api_key = api_key
++        self.webhook_url = webhook_url
++        stripe.api_key = api_key
++
++    @staticmethod
++    def _normalize_methods(payment_methods: List[str]) -> List[str]:
++        allowed = {"card", "link", "us_bank_account", "sepa_debit", "cashapp"}
++        normalized = [method for method in payment_methods if method in allowed]
++        return normalized or ["card"]
++
++    async def create_checkout_session(self, request: CheckoutSessionRequest) -> CheckoutSessionResponse:
++        metadata = {str(k): str(v) for k, v in (request.metadata or {}).items()}
++        payment_methods = self._normalize_methods(request.payment_methods)
++        unit_amount = max(int(round(float(request.amount) * 100)), 1)
++
++        def _create_session():
++            return stripe.checkout.Session.create(
++                mode="payment",
++                payment_method_types=payment_methods,
++                line_items=[
++                    {
++                        "price_data": {
++                            "currency": (request.currency or "eur").lower(),
++                            "unit_amount": unit_amount,
++                            "product_data": {
++                                "name": metadata.get("product", "EarnRM Payment")
++                            },
++                        },
++                        "quantity": 1,
++                    }
++                ],
++                success_url=request.success_url,
++                cancel_url=request.cancel_url,
++                metadata=metadata,
++            )
++
++        session = await asyncio.to_thread(_create_session)
++        return CheckoutSessionResponse(url=session.url, session_id=session.id)
++
++    async def get_checkout_status(self, session_id: str) -> CheckoutStatusResponse:
++        session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
++        return CheckoutStatusResponse(
++            status=getattr(session, "status", "unknown"),
++            payment_status=getattr(session, "payment_status", "unpaid"),
++            amount_total=int(getattr(session, "amount_total", 0) or 0),
++            currency=(getattr(session, "currency", "eur") or "eur"),
++        )
++
++    async def handle_webhook(self, body: bytes, signature: Optional[str]) -> StripeWebhookResponse:
++        payload = body.decode("utf-8")
++        secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
++
++        if secret and signature:
++            event = await asyncio.to_thread(
++                stripe.Webhook.construct_event, payload, signature, secret
++            )
++        else:
++            event = json.loads(payload)
++
++        event_type = event.get("type", "")
++        data_object = (event.get("data") or {}).get("object") or {}
++        session_id = data_object.get("id")
++        payment_status = data_object.get("payment_status")
++
++        return StripeWebhookResponse(
++            event_type=event_type,
++            session_id=session_id,
++            payment_status=payment_status,
++        )
++
+ # Subscription Plans (amounts in EUR)
+ SUBSCRIPTION_PLANS = {
+     "monthly": {
+@@ -3464,8 +3565,6 @@ async def create_stripe_checkout(
+     additional_users: int = 1,
+     current_user: dict = Depends(get_current_user)
+ ):
+-    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+-    
+     body = await request.json()
+     origin_url = body.get("origin_url", "")
+     
+@@ -3525,8 +3624,6 @@ async def create_stripe_checkout(
+ 
+ @api_router.get("/payments/status/{session_id}")
+ async def get_payment_status(session_id: str, current_user: dict = Depends(get_current_user)):
+-    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+-    
+     api_key = os.environ.get("STRIPE_API_KEY")
+     stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+     
+@@ -3569,7 +3666,6 @@ async def get_payment_status(session_id: str, current_user: dict = Depends(get_c
+ @api_router.post("/checkout/launch-edition")
+ async def launch_edition_checkout(request: Request):
+     """Public checkout for Launch Edition (4999 EUR one-time)"""
+-    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+     body = await request.json()
+     origin_url = body.get("origin_url", "")
+     buyer_name = body.get("name", "")
+@@ -3617,7 +3713,6 @@ async def launch_edition_checkout(request: Request):
+ @api_router.get("/checkout/launch-edition/verify")
+ async def verify_launch_edition(session_id: str, deal_id: str):
+     """Verify Launch Edition payment and update deal to won"""
+-    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+     api_key = os.environ.get("STRIPE_API_KEY")
+     stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+     try:
+@@ -3643,8 +3738,6 @@ async def verify_launch_edition(session_id: str, deal_id: str):
+ 
+ @api_router.post("/webhook/stripe")
+ async def stripe_webhook(request: Request):
+-    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+-    
+     api_key = os.environ.get("STRIPE_API_KEY")
+     stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+ 

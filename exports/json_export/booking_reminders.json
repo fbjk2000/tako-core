@@ -1,0 +1,15 @@
+[
+  {
+    "_id": {
+      "$oid": "69c3bca885809faf7e49ce00"
+    },
+    "booking_id": "bk_72fc4da0dcec",
+    "reminder_at": "2026-03-25T09:00:00+00:00",
+    "sent": false,
+    "guest_email": "test@client.com",
+    "guest_name": "Test Client",
+    "host_name": "Florian",
+    "start_time": "2026-03-25T10:00:00+00:00",
+    "duration": 30
+  }
+]

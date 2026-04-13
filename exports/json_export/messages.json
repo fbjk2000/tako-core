@@ -1,0 +1,64 @@
+[
+  {
+    "_id": {
+      "$oid": "69c3bcac85809faf7e49ce02"
+    },
+    "message_id": "msg_695a3a28ad7c",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "AI Agent",
+    "content": "Hello from the API!",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "is_bot": true,
+    "created_at": "2026-03-25T10:45:00.988935+00:00",
+    "updated_at": "2026-03-25T10:45:00.988935+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c3bfc83a9faec787655a6c"
+    },
+    "message_id": "msg_92649eee7496",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Sales Bot",
+    "content": "Hello from the improved Chat API!",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "is_bot": true,
+    "metadata": {
+      "source": "n8n",
+      "workflow": "lead_followup"
+    },
+    "created_at": "2026-03-25T10:58:16.053032+00:00",
+    "updated_at": "2026-03-25T10:58:16.053032+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c42479d72843d16286df6a"
+    },
+    "message_id": "msg_040226bd9aa2",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "API Bot",
+    "content": "Test message via external API key",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "is_bot": true,
+    "metadata": null,
+    "created_at": "2026-03-25T18:07:53.162572+00:00",
+    "updated_at": "2026-03-25T18:07:53.162572+00:00"
+  }
+]

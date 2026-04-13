@@ -1,0 +1,642 @@
+[
+  {
+    "_id": {
+      "$oid": "698aaece80ac55bd1a33f78f"
+    },
+    "task_id": "task_5be8ae43e981",
+    "organization_id": "org_f1e0631b6306",
+    "title": "Tanya Social media close",
+    "description": "Need her to pay invoice ",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_d387e8484ddb",
+    "related_lead_id": null,
+    "related_deal_id": "deal_edd304e4877e",
+    "created_by": "user_d387e8484ddb",
+    "created_at": "2026-02-10T04:06:38.525729+00:00",
+    "updated_at": "2026-02-10T04:06:38.525729+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883737b9faf8424b5e7ce"
+    },
+    "task_id": "task_3b43f68c834a",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial contact for deal 155322",
+    "description": "Follow up with prospect",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": "deal_b85a5304a48e",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-20T15:53:23.115635+00:00",
+    "updated_at": "2026-02-20T15:53:23.115635+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883737b9faf8424b5e7d0"
+    },
+    "task_id": "task_38b99079d637",
+    "organization_id": "org_d920abc6b585",
+    "title": "Initial contact for deal 155323",
+    "description": "Follow up with prospect",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_9cd1d8b5d59f",
+    "related_lead_id": null,
+    "related_deal_id": "deal_ead49bcd85e8",
+    "created_by": "user_9cd1d8b5d59f",
+    "created_at": "2026-02-20T15:53:23.236768+00:00",
+    "updated_at": "2026-02-20T15:53:23.236768+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883737b9faf8424b5e7d1"
+    },
+    "task_id": "task_3f2fb4e61162",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Test Task 155323",
+    "description": "Test task created by super_admin",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-20T15:53:23.640812+00:00",
+    "updated_at": "2026-02-20T15:53:23.640812+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883737b9faf8424b5e7d2"
+    },
+    "task_id": "task_50e260ab0490",
+    "organization_id": "org_d920abc6b585",
+    "title": "Test Task 155323",
+    "description": "Test task created by test_user",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_9cd1d8b5d59f",
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "created_by": "user_9cd1d8b5d59f",
+    "created_at": "2026-02-20T15:53:23.771963+00:00",
+    "updated_at": "2026-02-20T15:53:23.771963+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699884e87b9faf8424b5e7d7"
+    },
+    "task_id": "task_d51c756e6b76",
+    "organization_id": "org_a54bfdea6cb4",
+    "title": "Test Task",
+    "description": "Test description",
+    "status": "todo",
+    "priority": "high",
+    "due_date": null,
+    "assigned_to": null,
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T15:59:36.934283+00:00",
+    "updated_at": "2026-02-20T15:59:36.934283+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998855029b05f22a5546346"
+    },
+    "task_id": "task_b5d8991f9627",
+    "organization_id": "org_a54bfdea6cb4",
+    "title": "Follow up call",
+    "description": "Initial task for deal: Deal With Task",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_f1f774f50b49",
+    "related_lead_id": null,
+    "related_deal_id": "deal_e10f8fcae78b",
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:20.899712+00:00",
+    "updated_at": "2026-02-20T16:01:20.899712+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998855129b05f22a5546347"
+    },
+    "task_id": "task_6d79c9661d04",
+    "organization_id": "org_a54bfdea6cb4",
+    "title": "Standalone Task",
+    "description": null,
+    "status": "todo",
+    "priority": "high",
+    "due_date": null,
+    "assigned_to": null,
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:21.083710+00:00",
+    "updated_at": "2026-02-20T16:01:21.083710+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989dd3432d994e0211739e"
+    },
+    "task_id": "task_c1d286873132",
+    "organization_id": "org_18fe2a1045cb",
+    "title": "Initial contact",
+    "description": "Initial task for deal: TEST_Deal_Chat_dfbb3f",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_94f29e283210",
+    "related_lead_id": null,
+    "related_deal_id": "deal_7bc01e0dd842",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:45:55.041797+00:00",
+    "updated_at": "2026-02-20T17:45:55.041797+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad916a0325f123409b7d2"
+    },
+    "task_id": "task_7389dfc2b8c3",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial task for lead-linked deal",
+    "description": "Initial task for deal: Deal with Lead Link Test",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_c0fd659212f6",
+    "related_deal_id": "deal_3c1743eefa6f",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:23:18.655617+00:00",
+    "updated_at": "2026-02-22T10:23:18.655617+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad916a0325f123409b7d4"
+    },
+    "task_id": "task_78380e768359",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial task for contact-linked deal",
+    "description": "Initial task for deal: Deal with Contact Link Test",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": "deal_93d4dd0a5d98",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:23:18.983742+00:00",
+    "updated_at": "2026-02-22T10:23:18.983742+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad917a0325f123409b7d6"
+    },
+    "task_id": "task_af34ff79ca61",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial task for company-linked deal",
+    "description": "Initial task for deal: Deal with Company Link Test",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": "deal_2628a27cdf71",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:23:19.317486+00:00",
+    "updated_at": "2026-02-22T10:23:19.317486+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad956d6da696aeff6490e"
+    },
+    "task_id": "task_3810ddf22791",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial task for lead-linked deal",
+    "description": "Initial task for deal: Deal with Lead Link Test",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_c0fd659212f6",
+    "related_deal_id": "deal_5488ecbf395b",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:24:22.188865+00:00",
+    "updated_at": "2026-02-22T10:24:22.188865+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad956d6da696aeff64910"
+    },
+    "task_id": "task_926abe72850b",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial task for contact-linked deal",
+    "description": "Initial task for deal: Deal with Contact Link Test",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": "deal_8ffd6427ac13",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:24:22.496227+00:00",
+    "updated_at": "2026-02-22T10:24:22.496227+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad956d6da696aeff64912"
+    },
+    "task_id": "task_dd591c21c163",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Initial task for company-linked deal",
+    "description": "Initial task for deal: Deal with Company Link Test",
+    "status": "done",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": "deal_ee6751eef1eb",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:24:22.829158+00:00",
+    "updated_at": "2026-04-01T15:09:51.072482+00:00",
+    "activity": [
+      {
+        "action": "status_changed",
+        "from": "todo",
+        "to": "done",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-01T15:09:51.072482+00:00"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "69bc511cd2208edab80695c2"
+    },
+    "task_id": "task_2c9e6839e674",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Test API Task",
+    "description": "Created via API",
+    "status": "done",
+    "priority": "high",
+    "due_date": null,
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-19T19:40:12.852628+00:00",
+    "updated_at": "2026-04-01T15:09:48.185966+00:00",
+    "activity": [
+      {
+        "action": "status_changed",
+        "from": "todo",
+        "to": "done",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-01T15:09:48.185966+00:00"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "69bc511ed2208edab80695c4"
+    },
+    "task_id": "task_fd63afe9bf15",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "External API Task",
+    "description": null,
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": null,
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-19T19:40:14.213988+00:00",
+    "updated_at": "2026-03-19T19:40:14.213988+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c120aa24f4ba2d96e7a3a0"
+    },
+    "task_id": "task_3fb8986729d4",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Setup onboarding docs",
+    "description": null,
+    "status": "done",
+    "priority": "high",
+    "due_date": null,
+    "assigned_to": null,
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "project_id": "proj_9a869bb4c43c",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-23T11:14:50.079571+00:00",
+    "updated_at": "2026-04-01T15:10:37.721305+00:00",
+    "activity": [
+      {
+        "action": "status_changed",
+        "from": "todo",
+        "to": "done",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-01T15:10:37.721305+00:00"
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "69cbef9b5aaeeb367ae7bace"
+    },
+    "task_id": "task_eb1c04be5652",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Test Update",
+    "description": "Testing comments, subtasks, and activity",
+    "status": "todo",
+    "priority": "medium",
+    "due_date": null,
+    "assigned_to": null,
+    "related_lead_id": null,
+    "related_deal_id": null,
+    "project_id": null,
+    "subtasks": [
+      {
+        "id": "sub_85bbda89",
+        "title": "Build shortlist",
+        "done": true,
+        "created_at": "2026-03-31T16:00:28.301990+00:00"
+      },
+      {
+        "id": "sub_30c086e1",
+        "title": "Draft outreach",
+        "done": true,
+        "created_at": "2026-03-31T16:00:28.427803+00:00"
+      }
+    ],
+    "comments": [
+      {
+        "id": "cmt_8ce2fbab",
+        "content": "First progress update: research done",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.127329+00:00"
+      },
+      {
+        "id": "cmt_40ec0ff2",
+        "content": "Done",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-01T15:11:18.857433+00:00"
+      }
+    ],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:27.952351+00:00"
+      },
+      {
+        "action": "comment_added",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.127329+00:00"
+      },
+      {
+        "action": "subtask_added",
+        "detail": "Build shortlist",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.301990+00:00"
+      },
+      {
+        "action": "subtask_added",
+        "detail": "Draft outreach",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.427803+00:00"
+      },
+      {
+        "action": "subtask_completed",
+        "detail": "Draft outreach",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.579422+00:00"
+      },
+      {
+        "action": "status_changed",
+        "from": "todo",
+        "to": "in_progress",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.768803+00:00"
+      },
+      {
+        "action": "status_changed",
+        "from": "in_progress",
+        "to": "done",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:28.876866+00:00"
+      },
+      {
+        "action": "reopened",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-03-31T16:00:29.045028+00:00"
+      },
+      {
+        "action": "subtask_completed",
+        "detail": "Build shortlist",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-01T15:10:23.238113+00:00"
+      },
+      {
+        "action": "comment_added",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-01T15:11:18.857433+00:00"
+      },
+      {
+        "action": "title_changed",
+        "from": "Test evolved task",
+        "to": "Test Update",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-07T18:06:12.500770+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-31T16:00:27.952351+00:00",
+    "updated_at": "2026-04-07T18:06:12.500770+00:00",
+    "subtask_count": 2,
+    "subtasks_done": 2
+  },
+  {
+    "_id": {
+      "$oid": "69d79cca6bfd02c42be133ff"
+    },
+    "task_id": "task_ea2d6cbdaee0",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Follow up: Unknown Card (General)",
+    "description": "Met at General. Company: N/A. Role: N/A.",
+    "status": "todo",
+    "priority": "high",
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_8d41e4f1ec70",
+    "subtasks": [],
+    "comments": [],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-09T12:34:15.678100+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:34:15.678100+00:00",
+    "updated_at": "2026-04-09T12:34:15.678100+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d79d1b6bfd02c42be13401"
+    },
+    "task_id": "task_0dedfb36b96d",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Follow up: Unknown Card (Test Event)",
+    "description": "Met at Test Event. Company: N/A. Role: N/A.",
+    "status": "todo",
+    "priority": "high",
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_a23f00f4c2c7",
+    "subtasks": [],
+    "comments": [],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-09T12:35:37.652518+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:35:37.652518+00:00",
+    "updated_at": "2026-04-09T12:35:37.652518+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d79d70f457bd76bb44c86c"
+    },
+    "task_id": "task_4f2fcad4df96",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Follow up: Unknown Card (Test Event)",
+    "description": "Met at Test Event. Company: N/A. Role: N/A.",
+    "status": "todo",
+    "priority": "high",
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_98863dfed2a0",
+    "subtasks": [],
+    "comments": [],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-09T12:37:02.239609+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:37:02.239609+00:00",
+    "updated_at": "2026-04-09T12:37:02.239609+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d79dcbeaf7e7965b5a6c03"
+    },
+    "task_id": "task_152a07c62b04",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Follow up: John Smith (Test Event)",
+    "description": "Met at Test Event. Company: Acme Corp. Role: CEO.",
+    "status": "todo",
+    "priority": "high",
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_36b12b6c63a9",
+    "subtasks": [],
+    "comments": [],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-09T12:38:32.688336+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:38:32.688336+00:00",
+    "updated_at": "2026-04-09T12:38:32.688336+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d7a24aeaf7e7965b5a6c05"
+    },
+    "task_id": "task_6122e5c4d17e",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Follow up: John Smith (Test)",
+    "description": "Met at Test. Company: Acme Corp. Role: CEO.",
+    "status": "todo",
+    "priority": "high",
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_64cf136ee52c",
+    "subtasks": [],
+    "comments": [],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-09T12:57:43.184463+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T12:57:43.184463+00:00",
+    "updated_at": "2026-04-09T12:57:43.184463+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d7af3f9c5f96a27d6ea076"
+    },
+    "task_id": "task_4ed8486e8143",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Follow up: Jan Knieriemen (General)",
+    "description": "Met at General. Company: ZREALITY GmbH. Role: COO & Managing Director.",
+    "status": "todo",
+    "priority": "high",
+    "assigned_to": "user_976038f616e3",
+    "related_lead_id": "lead_a923a3883467",
+    "subtasks": [],
+    "comments": [],
+    "activity": [
+      {
+        "action": "created",
+        "by": "user_976038f616e3",
+        "by_name": "Florian",
+        "at": "2026-04-09T13:52:57.959919+00:00"
+      }
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T13:52:57.959919+00:00",
+    "updated_at": "2026-04-09T13:52:57.959919+00:00"
+  }
+]

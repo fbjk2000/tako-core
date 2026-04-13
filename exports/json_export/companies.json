@@ -1,0 +1,128 @@
+[
+  {
+    "_id": {
+      "$oid": "699883747b9faf8424b5e7d3"
+    },
+    "company_id": "company_6c0139294bf2",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Test Company 155324",
+    "industry": "Technology",
+    "website": "https://testcompany155324.com",
+    "size": "50-100",
+    "description": "Test company created by super_admin",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-20T15:53:24.205292+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883747b9faf8424b5e7d4"
+    },
+    "company_id": "company_15f8f9cae7ee",
+    "organization_id": "org_d920abc6b585",
+    "name": "Test Company 155324",
+    "industry": "Technology",
+    "website": "https://testcompany155324.com",
+    "size": "50-100",
+    "description": "Test company created by test_user",
+    "created_by": "user_9cd1d8b5d59f",
+    "created_at": "2026-02-20T15:53:24.354298+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699884e97b9faf8424b5e7d8"
+    },
+    "company_id": "company_b6308c50a41a",
+    "organization_id": "org_a54bfdea6cb4",
+    "name": "Test Company",
+    "industry": "Technology",
+    "website": "https://test.com",
+    "size": null,
+    "description": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T15:59:37.283054+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998855129b05f22a5546348"
+    },
+    "company_id": "company_bdc16a9e72f2",
+    "organization_id": "org_a54bfdea6cb4",
+    "name": "Final Test Corp",
+    "industry": "Finance",
+    "website": null,
+    "size": null,
+    "description": null,
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:21.215247+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aead46b9dc38926a6eb1a"
+    },
+    "company_id": "company_0bcfdf9566f5",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Test Co",
+    "industry": "Tech",
+    "website": null,
+    "size": null,
+    "description": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T11:39:00.847780+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aeb386b9dc38926a6eb1b"
+    },
+    "company_id": "company_b64b99c0948e",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Test Company Regression",
+    "industry": "Consulting",
+    "website": "https://testregression.com",
+    "size": "10-50",
+    "description": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T11:40:40.552776+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aec6bedc9873f91641847"
+    },
+    "company_id": "company_73a920d359c4",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "TEST_Company_114547",
+    "industry": "Testing",
+    "website": "https://test.com",
+    "size": null,
+    "description": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T11:45:47.392715+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699aec821e43f3c6f2db9e90"
+    },
+    "company_id": "company_0fc96ae167e8",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "TEST_Company_114610",
+    "industry": "Testing",
+    "website": "https://test.com",
+    "size": null,
+    "description": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T11:46:10.778400+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69cd5745fc4b19538533cbcb"
+    },
+    "company_id": "company_08cc9e3316fb",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Acme GmbH",
+    "industry": "Tech",
+    "website": "acme.de",
+    "size": null,
+    "description": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-01T17:35:01.513608+00:00"
+  }
+]

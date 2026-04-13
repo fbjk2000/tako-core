@@ -1,0 +1,48 @@
+[
+  {
+    "_id": {
+      "$oid": "699919662df09c3343fb5b8d"
+    },
+    "affiliate_id": "aff_2c0e98ec9f33",
+    "user_id": "user_976038f616e3",
+    "email": "florian@unyted.world",
+    "name": "Florian",
+    "organization_id": "org_d932cdbf37f8",
+    "affiliate_code": "florian_edb3d2",
+    "tier": 1,
+    "commission_rate_tier1": 20.0,
+    "commission_rate_tier2": 10.0,
+    "commission_rate_tier3": 5.0,
+    "total_referrals": 0,
+    "total_earnings": 0,
+    "pending_earnings": 0,
+    "paid_earnings": 0,
+    "created_at": "2026-02-21T02:33:10.511397+00:00",
+    "is_active": true,
+    "commission_rate": 20.0,
+    "customer_discount": 20.0,
+    "level": 0,
+    "parent_affiliate_id": null
+  },
+  {
+    "_id": {
+      "$oid": "69d135c942f23a4b332c5a63"
+    },
+    "affiliate_id": "aff_b2599493fc18",
+    "user_id": "user_d415b08f67f7",
+    "email": "fbjk2000@gmail.com",
+    "name": "Florian Kr\u00fcger",
+    "organization_id": "org_0040f8724c8e",
+    "affiliate_code": "florian_66b125",
+    "level": 0,
+    "parent_affiliate_id": null,
+    "commission_rate": 20.0,
+    "customer_discount": 20.0,
+    "total_referrals": 0,
+    "total_earnings": 0,
+    "pending_earnings": 0,
+    "paid_earnings": 0,
+    "created_at": "2026-04-04T16:01:13.638854+00:00",
+    "is_active": true
+  }
+]

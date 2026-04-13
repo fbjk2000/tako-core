@@ -1,0 +1,20 @@
+[
+  {
+    "_id": {
+      "$oid": "69860c6c3d395409cd0df039"
+    },
+    "code_id": "discount_e14ee5bbd430",
+    "code": "TEST154444",
+    "discount_percent": 15.0,
+    "discount_type": "percentage",
+    "fixed_amount": null,
+    "valid_from": null,
+    "valid_until": null,
+    "max_uses": 100,
+    "current_uses": 0,
+    "applicable_plans": [],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-06T15:44:44.787781+00:00",
+    "is_active": true
+  }
+]

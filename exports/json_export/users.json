@@ -1,0 +1,150 @@
+[
+  {
+    "_id": {
+      "$oid": "698608d33d395409cd0df038"
+    },
+    "user_id": "user_976038f616e3",
+    "email": "florian@unyted.world",
+    "name": "Florian",
+    "password_hash": "$2b$12$JuWITwl2U8ZYkVeA0yTzaugGyJ5FJYSvRrQCiyfMRQo6hM1M7BNL2",
+    "organization_id": "org_d932cdbf37f8",
+    "role": "super_admin",
+    "created_at": "2026-02-06T15:29:23.552594+00:00",
+    "last_login": "2026-04-10T13:39:44.845127+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a0d981ae342187b006bb5"
+    },
+    "user_id": "user_654b5d1147d3",
+    "email": "luizcardo@gmail.com",
+    "name": "Luiz Felipe Cardo",
+    "password_hash": "$2b$12$kXjioTTNzqmmafrYKV3tQeOAYTrgBhO8acHiGrwcO6ioo8KunFGCW",
+    "organization_id": null,
+    "role": "member",
+    "created_at": "2026-02-09T16:38:48.102149+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698aae1c80ac55bd1a33f78b"
+    },
+    "user_id": "user_d387e8484ddb",
+    "email": "akalinezenix@gmail.com",
+    "name": "Zen Akaline",
+    "picture": "https://lh3.googleusercontent.com/a/ACg8ocInDWhXkWUZKuK07bs8flDbxqqstVnJOUR1NUQ24-r-P0TndQ=s96-c",
+    "organization_id": "org_f1e0631b6306",
+    "role": "owner",
+    "created_at": "2026-02-10T04:03:40.523777+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699882757b9faf8424b5e7c7"
+    },
+    "user_id": "user_f1f774f50b49",
+    "email": "testuser@otherorg.com",
+    "name": "Test User",
+    "password_hash": "$2b$12$zzNT5mFPyX6r9aN9wqo3x.DiFR.6rvAn1SSNxVy38reNSyNgZNxDW",
+    "organization_id": "org_a54bfdea6cb4",
+    "role": "owner",
+    "created_at": "2026-02-20T15:49:09.611594+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883717b9faf8424b5e7ca"
+    },
+    "user_id": "user_9cd1d8b5d59f",
+    "email": "testuser155321@testorg.com",
+    "name": "Test User 155321",
+    "password_hash": "$2b$12$r5U8VkUOpRJ0dK.UjpTa4O2NHMlOqt12GWph.c95weiaHn.0PwTNy",
+    "organization_id": "org_d920abc6b585",
+    "role": "owner",
+    "created_at": "2026-02-20T15:53:21.367203+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998967b939d0873f09c74bc"
+    },
+    "user_id": "user_94f29e283210",
+    "email": "test@example.com",
+    "name": "Test User",
+    "password_hash": "$2b$12$jedr3bCQzlIP4vf9anbb8.jaKFQONgKbYMWEEPkefj83Evht7KF1S",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "owner",
+    "created_at": "2026-02-20T17:14:35.295953+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998aa36e6888218ebf7f69c"
+    },
+    "user_id": "user_13a9833914a0",
+    "email": "invited_user_d1d55829@example.com",
+    "name": "TEST_Invited User",
+    "password_hash": "$2b$12$aHixKiN3oHZzF1zS8MsP/u7f2QxfWlAz8HcaSjhj07UEI9khW7L1W",
+    "organization_id": "org_18fe2a1045cb",
+    "role": "member",
+    "created_at": "2026-02-20T18:38:46.452553+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998aa37e6888218ebf7f69d"
+    },
+    "user_id": "user_c0ed3d093c5a",
+    "email": "no_org_user_a4f565cb@example.com",
+    "name": "No Org User",
+    "password_hash": "$2b$12$vvr4ev87RUKv5vmOhMVy8OyEJh3hz6UWdhqJVQk/b.sG.m4bQQNAK",
+    "organization_id": null,
+    "role": "member",
+    "created_at": "2026-02-20T18:38:47.629945+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998aa38e6888218ebf7f69f"
+    },
+    "user_id": "user_fac23f2a0b20",
+    "email": "new_org_owner_140a79ce@example.com",
+    "name": "New Org Owner",
+    "password_hash": "$2b$12$gPXJM70SKBNC30ItCNh7u.hW0DBDR71CYYGqVBq.u9r9Gi9auAvTW",
+    "organization_id": "org_9f67aa4d01b4",
+    "role": "owner",
+    "created_at": "2026-02-20T18:38:48.421400+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69a438159531aa23605d5ec2"
+    },
+    "user_id": "user_d415b08f67f7",
+    "email": "fbjk2000@gmail.com",
+    "name": "Florian Kr\u00fcger",
+    "picture": "https://lh3.googleusercontent.com/a/ACg8ocIiKmvRG_pRyx2sl3YXEZoWINIjpe7qJC1ZLXLuT-Bdx0As5TJp=s96-c",
+    "organization_id": "org_0040f8724c8e",
+    "role": "owner",
+    "created_at": "2026-03-01T12:59:01.945587+00:00",
+    "last_login": "2026-04-04T15:11:12.745481+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69bab5ad3ec3ecc9f936c1fc"
+    },
+    "user_id": "user_bd114b12648b",
+    "email": "freeuser@test.com",
+    "name": "Free User",
+    "password_hash": "$2b$12$aRT7hjCcMudf9wIUQG880eP9ni9/9Ze.MtSBkZ6f0r.QX3DPCXCLO",
+    "organization_id": "org_d932cdbf37f8",
+    "role": "member",
+    "created_at": "2026-03-18T14:24:45.376496+00:00",
+    "last_login": "2026-03-31T15:54:32.304004+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c3e3dd79ee30c5d8ff17fa"
+    },
+    "user_id": "user_2d29dd012f6a",
+    "email": "newrep@earnrm.com",
+    "name": "New Sales Rep",
+    "password_hash": "$2b$12$ropKeBm0v50IVohzrLH0feR3HO1bjjgdQjF//HxQPq7Rphla7Hx/e",
+    "organization_id": null,
+    "role": "member",
+    "created_at": "2026-03-25T13:32:13.351233+00:00",
+    "created_by_admin": "user_976038f616e3"
+  }
+]

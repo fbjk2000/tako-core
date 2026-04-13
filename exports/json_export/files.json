@@ -1,0 +1,23 @@
+[
+  {
+    "_id": {
+      "$oid": "69d8be21a11744c59b9a0154"
+    },
+    "file_id": "file_77d0f32a599c",
+    "organization_id": "org_d932cdbf37f8",
+    "original_name": "test_proposal.txt",
+    "stored_name": "file_77d0f32a599c.txt",
+    "content_type": "text/plain",
+    "size": 47,
+    "linked_type": "lead",
+    "linked_id": "lead_a923a3883467",
+    "description": "Proposal doc",
+    "ai_summary": {
+      "summary": "{\n  \"summary\": \"This document is a test proposal for Acme Corp. It contains only a brief statement indicating its purpose and does not provide further details.\",\n  \"follow_ups\": [\n    {\n      \"title\": \"Request the full proposal content (scope, objectives, timeline, budget) for Acme Corp\",\n      \"typ",
+      "follow_ups": []
+    },
+    "uploaded_by": "user_976038f616e3",
+    "uploaded_by_name": "Florian",
+    "created_at": "2026-04-10T09:08:49.919364+00:00"
+  }
+]

@@ -1,0 +1,662 @@
+[
+  {
+    "_id": {
+      "$oid": "69989abab1d49b65765f8fc1"
+    },
+    "message_id": "msg_659da2edccd9",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Hello team! This is a test message from the new chat feature \ud83c\udf89",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:32:42.767251+00:00",
+    "updated_at": "2026-02-20T17:32:42.767251+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989ae1b1d49b65765f8fc2"
+    },
+    "message_id": "msg_889125864d12",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Testing the new team chat feature! \ud83d\ude80",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:33:21.086205+00:00",
+    "updated_at": "2026-02-20T17:33:21.086205+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b406fb45fd18725003c"
+    },
+    "message_id": "msg_e5271acc43ff",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_message_10818e1b",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:34:56.871436+00:00",
+    "updated_at": "2026-02-20T17:34:56.871436+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b416fb45fd18725003d"
+    },
+    "message_id": "msg_d44832eb800b",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_edited_71e8b627",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": true,
+    "created_at": "2026-02-20T17:34:57.835096+00:00",
+    "updated_at": "2026-02-20T17:34:57.902712+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b426fb45fd18725003f"
+    },
+    "message_id": "msg_8aedc8f60f12",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_react_me_7374e317",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {
+      "\ud83d\udc4d": [
+        "user_94f29e283210"
+      ]
+    },
+    "is_edited": false,
+    "created_at": "2026-02-20T17:34:58.906453+00:00",
+    "updated_at": "2026-02-20T17:34:58.906453+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b436fb45fd187250040"
+    },
+    "message_id": "msg_1c8318cc9037",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_toggle_react_2647bfb3",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:34:59.414458+00:00",
+    "updated_at": "2026-02-20T17:34:59.414458+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b436fb45fd187250041"
+    },
+    "message_id": "msg_b4659ab8ac42",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_original_1678afda",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:34:59.957761+00:00",
+    "updated_at": "2026-02-20T17:34:59.957761+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b446fb45fd187250042"
+    },
+    "message_id": "msg_32d46a7c228c",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_reply_3b376241",
+    "mentions": [],
+    "reply_to": "msg_b4659ab8ac42",
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:35:00.028019+00:00",
+    "updated_at": "2026-02-20T17:35:00.028019+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b446fb45fd187250043"
+    },
+    "message_id": "msg_583daaf469ee",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_mention Hey @[Test User](user_94f29e283210) check this out!",
+    "mentions": [
+      "user_94f29e283210"
+    ],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:35:00.543235+00:00",
+    "updated_at": "2026-02-20T17:35:00.543235+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b446fb45fd187250044"
+    },
+    "message_id": "msg_8e8ffb1c9413",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_poll_message_ef45cc96",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:35:00.995968+00:00",
+    "updated_at": "2026-02-20T17:35:00.995968+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b6e6fb45fd187250045"
+    },
+    "message_id": "msg_95cf1980ecfc",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Playwright Test Message - 1506225.049558576",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:35:42.474982+00:00",
+    "updated_at": "2026-02-20T17:35:42.474982+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b936fb45fd187250047"
+    },
+    "message_id": "msg_e492085920e8",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "UI Test Message - 1771608979",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:36:19.203194+00:00",
+    "updated_at": "2026-02-20T17:36:19.203194+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bc26fb45fd187250048"
+    },
+    "message_id": "msg_6fae0de3eaa7",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Edit-Delete-Test-1771609025",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:06.042000+00:00",
+    "updated_at": "2026-02-20T17:37:06.042000+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd06fb45fd18725004a"
+    },
+    "message_id": "msg_bc1a3ca93450",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_message_a528de24",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:20.122983+00:00",
+    "updated_at": "2026-02-20T17:37:20.122983+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd16fb45fd18725004b"
+    },
+    "message_id": "msg_c01731f805ee",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_edited_44fb67ed",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": true,
+    "created_at": "2026-02-20T17:37:21.048599+00:00",
+    "updated_at": "2026-02-20T17:37:21.122556+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd26fb45fd18725004d"
+    },
+    "message_id": "msg_c0cd705d5a92",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_react_me_ceafa4c8",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {
+      "\ud83d\udc4d": [
+        "user_94f29e283210"
+      ]
+    },
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:22.542151+00:00",
+    "updated_at": "2026-02-20T17:37:22.542151+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd36fb45fd18725004e"
+    },
+    "message_id": "msg_f0268aacd92d",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_toggle_react_d8526d40",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:23.040744+00:00",
+    "updated_at": "2026-02-20T17:37:23.040744+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd36fb45fd18725004f"
+    },
+    "message_id": "msg_28adc470a4de",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_original_c9a4ee0e",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:23.617286+00:00",
+    "updated_at": "2026-02-20T17:37:23.617286+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd36fb45fd187250050"
+    },
+    "message_id": "msg_9533866489a8",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_reply_357a43b9",
+    "mentions": [],
+    "reply_to": "msg_28adc470a4de",
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:23.674214+00:00",
+    "updated_at": "2026-02-20T17:37:23.674214+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd46fb45fd187250051"
+    },
+    "message_id": "msg_ae46c4858e40",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_mention Hey @[Test User](user_94f29e283210) check this out!",
+    "mentions": [
+      "user_94f29e283210"
+    ],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:24.166871+00:00",
+    "updated_at": "2026-02-20T17:37:24.166871+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989bd46fb45fd187250052"
+    },
+    "message_id": "msg_f607e76278de",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "general",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_poll_message_fbc2642c",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:37:24.712402+00:00",
+    "updated_at": "2026-02-20T17:37:24.712402+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989d5dd2e24c46e0b3579c"
+    },
+    "message_id": "msg_56555f22ee34",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "lead_lead_6d6b2e2039b0",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Hey team, I just had a great call with John Doe. He seems very interested in our product!",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:43:57.153236+00:00",
+    "updated_at": "2026-02-20T17:43:57.153236+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989d75d2e24c46e0b3579e"
+    },
+    "message_id": "msg_609b6336903d",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "lead_lead_c93bca6a46a6",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Following up on our call - John mentioned budget approval in Q2.",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:44:21.969888+00:00",
+    "updated_at": "2026-02-20T17:44:21.969888+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989dd3432d994e021173a0"
+    },
+    "message_id": "msg_41d2a076e390",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "lead_lead_9ca9d85bb122",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_Message discussing lead lead_9ca9d85bb122",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:45:55.538677+00:00",
+    "updated_at": "2026-02-20T17:45:55.538677+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989dd3432d994e021173a1"
+    },
+    "message_id": "msg_1ebcb8a1d7a9",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "deal_deal_7bc01e0dd842",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "TEST_Message discussing deal deal_7bc01e0dd842",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:45:55.869024+00:00",
+    "updated_at": "2026-02-20T17:45:55.869024+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989e65432d994e021173a2"
+    },
+    "message_id": "msg_c98201a2aafa",
+    "organization_id": "org_18fe2a1045cb",
+    "channel_id": "deal_deal_7bc01e0dd842",
+    "sender_id": "user_94f29e283210",
+    "sender_name": "Test User",
+    "sender_picture": null,
+    "content": "Test message from contextual chat testing",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-02-20T17:48:21.604858+00:00",
+    "updated_at": "2026-02-20T17:48:21.604858+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c42477d72843d16286df68"
+    },
+    "message_id": "msg_ef82f151b03e",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Florian",
+    "sender_picture": null,
+    "content": "Test message via internal API",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-03-25T18:07:51.115428+00:00",
+    "updated_at": "2026-03-25T18:07:51.115428+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c424c408358ac42a5d73f6"
+    },
+    "message_id": "msg_8585b86b05d6",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Florian",
+    "sender_picture": null,
+    "content": "JWT auth message test",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-03-25T18:09:08.325220+00:00",
+    "updated_at": "2026-03-25T18:09:08.325220+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c424c608358ac42a5d73f7"
+    },
+    "message_id": "msg_7f7d15439623",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Verify Bot",
+    "content": "API key bot message test",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "is_bot": true,
+    "metadata": null,
+    "created_at": "2026-03-25T18:09:10.319687+00:00",
+    "updated_at": "2026-03-25T18:09:10.319687+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d5482ad8e8bb144daab243"
+    },
+    "message_id": "msg_d8122341acfb",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Audit Bot",
+    "content": "Test from automation audit",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "is_bot": true,
+    "metadata": null,
+    "created_at": "2026-04-07T18:08:42.318318+00:00",
+    "updated_at": "2026-04-07T18:08:42.318318+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d5482ad8e8bb144daab244"
+    },
+    "message_id": "msg_df68edde40a5",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Florian",
+    "sender_picture": null,
+    "content": "Test from JWT auth",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-04-07T18:08:42.523130+00:00",
+    "updated_at": "2026-04-07T18:08:42.523130+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d8bce31387f7d17df9a4f4"
+    },
+    "message_id": "msg_7b8a9e2aeefc",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Florian",
+    "sender_picture": null,
+    "content": "[Inbox Signal Leads] Test message",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-04-10T09:03:31.120908+00:00",
+    "updated_at": "2026-04-10T09:03:31.120908+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d8bce31387f7d17df9a4f5"
+    },
+    "message_id": "msg_0e70fa6c2270",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Florian",
+    "sender_picture": null,
+    "content": "Test simple",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-04-10T09:03:31.275029+00:00",
+    "updated_at": "2026-04-10T09:03:31.275029+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d8be27a11744c59b9a0155"
+    },
+    "message_id": "msg_7076c5c61914",
+    "organization_id": "org_d932cdbf37f8",
+    "channel_id": "general",
+    "sender_id": "user_976038f616e3",
+    "sender_name": "Florian",
+    "sender_picture": null,
+    "content": "[Inbox Signal Leads] Regression test",
+    "mentions": [],
+    "reply_to": null,
+    "attachments": [],
+    "reactions": {},
+    "is_edited": false,
+    "created_at": "2026-04-10T09:08:55.756400+00:00",
+    "updated_at": "2026-04-10T09:08:55.756400+00:00"
+  }
+]

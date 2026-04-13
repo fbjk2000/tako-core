@@ -1,0 +1,144 @@
+[
+  {
+    "_id": {
+      "$oid": "698608d33d395409cd0df037"
+    },
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Fintery Ltd",
+    "owner_id": "user_976038f616e3",
+    "plan": "free",
+    "user_count": 2,
+    "max_free_users": 3,
+    "created_at": "2026-02-06T15:29:23.552594+00:00",
+    "affiliate_enabled": true,
+    "updated_at": "2026-02-06T17:22:01.988897+00:00",
+    "deal_stages": [
+      {
+        "id": "lead",
+        "name": "Lead",
+        "order": 1
+      },
+      {
+        "id": "qualified",
+        "name": "Qualified",
+        "order": 2
+      },
+      {
+        "id": "proposal",
+        "name": "Proposal",
+        "order": 3
+      },
+      {
+        "id": "negotiation",
+        "name": "Negotiation",
+        "order": 4
+      },
+      {
+        "id": "won",
+        "name": "Won",
+        "order": 5
+      },
+      {
+        "id": "lost",
+        "name": "Lost",
+        "order": 6
+      },
+      {
+        "id": "custom_stage",
+        "name": "Custom Stage",
+        "order": 7
+      }
+    ],
+    "max_users": 25
+  },
+  {
+    "_id": {
+      "$oid": "698aae9e80ac55bd1a33f78d"
+    },
+    "organization_id": "org_f1e0631b6306",
+    "name": "ZBA",
+    "owner_id": "user_d387e8484ddb",
+    "plan": "free",
+    "user_count": 1,
+    "max_free_users": 3,
+    "created_at": "2026-02-10T04:05:50.530034+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699882757b9faf8424b5e7c6"
+    },
+    "organization_id": "org_a54bfdea6cb4",
+    "name": "Other Organization",
+    "owner_id": "user_f1f774f50b49",
+    "plan": "free",
+    "user_count": 1,
+    "max_free_users": 3,
+    "created_at": "2026-02-20T15:49:09.611594+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883717b9faf8424b5e7c9"
+    },
+    "organization_id": "org_d920abc6b585",
+    "name": "Test Organization 155321",
+    "owner_id": "user_9cd1d8b5d59f",
+    "plan": "free",
+    "user_count": 1,
+    "max_free_users": 3,
+    "created_at": "2026-02-20T15:53:21.367203+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998967b939d0873f09c74bb"
+    },
+    "organization_id": "org_18fe2a1045cb",
+    "name": "Test Org",
+    "owner_id": "user_94f29e283210",
+    "plan": "free",
+    "user_count": 2,
+    "max_free_users": 3,
+    "created_at": "2026-02-20T17:14:35.295953+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998aa38e6888218ebf7f69e"
+    },
+    "organization_id": "org_9f67aa4d01b4",
+    "name": "TEST_Org_5226d488",
+    "owner_id": "user_fac23f2a0b20",
+    "plan": "free",
+    "user_count": 1,
+    "max_free_users": 3,
+    "created_at": "2026-02-20T18:38:48.421400+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69bab5ae3ec3ecc9f936c1fe"
+    },
+    "organization_id": "org_7f0d0c96016b",
+    "name": "Free User's Workspace",
+    "owner_id": "user_bd114b12648b",
+    "plan": "free",
+    "user_count": 0,
+    "max_free_users": 3,
+    "max_users": 3,
+    "email_domain": "test.com",
+    "created_at": "2026-03-18T14:24:46.136240+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d12a112e50174be2be9547"
+    },
+    "organization_id": "org_0040f8724c8e",
+    "name": "Florian Kr\u00fcger's Workspace",
+    "owner_id": "user_d415b08f67f7",
+    "plan": "free",
+    "user_count": 1,
+    "max_free_users": 3,
+    "max_users": 3,
+    "email_domain": null,
+    "created_at": "2026-04-04T15:11:13.103897+00:00",
+    "affiliate_enabled": true,
+    "updated_at": "2026-04-04T15:59:48.477998+00:00"
+  }
+]

@@ -1,0 +1,269 @@
+[
+  {
+    "_id": {
+      "$oid": "69989ab4b1d49b65765f8fc0"
+    },
+    "channel_id": "general",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "General",
+    "description": "Team-wide discussions",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:32:36.442720+00:00",
+    "last_message_at": "2026-04-07T18:08:42.318318+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989b406fb45fd18725003b"
+    },
+    "channel_id": "channel_f5cf05a5f916",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "TEST_channel_a4041a9d",
+    "description": "Test channel description",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:34:56.384916+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69989b716fb45fd187250046"
+    },
+    "channel_id": "channel_2642a801005f",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "test-playwright-channel",
+    "description": "",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:35:45.467682+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69989bcf6fb45fd187250049"
+    },
+    "channel_id": "channel_bca013747d10",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "TEST_channel_39608820",
+    "description": "Test channel description",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:37:19.594767+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69989d56d2e24c46e0b3579b"
+    },
+    "channel_id": "lead_lead_6d6b2e2039b0",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "John Doe",
+    "description": "Discussion about lead: John Doe",
+    "channel_type": "lead",
+    "related_id": "lead_6d6b2e2039b0",
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:43:50.320519+00:00",
+    "last_message_at": "2026-02-20T17:43:57.153236+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989d73d2e24c46e0b3579d"
+    },
+    "channel_id": "lead_lead_c93bca6a46a6",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "TEST_John Doe",
+    "description": "Discussion about lead: TEST_John Doe",
+    "channel_type": "lead",
+    "related_id": "lead_c93bca6a46a6",
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:44:19.051412+00:00",
+    "last_message_at": "2026-02-20T17:44:21.969888+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989d84d2e24c46e0b357a0"
+    },
+    "channel_id": "deal_deal_7fc9262c0cb0",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "Enterprise Contract",
+    "description": "Discussion about deal: Enterprise Contract",
+    "channel_type": "deal",
+    "related_id": "deal_7fc9262c0cb0",
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:44:36.392312+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69989dd2432d994e0211739c"
+    },
+    "channel_id": "lead_lead_9ca9d85bb122",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "TEST_John ChatLead",
+    "description": "Discussion about lead: TEST_John ChatLead",
+    "channel_type": "lead",
+    "related_id": "lead_9ca9d85bb122",
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:45:54.436339+00:00",
+    "last_message_at": "2026-02-20T17:45:55.538677+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989dd3432d994e0211739f"
+    },
+    "channel_id": "deal_deal_7bc01e0dd842",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "TEST_Deal_Chat_dfbb3f",
+    "description": "Discussion about deal: TEST_Deal_Chat_dfbb3f",
+    "channel_type": "deal",
+    "related_id": "deal_7bc01e0dd842",
+    "members": [],
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:45:55.174061+00:00",
+    "last_message_at": "2026-02-20T17:48:21.604858+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699a58b4de950225de659fde"
+    },
+    "channel_id": "general",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "General",
+    "description": "Team-wide discussions",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T01:15:32.992209+00:00",
+    "last_message_at": "2026-04-10T09:08:55.756400+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699a591f878fa9b2a264d369"
+    },
+    "channel_id": "channel_7129d55579e9",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "test_archive_4dfa64",
+    "description": "Test channel for archiving",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T01:17:19.170196+00:00",
+    "last_message_at": null,
+    "archived": true,
+    "archived_at": "2026-02-22T01:17:19.271561+00:00",
+    "archived_by": "user_976038f616e3"
+  },
+  {
+    "_id": {
+      "$oid": "699a591f878fa9b2a264d36a"
+    },
+    "channel_id": "channel_f11a7e6ac8d7",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "test_hidden_b13462",
+    "description": "Should be hidden after archive",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T01:17:19.383115+00:00",
+    "last_message_at": null,
+    "archived": true,
+    "archived_at": "2026-02-22T01:17:19.491390+00:00",
+    "archived_by": "user_976038f616e3"
+  },
+  {
+    "_id": {
+      "$oid": "699a591f878fa9b2a264d36b"
+    },
+    "channel_id": "lead_lead_f851313645cd",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "TEST_ConvertDeal_872671 WithDeal",
+    "description": "Discussion about lead: TEST_ConvertDeal_872671 WithDeal",
+    "channel_type": "lead",
+    "related_id": "lead_f851313645cd",
+    "members": [],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T01:17:19.824200+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69c1202324f4ba2d96e7a39f"
+    },
+    "channel_id": "proj_chat_proj_9a869bb4c43c",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Project: Q2 Enterprise Onboarding",
+    "description": "Discussion for project Q2 Enterprise Onboarding",
+    "channel_type": "project",
+    "related_id": "proj_9a869bb4c43c",
+    "members": [
+      "user_976038f616e3"
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-23T11:12:35.618659+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69c3bfc53a9faec787655a6b"
+    },
+    "channel_id": "ch_47be159b55fc",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Bot Testing",
+    "description": "Channel for AI agent testing",
+    "channel_type": "general",
+    "related_id": null,
+    "members": [
+      "user_976038f616e3"
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-25T10:58:13.059549+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69d4cf2573fcef71417057a0"
+    },
+    "channel_id": "channel_048d5811f298",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Lead: Test",
+    "description": null,
+    "channel_type": "lead",
+    "related_id": "lead_16b923f374e7",
+    "members": [],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-07T09:32:21.993284+00:00",
+    "last_message_at": null
+  },
+  {
+    "_id": {
+      "$oid": "69d5482fd8e8bb144daab245"
+    },
+    "channel_id": "ch_ee161d75cef4",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Automation Test",
+    "description": null,
+    "channel_type": "general",
+    "related_id": null,
+    "members": [
+      "user_976038f616e3"
+    ],
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-07T18:08:47.302205+00:00",
+    "last_message_at": null
+  }
+]

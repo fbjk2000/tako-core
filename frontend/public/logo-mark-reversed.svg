@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 92 92" width="92" height="92" role="img" aria-label="earnrm mark reversed">
+  <g fill="none" stroke-linecap="round" stroke-width="8.5" shape-rendering="geometricPrecision">
+    <line x1="18" y1="17" x2="52" y2="17" stroke="#FFFFFF" stroke-opacity="0.95"/>
+    <line x1="18" y1="17" x2="18" y2="79" stroke="#FFFFFF" stroke-opacity="0.95"/>
+    <path d="M18 79 Q36 79 57 75" stroke="#FFFFFF" stroke-opacity="0.95"/>
+    <line x1="18" y1="48" x2="67" y2="48" stroke="#D4A853"/>
+  </g>
+  <circle cx="67" cy="48" r="6.5" fill="#D4A853"/>
+</svg>

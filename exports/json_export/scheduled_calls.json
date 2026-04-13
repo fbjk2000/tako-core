@@ -1,0 +1,142 @@
+[
+  {
+    "_id": {
+      "$oid": "6999085f671e5323cdec52e1"
+    },
+    "schedule_id": "b124343c-b4f0-40d5-a6b0-8649951af7d9",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-21T03:20:30.996154+00:00",
+    "reminder_at": "2026-02-21T03:05:30.996154+00:00",
+    "reminder_minutes": 15,
+    "reminder_sent": true,
+    "notes": "Discuss pricing options",
+    "status": "scheduled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:20:31.108835+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699908c08ab6d4827c312d8a"
+    },
+    "schedule_id": "54fdd1f4-245d-4498-ac11-1b35c77ca92a",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-21T04:22:07.930866+00:00",
+    "reminder_at": "2026-02-21T03:52:07.930866+00:00",
+    "reminder_minutes": 30,
+    "reminder_sent": true,
+    "notes": "Test scheduling",
+    "status": "scheduled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:22:08.029894+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6999093eb0731b3600d3eb06"
+    },
+    "schedule_id": "042abcf0-ae63-4761-b00c-bfdb76907d18",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-23T01:24:14.735547+00:00",
+    "reminder_at": "2026-02-23T00:24:14.735547+00:00",
+    "reminder_minutes": 60,
+    "reminder_sent": true,
+    "notes": "Updated test notes for call",
+    "status": "scheduled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:24:14.338682+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6999093fb0731b3600d3eb07"
+    },
+    "schedule_id": "a9c49b99-635e-402e-9b0a-226362d85272",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-24T01:24:15.400046+00:00",
+    "reminder_at": "2026-02-24T01:09:15.400046+00:00",
+    "reminder_minutes": 15,
+    "reminder_sent": false,
+    "notes": "Test call to delete",
+    "status": "cancelled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:24:15.500535+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6999093fb0731b3600d3eb08"
+    },
+    "schedule_id": "6a798349-b60c-47bd-9579-3d455cdec58f",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-22T13:24:15.875694+00:00",
+    "reminder_at": "2026-02-22T13:09:15.875694+00:00",
+    "reminder_minutes": 15,
+    "reminder_sent": false,
+    "notes": "TEST_Persistence check",
+    "status": "cancelled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:24:15.970806+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69990940b0731b3600d3eb09"
+    },
+    "schedule_id": "bf692b1a-2453-4e85-bd65-684422706256",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-22T02:24:16.224392+00:00",
+    "reminder_at": "2026-02-22T01:39:16.224392+00:00",
+    "reminder_minutes": 45,
+    "reminder_sent": false,
+    "notes": "TEST_Field persistence test notes",
+    "status": "cancelled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:24:16.313244+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69990abeb0731b3600d3eb0a"
+    },
+    "schedule_id": "5aebb020-b423-44e8-93af-f79f7f249d69",
+    "organization_id": "org_d932cdbf37f8",
+    "lead_id": "lead_5b88f995ea51",
+    "lead_name": "John155321 Doe155321",
+    "lead_phone": "+1234567890",
+    "lead_company": "Test Company 155321",
+    "scheduled_at": "2026-02-24T10:00:00+00:00",
+    "reminder_at": "2026-02-24T09:45:00+00:00",
+    "reminder_minutes": 15,
+    "reminder_sent": true,
+    "notes": "TEST_Z-index fixed - scheduled via UI",
+    "status": "scheduled",
+    "created_by": "user_976038f616e3",
+    "created_by_name": "Florian",
+    "created_at": "2026-02-21T01:30:38.901117+00:00"
+  }
+]

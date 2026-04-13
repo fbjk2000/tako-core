@@ -1,0 +1,367 @@
+[
+  {
+    "_id": {
+      "$oid": "698aaece80ac55bd1a33f78e"
+    },
+    "deal_id": "deal_edd304e4877e",
+    "organization_id": "org_f1e0631b6306",
+    "name": "Tanya",
+    "value": 2500.0,
+    "currency": "EUR",
+    "stage": "negotiation",
+    "probability": 70,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [
+      "skincare"
+    ],
+    "notes": "",
+    "assigned_to": "user_d387e8484ddb",
+    "created_by": "user_d387e8484ddb",
+    "created_at": "2026-02-10T04:06:38.525729+00:00",
+    "updated_at": "2026-02-10T04:06:38.525729+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699883737b9faf8424b5e7cf"
+    },
+    "deal_id": "deal_ead49bcd85e8",
+    "organization_id": "org_d920abc6b585",
+    "name": "Test Deal 155323",
+    "value": 5000.0,
+    "currency": "EUR",
+    "stage": "lead",
+    "probability": 20,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": "Test deal created by test_user",
+    "assigned_to": "user_9cd1d8b5d59f",
+    "created_by": "user_9cd1d8b5d59f",
+    "created_at": "2026-02-20T15:53:23.236768+00:00",
+    "updated_at": "2026-02-20T15:53:23.236768+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998853f29b05f22a5546342"
+    },
+    "deal_id": "deal_47013543f19c",
+    "organization_id": "org_a54bfdea6cb4",
+    "name": "Simple Deal",
+    "value": 5000.0,
+    "currency": "EUR",
+    "stage": "lead",
+    "probability": 0,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_f1f774f50b49",
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:03.021870+00:00",
+    "updated_at": "2026-02-20T16:01:03.021870+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998855029b05f22a5546344"
+    },
+    "deal_id": "deal_5760317da6ff",
+    "organization_id": "org_a54bfdea6cb4",
+    "name": "Final Deal",
+    "value": 25000.0,
+    "currency": "EUR",
+    "stage": "qualified",
+    "probability": 0,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_f1f774f50b49",
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:20.631656+00:00",
+    "updated_at": "2026-02-20T16:01:20.631656+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6998855029b05f22a5546345"
+    },
+    "deal_id": "deal_e10f8fcae78b",
+    "organization_id": "org_a54bfdea6cb4",
+    "name": "Deal With Task",
+    "value": 50000.0,
+    "currency": "EUR",
+    "stage": "proposal",
+    "probability": 0,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_f1f774f50b49",
+    "created_by": "user_f1f774f50b49",
+    "created_at": "2026-02-20T16:01:20.899712+00:00",
+    "updated_at": "2026-02-20T16:01:20.899712+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989d84d2e24c46e0b3579f"
+    },
+    "deal_id": "deal_7fc9262c0cb0",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "Enterprise Contract",
+    "value": 50000.0,
+    "currency": "EUR",
+    "stage": "proposal",
+    "probability": 60,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_94f29e283210",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:44:36.189817+00:00",
+    "updated_at": "2026-02-20T17:44:36.189817+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69989dd3432d994e0211739d"
+    },
+    "deal_id": "deal_7bc01e0dd842",
+    "organization_id": "org_18fe2a1045cb",
+    "name": "TEST_Deal_Chat_dfbb3f",
+    "value": 50000.0,
+    "currency": "EUR",
+    "stage": "qualified",
+    "probability": 50,
+    "lead_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_94f29e283210",
+    "created_by": "user_94f29e283210",
+    "created_at": "2026-02-20T17:45:55.041797+00:00",
+    "updated_at": "2026-02-20T17:45:55.041797+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad916a0325f123409b7d1"
+    },
+    "deal_id": "deal_3c1743eefa6f",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Deal with Lead Link Test",
+    "value": 5000.0,
+    "currency": "EUR",
+    "stage": "lead",
+    "probability": 0,
+    "lead_id": "lead_c0fd659212f6",
+    "contact_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:23:18.655617+00:00",
+    "updated_at": "2026-02-22T10:23:18.655617+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad916a0325f123409b7d3"
+    },
+    "deal_id": "deal_93d4dd0a5d98",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Deal with Contact Link Test",
+    "value": 10000.0,
+    "currency": "EUR",
+    "stage": "qualified",
+    "probability": 0,
+    "lead_id": null,
+    "contact_id": "contact_43e27e4418c4",
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:23:18.983742+00:00",
+    "updated_at": "2026-02-22T10:23:18.983742+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad917a0325f123409b7d5"
+    },
+    "deal_id": "deal_2628a27cdf71",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Deal with Company Link Test",
+    "value": 15000.0,
+    "currency": "EUR",
+    "stage": "proposal",
+    "probability": 0,
+    "lead_id": null,
+    "contact_id": null,
+    "company_id": "company_6c0139294bf2",
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:23:19.317486+00:00",
+    "updated_at": "2026-02-22T10:23:19.317486+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad956d6da696aeff6490d"
+    },
+    "deal_id": "deal_5488ecbf395b",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Deal with Lead Link Test",
+    "value": 5000.0,
+    "currency": "EUR",
+    "stage": "lead",
+    "probability": 0,
+    "lead_id": "lead_c0fd659212f6",
+    "contact_id": null,
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:24:22.188865+00:00",
+    "updated_at": "2026-02-22T10:24:22.188865+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad956d6da696aeff6490f"
+    },
+    "deal_id": "deal_8ffd6427ac13",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Deal with Contact Link Test",
+    "value": 10000.0,
+    "currency": "EUR",
+    "stage": "qualified",
+    "probability": 0,
+    "lead_id": null,
+    "contact_id": "contact_548c9a6f27d3",
+    "company_id": null,
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:24:22.496227+00:00",
+    "updated_at": "2026-02-22T10:24:22.496227+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699ad956d6da696aeff64911"
+    },
+    "deal_id": "deal_ee6751eef1eb",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Deal with Company Link Test",
+    "value": 15000.0,
+    "currency": "EUR",
+    "stage": "proposal",
+    "probability": 0,
+    "lead_id": null,
+    "contact_id": null,
+    "company_id": "company_6c0139294bf2",
+    "expected_close_date": null,
+    "tags": [],
+    "notes": null,
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-02-22T10:24:22.829158+00:00",
+    "updated_at": "2026-02-22T10:24:22.829158+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c430fc5020cd382064e417"
+    },
+    "deal_id": "deal_1732a0f33959",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Launch Edition: Test Buyer",
+    "value": 4999.0,
+    "currency": "EUR",
+    "stage": "negotiation",
+    "probability": 60,
+    "tags": [
+      "launch-edition",
+      "one-time"
+    ],
+    "notes": "Buyer: Test Buyer (test@buyer.com). Checkout initiated.",
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-25T19:01:16.841155+00:00",
+    "updated_at": "2026-03-25T19:01:16.841155+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c431075020cd382064e41a"
+    },
+    "deal_id": "deal_b65016247afa",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Launch Edition: Test Buyer",
+    "value": 4999.0,
+    "currency": "EUR",
+    "stage": "negotiation",
+    "probability": 60,
+    "tags": [
+      "launch-edition",
+      "one-time"
+    ],
+    "notes": "Buyer: Test Buyer (test@buyer.com). Checkout initiated.",
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-25T19:01:27.698849+00:00",
+    "updated_at": "2026-03-25T19:01:27.698849+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c431534d5e03cdad5f96ee"
+    },
+    "deal_id": "deal_3513382544c1",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Launch Edition: Test Buyer",
+    "value": 4999.0,
+    "currency": "EUR",
+    "stage": "negotiation",
+    "probability": 60,
+    "tags": [
+      "launch-edition",
+      "one-time"
+    ],
+    "notes": "Buyer: Test Buyer (test@buyer.com). Checkout initiated.",
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-25T19:02:43.103922+00:00",
+    "updated_at": "2026-03-25T19:02:43.103922+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69cd4b7b954fe45f9a7c2266"
+    },
+    "deal_id": "deal_1eaabff85f2f",
+    "organization_id": "org_d932cdbf37f8",
+    "name": "Launch Edition (UNYT): Test Buyer",
+    "value": 4999.0,
+    "currency": "EUR",
+    "stage": "negotiation",
+    "probability": 60,
+    "tags": [
+      "launch-edition",
+      "unyt-payment"
+    ],
+    "notes": "Buyer: Test Buyer (test@unyt.shop). Wallet: 0x1234567890abcdef. UNYT payment: 9998 UNYT.",
+    "assigned_to": "user_976038f616e3",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-01T16:44:43.005359+00:00",
+    "updated_at": "2026-04-01T16:44:43.005359+00:00"
+  }
+]

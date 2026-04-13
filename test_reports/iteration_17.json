@@ -1,0 +1,99 @@
+{
+  "summary": "All bug fixes and new features verified successfully. (1) Stripe cancel_url correctly redirects to /settings instead of /pricing - verified in backend code at lines 2453 and 3434. (2) Affiliate section shows 'Embed Code for Your Website / CMS' with copyable HTML embed code containing user's referral link. (3) Social Media Assets section shows 3 downloadable images (Banner 1536x1024, Story 1024x1536, Square 1024x1024). (4) All Settings tabs present (Profile, Organization, Team & Invites, Billing & Invoices, Integrations, Mobile App). (5) Support page works inside DashboardLayout when logged in.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Bug Fix: Stripe cancel_url now redirects to /settings?payment=cancelled (verified in server.py lines 2453 and 3434)",
+    "Feature: Affiliate section shows 'Embed Code for Your Website / CMS' title",
+    "Feature: Affiliate embed code is displayed in a code block with data-testid='affiliate-embed-code'",
+    "Feature: Embed code contains user's referral link (https://earnrm.com/signup?ref=florian_edb3d2)",
+    "Feature: Copy embed button present with data-testid='copy-embed-btn'",
+    "Feature: Social Media Assets section title visible",
+    "Feature: Download asset button 0 (Banner 1536x1024) present with data-testid='download-asset-0'",
+    "Feature: Download asset button 1 (Story 1024x1536) present with data-testid='download-asset-1'",
+    "Feature: Download asset button 2 (Square 1024x1024) present with data-testid='download-asset-2'",
+    "Regression: Settings page 'Profile' tab present",
+    "Regression: Settings page 'Organization' tab present",
+    "Regression: Settings page 'Team & Invites' tab present",
+    "Regression: Settings page 'Billing & Invoices' tab present",
+    "Regression: Settings page 'Integrations' tab present",
+    "Regression: Settings page 'Mobile App' tab present",
+    "Regression: Support page renders inside DashboardLayout when logged in (sidebar visible)",
+    "Regression: User session intact when navigating to Support page (email visible in sidebar)"
+  ],
+
+  "test_report_links": [
+    "/app/test_reports/iteration_17.json"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "100% (Stripe cancel_url fix verified in code)",
+    "frontend": "100% (All affiliate features working, all Settings tabs present, Support page regression passed)"
+  },
+
+  "test_credentials": {
+    "email": "florian@unyted.world",
+    "password": "DavidConstantin18"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "User florian@unyted.world is enrolled as affiliate with code 'florian_edb3d2'. Affiliate program is enabled for their organization. Settings page has 6 tabs. Support page uses DashboardLayout when logged in. Stripe cancel_url redirects to /settings?payment=cancelled.",
+
+  "features_verified": {
+    "stripe_cancel_url_fix": {
+      "status": "FIXED",
+      "old_behavior": "Redirected to /pricing (public page, caused logout)",
+      "new_behavior": "Redirects to /settings?payment=cancelled (protected page, user stays logged in)",
+      "code_locations": ["server.py line 2453", "server.py line 3434"]
+    },
+    "affiliate_embed_code": {
+      "status": "WORKING",
+      "elements": [
+        "Title: 'Embed Code for Your Website / CMS'",
+        "Description about copying HTML",
+        "Code block with HTML embed (data-testid='affiliate-embed-code')",
+        "Copy button (data-testid='copy-embed-btn')",
+        "Embed code includes user's referral link"
+      ]
+    },
+    "social_media_assets": {
+      "status": "WORKING",
+      "elements": [
+        "Title: 'Social Media Assets'",
+        "3 image cards with previews",
+        "Banner (1536x1024) - Facebook, LinkedIn, X",
+        "Story (1024x1536) - Instagram, TikTok",
+        "Square (1024x1024) - Instagram, LinkedIn",
+        "Download links with data-testid='download-asset-0/1/2'"
+      ]
+    },
+    "settings_tabs_regression": {
+      "status": "WORKING",
+      "tabs": ["Profile", "Organization", "Team & Invites", "Billing & Invoices", "Integrations", "Mobile App"]
+    },
+    "support_page_regression": {
+      "status": "WORKING",
+      "behavior": "Renders inside DashboardLayout with sidebar when user is logged in"
+    }
+  }
+}

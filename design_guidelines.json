@@ -1,0 +1,152 @@
+{
+  "theme": "light",
+  "archetype": "ORGANIC & EARTHY + SWISS & HIGH-CONTRAST (European Craft)",
+  "typography": {
+    "headings": {
+      "family": "'Syne', sans-serif",
+      "weights": ["400", "500", "600", "700", "800"],
+      "styling": "tracking-tight leading-none text-[#0F0A1E]"
+    },
+    "body": {
+      "family": "'DM Sans', sans-serif",
+      "weights": ["400", "500", "700"],
+      "styling": "leading-relaxed text-[#0F0A1E]/80"
+    },
+    "labels_overlines": "tracking-[0.2em] uppercase text-xs font-semibold text-[#0F0A1E]/60",
+    "anti_patterns": [
+      "No long dashes in copy (avoid AI-generated look)",
+      "No Inter or generic sans for headings"
+    ]
+  },
+  "colors": {
+    "background": {
+      "DEFAULT": "#FAFAF8",
+      "description": "Warm off-white for main page backgrounds. Not cold blue-gray."
+    },
+    "text": {
+      "DEFAULT": "#0F0A1E",
+      "muted": "#0F0A1E/70",
+      "description": "Ink dark for primary text."
+    },
+    "primary": {
+      "DEFAULT": "#3B0764",
+      "description": "Primary aubergine for major sections or brand moments."
+    },
+    "accent": {
+      "DEFAULT": "#7C3AED",
+      "description": "CTA purple. Functional, used strictly for conversion buttons and primary links. No decorative overload."
+    },
+    "highlight": {
+      "DEFAULT": "#D4A853",
+      "description": "Gold accent. Only for premium accents and highlights (e.g., active states, small borders, premium badge)."
+    },
+    "anti_patterns": [
+      "No flashy gradients",
+      "No neon",
+      "No glassmorphism muddy gray transparency"
+    ]
+  },
+  "visual_enhancers": {
+    "borders": "1px solid border-[#0F0A1E]/10. Crisp and minimal.",
+    "shadows": "Very light elevation. shadow-sm or none. Avoid heavy or muddy shadows.",
+    "textures": "Subtle noise or paper grain if any. Clean European craft.",
+    "anti_patterns": [
+      "No cartoon illustrations",
+      "No glassmorphism overlays",
+      "No transparent dropdown/header backgrounds"
+    ]
+  },
+  "layouts": {
+    "strategy": "Swiss Grid combined with Bento grids.",
+    "spacing": "Generous spacing. p-8, p-12, py-24, py-32.",
+    "alignment": "Left-align paragraphs, inputs, and dense content for readability. Center align only high-impact hero headings if it improves balance, but generally prefer asymmetrical or editorial left-aligned structures.",
+    "sections": {
+      "hero": "Editorial and product-led. Large Syne typography. Real product mockup or clean architectural/office aesthetic.",
+      "trust_strip": "High contrast, subdued grayscale logos with wide spacing (gap-12 to gap-24).",
+      "feature_grid": "Bento layout (MODE A). Mix of square and tall cards. Minimal borders, warm backgrounds.",
+      "product_preview": "Crisp UI mockups over solid background. No glassmorphism wrappers.",
+      "testimonials": "Editorial portrait style. Clean quotes, serif or Syne for quotes.",
+      "pricing": "Minimalist cards, clear hierarchy. Gold highlight for the premium tier."
+    }
+  },
+  "components": {
+    "cards": "Crisp, minimal, lightly elevated. border border-[#0F0A1E]/10 bg-white. No heavy shadow.",
+    "buttons": "Pill-shaped or sharp rectangles. bg-[#7C3AED] hover:bg-[#6D28D9] text-white transition-colors duration-200. Gold text for premium tier CTAs if necessary.",
+    "navigation": "Solid background bg-[#FAFAF8] border-b border-[#0F0A1E]/10. NO TRANSPARENT/GLASSMORPHISM.",
+    "inputs": "Shadcn based. border-[#0F0A1E]/20 focus:border-[#7C3AED] focus:ring-[#7C3AED]/20."
+  },
+  "motion": {
+    "rules": [
+      "Subtle micro-interactions on hover (e.g., -translate-y-1, border color change).",
+      "No wild bouncing or bouncy spring animations.",
+      "Staggered fade-up for feature grids using framer-motion or standard CSS."
+    ]
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1629507313712-f21468afdf2e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHwyfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDB8fHx8MTc3NDQ0MzAwOHww&ixlib=rb-4.1.0&q=85",
+        "description": "Professional woman in black",
+        "category": "testimonials"
+      },
+      {
+        "url": "https://images.pexels.com/photos/33871730/pexels-photo-33871730.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Businesswoman in hijab",
+        "category": "testimonials"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1758599543154-76ec1c4257df?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHw0fHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDB8fHx8MTc3NDQ0MzAwOHww&ixlib=rb-4.1.0&q=85",
+        "description": "Man with glasses",
+        "category": "testimonials"
+      },
+      {
+        "url": "https://images.pexels.com/photos/5511093/pexels-photo-5511093.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Bright modern office hallway",
+        "category": "hero_background_or_mood"
+      }
+    ],
+    "logos": [
+      {
+        "url": "/logo-horizontal.svg",
+        "description": "Main horizontal logo for nav (light backgrounds)"
+      },
+      {
+        "url": "/logo-horizontal-reversed.svg",
+        "description": "Reversed horizontal logo for dark sections (if any)"
+      },
+      {
+        "url": "/logo-mark.svg",
+        "description": "Favicon or small mark"
+      }
+    ]
+  },
+  "3d_libraries": {
+    "recommendation": "None. Keep it 2D, precise, and crisp to match European B2B SaaS aesthetics."
+  },
+  "accessibility": {
+    "contrast": "Ensure Ink dark (#0F0A1E) on Warm off-white (#FAFAF8) for all body text. White text on CTA purple (#7C3AED) or primary aubergine (#3B0764).",
+    "focus": "Use focus-visible ring for keyboard navigation. outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF8]",
+    "testing_attributes": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., `data-testid=\"hero-cta-button\"`)."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed.",
+    "Examine existing components to understand the project's component patterns before creating new ones.",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use sonner for toasts, component located in /app/frontend/src/components/ui/sonner.jsx or similar path."
+  ],
+  "instructions_to_main_agent": "Redesign /app/frontend/src/pages/LandingPage.jsx. Remove any glassmorphism, muddy gray backgrounds, or transparent header/dropdowns. Implement the warm off-white (#FAFAF8) background. Inject Google Font CDNs for Syne and DM Sans into public/index.html or the main CSS file. Replace the existing hero, trust strip, feature grid, testimonials, and pricing with the defined editorial, premium European craft aesthetic (think Revolut, Linear, Pitch, Personio). Strictly adhere to the anti-patterns: no gradients, no neon, no cartoon illustrations. Cards should be crisp, minimal, lightly elevated (shadow-sm, not heavy). Use Gold (#D4A853) only as a premium accent. Purple (#7C3AED) is functional for CTA, while Aubergine (#3B0764) is for brand depth. Ensure all interactive elements have data-testid attributes."
+}

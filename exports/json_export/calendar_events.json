@@ -1,0 +1,61 @@
+[
+  {
+    "_id": {
+      "$oid": "69c1252e6437964f57ef9723"
+    },
+    "event_id": "evt_0aeed75cc7ae",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Team Meeting",
+    "date": "2026-03-25T14:00:00Z",
+    "notes": "Weekly sync",
+    "color": "#A100FF",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-23T11:34:06.780858+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69c3bca885809faf7e49cdfe"
+    },
+    "event_id": "evt_dd1a7f7dbe0e",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Meeting: Test Client",
+    "date": "2026-03-25T10:00:00+00:00",
+    "notes": "Booked by Test Client (test@client.com) - Demo call",
+    "color": "#A100FF",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-03-25T10:44:56.898077+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d7918a4d2a9810ba004695"
+    },
+    "event_id": "evt_890e47a4b8fb",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Test Event",
+    "date": "2026-04-10T14:00:00Z",
+    "notes": "Testing",
+    "color": "#A100FF",
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-09T11:46:18.431345+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69d8f559b5dc431418bd8632"
+    },
+    "event_id": "evt_2b3830ee6017",
+    "organization_id": "org_d932cdbf37f8",
+    "title": "Updated Strategy Meeting",
+    "date": "2026-04-15T10:00:00Z",
+    "end_date": "2026-04-15T11:30:00Z",
+    "notes": "Q2 planning with full team",
+    "color": "#A100FF",
+    "linked_type": null,
+    "linked_id": null,
+    "created_by": "user_976038f616e3",
+    "created_at": "2026-04-10T13:04:25.157628+00:00",
+    "updated_at": "2026-04-10T13:04:25.318086+00:00",
+    "invitees": [
+      "test@example.com"
+    ]
+  }
+]
