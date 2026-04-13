@@ -624,6 +624,76 @@ async def require_super_admin(current_user: dict = Depends(get_current_user)) ->
         raise HTTPException(status_code=403, detail="Super admin access required")
     return current_user
 
+# ==================== TAKO AI (Claude) ====================
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+# Internal domains and emails that get free AI via TAKO's Anthropic key
+_TAKO_INTERNAL_DOMAINS = {
+    "fintery.com", "tako.software", "aios.dev", "unyted.world",
+    "unyted.chat", "openclaw.com", "floriankrueger.com",
+}
+_TAKO_INTERNAL_EMAILS = {
+    "fbjk2000@gmail.com", "fbjk2000ai@gmail.com",
+    "florian@floriankrueger.com", "florian@unyted.world",
+}
+
+def _is_internal_user(email: str) -> bool:
+    """Check if user is part of TAKO's internal team"""
+    if not email:
+        return False
+    email_lower = email.lower().strip()
+    if email_lower in _TAKO_INTERNAL_EMAILS:
+        return True
+    domain = email_lower.split("@")[-1]
+    return domain in _TAKO_INTERNAL_DOMAINS
+
+async def tako_ai_text(system_prompt: str, user_prompt: str, user_email: str = "") -> str:
+    """Send a text-only request to Claude. Returns the response text.
+    Raises HTTPException if user has no AI access."""
+    import anthropic
+
+    api_key = ANTHROPIC_API_KEY
+    if not _is_internal_user(user_email):
+        # Future: look up org-level API key from DB
+        raise HTTPException(status_code=403, detail="AI features require an LLM API key. Contact your admin to configure one.")
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI not configured — ANTHROPIC_API_KEY missing")
+
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    message = await client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    return message.content[0].text
+
+async def tako_ai_vision(system_prompt: str, user_prompt: str, image_b64: str, media_type: str = "image/jpeg", user_email: str = "") -> str:
+    """Send an image + text request to Claude. Returns the response text."""
+    import anthropic
+
+    api_key = ANTHROPIC_API_KEY
+    if not _is_internal_user(user_email):
+        raise HTTPException(status_code=403, detail="AI features require an LLM API key. Contact your admin to configure one.")
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI not configured — ANTHROPIC_API_KEY missing")
+
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    message = await client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=system_prompt,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+            {"type": "text", "text": user_prompt},
+        ]}],
+    )
+    return message.content[0].text
+
+
 # ==================== AUTH ROUTES ====================
 
 async def ensure_user_org(current_user: dict) -> str:
@@ -3139,15 +3209,6 @@ async def score_lead(lead_id: str, current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Lead not found")
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"lead_scoring_{lead_id}",
-            system_message="You are a lead scoring AI. Analyze lead data and return a score from 1-100 based on their potential value. Return ONLY a number."
-        ).with_model("openai", "gpt-5.2")
-        
         lead_info = f"""
         Name: {lead.get('first_name', '')} {lead.get('last_name', '')}
         Company: {lead.get('company', 'Unknown')}
@@ -3156,9 +3217,12 @@ async def score_lead(lead_id: str, current_user: dict = Depends(get_current_user
         LinkedIn: {lead.get('linkedin_url', 'Not provided')}
         Source: {lead.get('source', 'Unknown')}
         """
-        
-        user_message = UserMessage(text=f"Score this lead (return only a number 1-100):\n{lead_info}")
-        response = await chat.send_message(user_message)
+
+        response = await tako_ai_text(
+            "You are a lead scoring AI. Analyze lead data and return a score from 1-100 based on their potential value. Return ONLY a number.",
+            f"Score this lead (return only a number 1-100):\n{lead_info}",
+            user_email=current_user.get("email", "")
+        )
         
         try:
             score = int(response.strip())
@@ -3187,13 +3251,17 @@ async def enrich_lead(lead_id: str, current_user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Lead not found")
 
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        lead_info = f"""Lead to enrich:
+- Name: {lead.get('first_name','')} {lead.get('last_name','')}
+- Email: {lead.get('email','Not provided')}
+- Company: {lead.get('company','Not provided')}
+- Job Title: {lead.get('job_title','Not provided')}
+- Phone: {lead.get('phone','Not provided')}
+- LinkedIn: {lead.get('linkedin_url','Not provided')}
+- Source: {lead.get('source','Unknown')}"""
 
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"enrich_{lead_id}",
-            system_message="""You are a B2B lead enrichment AI. Based on available lead info, generate realistic and plausible enrichment data. Return ONLY a JSON object with these fields (use null if you truly cannot infer):
+        response = await tako_ai_text(
+            """You are a B2B lead enrichment AI. Based on available lead info, generate realistic and plausible enrichment data. Return ONLY a JSON object with these fields (use null if you truly cannot infer):
 - company_description: brief company description (1-2 sentences)
 - industry: company industry
 - company_size: estimated employee count range (e.g. "11-50", "51-200")
@@ -3205,19 +3273,10 @@ async def enrich_lead(lead_id: str, current_user: dict = Depends(get_current_use
 - technologies: array of likely tech stack used
 - interests: array of likely business interests
 - recommended_approach: 1-2 sentence sales approach recommendation
-Return ONLY valid JSON, no markdown."""
-        ).with_model("openai", "gpt-5.2")
-
-        lead_info = f"""Lead to enrich:
-- Name: {lead.get('first_name','')} {lead.get('last_name','')}
-- Email: {lead.get('email','Not provided')}
-- Company: {lead.get('company','Not provided')}
-- Job Title: {lead.get('job_title','Not provided')}
-- Phone: {lead.get('phone','Not provided')}
-- LinkedIn: {lead.get('linkedin_url','Not provided')}
-- Source: {lead.get('source','Unknown')}"""
-
-        response = await chat.send_message(UserMessage(text=f"Enrich this lead:\n{lead_info}"))
+Return ONLY valid JSON, no markdown.""",
+            f"Enrich this lead:\n{lead_info}",
+            user_email=current_user.get("email", "")
+        )
 
         import json
         try:
@@ -3289,17 +3348,13 @@ async def draft_email(
             """
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        
         tone_instructions = {
             "professional": "Write in a professional, business-like tone.",
             "friendly": "Write in a warm, friendly but professional tone.",
             "casual": "Write in a casual, conversational tone while remaining professional.",
             "formal": "Write in a very formal, executive-level tone."
         }
-        
+
         purpose_templates = {
             "introduction": "Introduce yourself and your company, focusing on how you can help them.",
             "follow_up": "Follow up on a previous conversation or meeting.",
@@ -3308,18 +3363,12 @@ async def draft_email(
             "meeting_request": "Request a meeting or call to discuss opportunities.",
             "thank_you": "Thank them for their time or business."
         }
-        
+
         system_msg = f"""You are an expert B2B sales email writer for earnrm CRM.
 {tone_instructions.get(tone, tone_instructions['professional'])}
 Write concise, engaging emails that get responses. Keep emails under 150 words.
 Always include a clear call-to-action. Personalize based on the recipient's context."""
-        
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"email_draft_{uuid.uuid4().hex[:8]}",
-            system_message=system_msg
-        ).with_model("openai", "gpt-5.2")
-        
+
         prompt = f"""{purpose_templates.get(purpose, purpose_templates['introduction'])}
 
 Lead Context:{lead_context}
@@ -3328,9 +3377,8 @@ Sender: {current_user.get('name', 'Sales Team')} from earnrm
 {f"Additional context: {custom_context}" if custom_context else ""}
 
 Write the email now. Start with a compelling subject line on the first line, then the email body."""
-        
-        user_message = UserMessage(text=prompt)
-        response = await chat.send_message(user_message)
+
+        response = await tako_ai_text(system_msg, prompt, user_email=current_user.get("email", ""))
         
         # Parse subject from response
         lines = response.strip().split('\n')
@@ -3377,17 +3425,6 @@ async def generate_lead_summary(lead_id: str, current_user: dict = Depends(get_c
     ).to_list(100)
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"lead_summary_{uuid.uuid4().hex[:8]}",
-            system_message="""You are a CRM analytics assistant. Provide concise, actionable summaries.
-Focus on: engagement level, deal potential, recommended next steps, and key insights.
-Format your response with clear sections using markdown."""
-        ).with_model("openai", "gpt-5.2")
-        
         context = f"""
 LEAD PROFILE:
 - Name: {lead.get('first_name', '')} {lead.get('last_name', '')}
@@ -3415,9 +3452,14 @@ Provide a comprehensive summary with:
 5. **Risk Factors** - Any concerns to address
 """
         
-        user_message = UserMessage(text=context)
-        response = await chat.send_message(user_message)
-        
+        response = await tako_ai_text(
+            """You are a CRM analytics assistant. Provide concise, actionable summaries.
+Focus on: engagement level, deal potential, recommended next steps, and key insights.
+Format your response with clear sections using markdown.""",
+            context,
+            user_email=current_user.get("email", "")
+        )
+
         return {
             "lead_id": lead_id,
             "lead_name": f"{lead.get('first_name', '')} {lead.get('last_name', '')}",
@@ -3443,25 +3485,19 @@ async def smart_search(
         raise HTTPException(status_code=400, detail="No organization")
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        
         # First, use AI to understand the search intent
-        intent_chat = LlmChat(
-            api_key=api_key,
-            session_id=f"search_intent_{uuid.uuid4().hex[:8]}",
-            system_message="""You are a search query analyzer for a CRM system.
+        intent_response = await tako_ai_text(
+            """You are a search query analyzer for a CRM system.
 Analyze the user's natural language query and extract:
 1. entity_type: one of [leads, deals, tasks, companies, all]
 2. filters: any specific criteria (status, value range, date, name, company, etc.)
 3. keywords: important search terms
 
 Respond ONLY with valid JSON in this format:
-{"entity_type": "leads", "filters": {"status": "qualified"}, "keywords": ["enterprise", "tech"]}"""
-        ).with_model("openai", "gpt-5.2")
-        
-        intent_response = await intent_chat.send_message(UserMessage(text=f"Query: {query}"))
+{"entity_type": "leads", "filters": {"status": "qualified"}, "keywords": ["enterprise", "tech"]}""",
+            f"Query: {query}",
+            user_email=current_user.get("email", "")
+        )
         
         # Parse the intent
         import json
@@ -3559,18 +3595,16 @@ Respond ONLY with valid JSON in this format:
         total_results = len(results["leads"]) + len(results["deals"]) + len(results["tasks"]) + len(results["companies"])
         
         if total_results > 0:
-            summary_chat = LlmChat(
-                api_key=api_key,
-                session_id=f"search_summary_{uuid.uuid4().hex[:8]}",
-                system_message="Provide a brief, helpful summary of search results. Be concise (2-3 sentences max)."
-            ).with_model("openai", "gpt-5.2")
-            
             summary_prompt = f"""Search query: "{query}"
 Found: {len(results['leads'])} leads, {len(results['deals'])} deals, {len(results['tasks'])} tasks, {len(results['companies'])} companies.
 Top results: {[l.get('first_name', '') + ' ' + l.get('last_name', '') for l in results['leads'][:3]]}
 Summarize what was found."""
-            
-            summary = await summary_chat.send_message(UserMessage(text=summary_prompt))
+
+            summary = await tako_ai_text(
+                "Provide a brief, helpful summary of search results. Be concise (2-3 sentences max).",
+                summary_prompt,
+                user_email=current_user.get("email", "")
+            )
             results["ai_summary"] = summary
         else:
             results["ai_summary"] = f"No results found for '{query}'. Try broader search terms or check spelling."
@@ -6164,14 +6198,12 @@ async def bulk_enrich(request: BulkEnrichRequest, current_user: dict = Depends(g
         if not entity:
             continue
         try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage
-            api_key = os.environ.get("EMERGENT_LLM_KEY")
-            chat = LlmChat(api_key=api_key, session_id=f"bulk_enrich_{eid}",
-                system_message="You are a B2B enrichment AI. Return ONLY valid JSON with: company_description, industry, company_size, website, job_title, location, technologies (array), interests (array), recommended_approach. Use null if unknown."
-            ).with_model("openai", "gpt-5.2")
-            
             info = f"Name: {entity.get('first_name','')} {entity.get('last_name','')}, Email: {entity.get('email','')}, Company: {entity.get('company','')}, Title: {entity.get('job_title','')}"
-            resp = await chat.send_message(UserMessage(text=f"Enrich: {info}"))
+            resp = await tako_ai_text(
+                "You are a B2B enrichment AI. Return ONLY valid JSON with: company_description, industry, company_size, website, job_title, location, technologies (array), interests (array), recommended_approach. Use null if unknown.",
+                f"Enrich: {info}",
+                user_email=current_user.get("email", "")
+            )
             
             import json
             try:
@@ -6757,26 +6789,10 @@ async def analyze_call(call_id: str, current_user: dict = Depends(get_current_us
         raise HTTPException(status_code=400, detail="No recording available for this call")
 
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-
         lead = await db.leads.find_one({"lead_id": call.get("lead_id")}, {"_id": 0})
         lead_context = ""
         if lead:
             lead_context = f"Lead: {lead.get('first_name','')} {lead.get('last_name','')}, Company: {lead.get('company','N/A')}, Title: {lead.get('job_title','N/A')}"
-
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"call_analysis_{call_id}",
-            system_message="""You are a sales call analyst. Analyze the call metadata and provide actionable feedback. Return a JSON object with these keys:
-- summary: 2-3 sentence summary of what likely happened
-- sentiment: "positive", "neutral", or "negative"
-- score: 1-10 rating of the call quality
-- strengths: array of 2-3 things that went well
-- improvements: array of 2-3 areas for improvement
-- next_steps: array of 2-3 recommended follow-up actions
-Return ONLY valid JSON, no markdown."""
-        ).with_model("openai", "gpt-5.2")
 
         prompt = f"""Analyze this sales call:
 - Direction: {call.get('direction','outbound')}
@@ -6787,8 +6803,18 @@ Return ONLY valid JSON, no markdown."""
 - Recording available: Yes
 Provide your analysis."""
 
-        user_message = UserMessage(text=prompt)
-        response = await chat.send_message(user_message)
+        response = await tako_ai_text(
+            """You are a sales call analyst. Analyze the call metadata and provide actionable feedback. Return a JSON object with these keys:
+- summary: 2-3 sentence summary of what likely happened
+- sentiment: "positive", "neutral", or "negative"
+- score: 1-10 rating of the call quality
+- strengths: array of 2-3 things that went well
+- improvements: array of 2-3 areas for improvement
+- next_steps: array of 2-3 recommended follow-up actions
+Return ONLY valid JSON, no markdown.""",
+            prompt,
+            user_email=current_user.get("email", "")
+        )
 
         import json
         try:
@@ -7101,25 +7127,27 @@ async def upload_file(
     # AI analysis in background
     ai_summary = None
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        
         analyzable = file.content_type and (file.content_type.startswith('text/') or file.content_type in ['application/pdf', 'application/json', 'text/csv'])
         if analyzable and len(contents) < 500000:
             text_content = contents.decode('utf-8', errors='ignore')[:5000]
-            chat = LlmChat(api_key=api_key, session_id=f"file_{file_id}", system_message="Summarize this document in 2-3 sentences. Then suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.").with_model("openai", "gpt-5.2")
-            resp = await chat.send_message(UserMessage(text=f"File: {file.filename}\n\nContent:\n{text_content}"))
+            resp = await tako_ai_text(
+                "Summarize this document in 2-3 sentences. Then suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
+                f"File: {file.filename}\n\nContent:\n{text_content}",
+                user_email=current_user.get("email", "")
+            )
             try:
                 ai_summary = json.loads(resp.strip().strip('```json').strip('```'))
             except:
                 ai_summary = {"summary": resp[:300], "follow_ups": []}
         elif file.content_type and file.content_type.startswith('image/'):
-            from emergentintegrations.llm.chat import ImageContent
             import base64
             img_b64 = base64.b64encode(contents).decode('utf-8')
-            chat = LlmChat(api_key=api_key, session_id=f"file_{file_id}", system_message="Describe this image in 2-3 sentences. Suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.").with_model("openai", "gpt-5.2")
-            img = ImageContent(image_base64=img_b64)
-            resp = await chat.send_message(UserMessage(text=f"Analyze this file: {file.filename}", file_contents=[img]))
+            resp = await tako_ai_vision(
+                "Describe this image in 2-3 sentences. Suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
+                f"Analyze this file: {file.filename}",
+                img_b64,
+                user_email=current_user.get("email", "")
+            )
             try:
                 ai_summary = json.loads(resp.strip().strip('```json').strip('```'))
             except:
@@ -7221,18 +7249,12 @@ async def capture_business_card(
     
     # Use GPT to extract business card info
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"capture_{uuid.uuid4().hex[:8]}",
-            system_message="You extract business card information from images. Return ONLY valid JSON with these fields: first_name, last_name, email, phone, company, job_title, website, location. Use null for any field you cannot read. Do not guess or fabricate information."
-        ).with_model("openai", "gpt-5.2")
-        
-        image_content = ImageContent(image_base64=image_b64)
-        msg = UserMessage(text="Extract all contact information from this business card image.", file_contents=[image_content])
-        response = await chat.send_message(msg)
+        response = await tako_ai_vision(
+            "You extract business card information from images. Return ONLY valid JSON with these fields: first_name, last_name, email, phone, company, job_title, website, location. Use null for any field you cannot read. Do not guess or fabricate information.",
+            "Extract all contact information from this business card image.",
+            image_b64,
+            user_email=current_user.get("email", "")
+        )
         
         import json
         try:
@@ -7274,14 +7296,12 @@ async def capture_business_card(
     # AI enrichment
     enrichment_result = None
     try:
-        enrich_chat = LlmChat(
-            api_key=api_key,
-            session_id=f"enrich_{lead_id}",
-            system_message="You are a B2B enrichment AI. Return ONLY valid JSON with: company_description, industry, company_size, technologies (array), interests (array), recommended_approach. Use null if unknown."
-        ).with_model("openai", "gpt-5.2")
-        
         info = f"Name: {card_data.get('first_name','')} {card_data.get('last_name','')}, Email: {card_data.get('email','')}, Company: {card_data.get('company','')}, Title: {card_data.get('job_title','')}"
-        enrich_resp = await enrich_chat.send_message(UserMessage(text=f"Enrich: {info}"))
+        enrich_resp = await tako_ai_text(
+            "You are a B2B enrichment AI. Return ONLY valid JSON with: company_description, industry, company_size, technologies (array), interests (array), recommended_approach. Use null if unknown.",
+            f"Enrich: {info}",
+            user_email=current_user.get("email", "")
+        )
         
         try:
             enrichment = json.loads(enrich_resp.strip().strip('```json').strip('```'))
@@ -7589,25 +7609,10 @@ async def transcribe_call(call_id: str, current_user: dict = Depends(get_current
         raise HTTPException(status_code=400, detail="No recording available")
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        
         # Generate transcription summary and follow-ups using AI
         lead = await db.leads.find_one({"lead_id": call.get("lead_id")}, {"_id": 0})
         lead_ctx = f"Lead: {lead.get('first_name','')} {lead.get('last_name','')}, Company: {lead.get('company','N/A')}" if lead else ""
-        
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"transcribe_{call_id}",
-            system_message="""You are a sales call analyst. Based on the call metadata, generate a realistic transcription summary and follow-ups. Return valid JSON with:
-- transcript_summary: 3-5 sentence summary of the likely conversation
-- key_points: array of 3-5 main discussion points
-- action_items: array of follow-up tasks with title and priority (high/medium/low)
-- sentiment: positive/neutral/negative
-- next_meeting: suggested next meeting topic (1 sentence)
-Return ONLY valid JSON."""
-        ).with_model("openai", "gpt-5.2")
-        
+
         prompt = f"""Analyze this sales call:
 - Direction: {call.get('direction','outbound')}
 - Duration: {call.get('duration', 0)} seconds
@@ -7616,8 +7621,18 @@ Return ONLY valid JSON."""
 - {lead_ctx}
 - Recording exists: Yes
 Generate transcription summary and follow-ups."""
-        
-        resp = await chat.send_message(UserMessage(text=prompt))
+
+        resp = await tako_ai_text(
+            """You are a sales call analyst. Based on the call metadata, generate a realistic transcription summary and follow-ups. Return valid JSON with:
+- transcript_summary: 3-5 sentence summary of the likely conversation
+- key_points: array of 3-5 main discussion points
+- action_items: array of follow-up tasks with title and priority (high/medium/low)
+- sentiment: positive/neutral/negative
+- next_meeting: suggested next meeting topic (1 sentence)
+Return ONLY valid JSON.""",
+            prompt,
+            user_email=current_user.get("email", "")
+        )
         
         import json
         try:
