@@ -115,7 +115,17 @@ async def _handle_extension(request: Request, org_id: str, db) -> dict:  # noqa:
     if not token:
         raise HTTPException(status_code=401, detail="Missing extension_token")
     token_doc = await validate_extension_token(db, token)
-    if not token_doc or token_doc["organization_id"] != org_id:
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid extension token")
+    # Accept "self" as an alias for "the org this token is scoped to". The
+    # extension doesn't know its full org_id (pair/exchange only returns a
+    # short org_hint prefix), so it posts to /chrome_extension/self and lets
+    # the server resolve from the token. For any other value, enforce the
+    # stricter path/token match to prevent a leaked token from being reused
+    # against a different org URL.
+    if org_id == "self":
+        org_id = token_doc["organization_id"]
+    elif token_doc["organization_id"] != org_id:
         raise HTTPException(status_code=401, detail="Invalid extension token")
 
     source_url = payload.get("source_url") or ""
