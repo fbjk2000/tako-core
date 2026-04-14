@@ -462,7 +462,7 @@ const LeadsPage = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder="${t('leads.searchLeads')}"
+                  placeholder="Search leads..."
                   className="pl-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -540,39 +540,39 @@ const LeadsPage = () => {
                     className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
                     data-testid={`lead-row-${index}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <input type="checkbox" checked={selectedIds.includes(lead.lead_id)} onChange={() => toggleSelect(lead.lead_id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-[#0EA5A0]" />
-                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center cursor-pointer" onClick={() => openLeadDetail(lead)}>
+                    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <input type="checkbox" checked={selectedIds.includes(lead.lead_id)} onChange={() => toggleSelect(lead.lead_id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-[#0EA5A0] flex-shrink-0" />
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center cursor-pointer flex-shrink-0" onClick={() => openLeadDetail(lead)}>
                           <span className="text-[#0EA5A0] font-medium">
                             {lead.first_name?.[0]}{lead.last_name?.[0]}
                           </span>
                         </div>
-                        <div className="cursor-pointer" onClick={() => openLeadDetail(lead)}>
-                          <p className="font-medium text-slate-900">
+                        <div className="cursor-pointer min-w-0 flex-1" onClick={() => openLeadDetail(lead)}>
+                          <p className="font-medium text-slate-900 truncate">
                             {lead.first_name} {lead.last_name}
                           </p>
-                          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                          <div className="flex items-center gap-x-3 gap-y-1 text-sm text-slate-500 mt-1 flex-wrap">
                             {visibleCols.company && lead.company && (
-                              <span className="flex items-center gap-1"><Building className="w-3 h-3" />{lead.company}</span>
+                              <span className="flex items-center gap-1 min-w-0"><Building className="w-3 h-3 flex-shrink-0" /><span className="truncate">{lead.company}</span></span>
                             )}
                             {visibleCols.email && lead.email && (
-                              <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{lead.email}</span>
+                              <span className="flex items-center gap-1 min-w-0"><Mail className="w-3 h-3 flex-shrink-0" /><span className="truncate">{lead.email}</span></span>
                             )}
                             {visibleCols.phone && lead.phone && (
-                              <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{lead.phone}</span>
+                              <span className="flex items-center gap-1 min-w-0"><Phone className="w-3 h-3 flex-shrink-0" /><span className="truncate">{lead.phone}</span></span>
                             )}
                             {visibleCols.job_title && lead.job_title && (
-                              <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{lead.job_title}</span>
+                              <span className="flex items-center gap-1 min-w-0"><Briefcase className="w-3 h-3 flex-shrink-0" /><span className="truncate">{lead.job_title}</span></span>
                             )}
                             {visibleCols.source && lead.source && (
-                              <span className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">{lead.source}</span>
+                              <span className="text-xs bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">{lead.source}</span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 sm:gap-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 flex-wrap justify-end" onClick={(e) => e.stopPropagation()}>
                         {visibleCols.ai_score && lead.ai_score && (
                           <div className="flex items-center gap-1 px-2 py-1 bg-amber-50 rounded-full">
                             <Zap className="w-4 h-4 text-amber-500" />
