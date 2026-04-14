@@ -125,7 +125,12 @@ const SettingsPage = () => {
       });
       setOrgSettings(response.data);
       setDealStages(response.data.deal_stages || []);
-      setTaskStages(response.data.task_stages || []);
+      // task stages live in /settings/stages under task_statuses
+      try {
+        const stagesResp = await axios.get(`${API}/settings/stages`, { headers, withCredentials: true });
+        setTaskStages(stagesResp.data.task_statuses || []);
+      } catch {}
+
     } catch (error) {
       console.error('Failed to fetch org settings');
     }
@@ -438,15 +443,15 @@ const SettingsPage = () => {
 
   const handleSaveTaskStages = async () => {
     try {
-      await axios.put(`${API}/organizations/settings`, { task_stages: taskStages }, {
+      await axios.put(`${API}/settings/stages`, { task_statuses: taskStages }, {
         headers,
         withCredentials: true
       });
-      toast.success('Task stages saved');
+      toast.success('Task steps saved');
       setEditingTaskStages(false);
       fetchOrgSettings();
     } catch (error) {
-      toast.error('Failed to save task stages');
+      toast.error('Failed to save task steps');
     }
   };
 
@@ -943,7 +948,7 @@ const SettingsPage = () => {
                     </Button>
                   ) : (
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => { setEditingTaskStages(false); setTaskStages(orgSettings?.task_stages || []); }}>
+                      <Button variant="outline" size="sm" onClick={() => { setEditingTaskStages(false); fetchOrgSettings(); }}>
                         Cancel
                       </Button>
                       <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={handleSaveTaskStages}>

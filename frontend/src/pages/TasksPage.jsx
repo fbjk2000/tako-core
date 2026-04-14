@@ -99,7 +99,7 @@ const TasksPage = () => {
   const fetchTaskStages = async () => {
     try {
       const res = await axios.get(`${API}/settings/stages`, getAx());
-      if (res.data?.task_stages?.length) setTaskStages(res.data.task_stages);
+      if (res.data?.task_statuses?.length) setTaskStages(res.data.task_statuses);
     } catch {}
   };
 
