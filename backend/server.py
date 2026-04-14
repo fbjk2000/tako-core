@@ -32,7 +32,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Settings
-JWT_SECRET = os.environ.get('JWT_SECRET', 'earnrm_secret_key')
+JWT_SECRET = os.environ.get('JWT_SECRET', 'tako_secret_key')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXPIRY_HOURS = int(os.environ.get('JWT_EXPIRY_HOURS', 24))
 
@@ -100,7 +100,7 @@ class StripeCheckout:
                             "currency": (request.currency or "eur").lower(),
                             "unit_amount": unit_amount,
                             "product_data": {
-                                "name": metadata.get("product", "EarnRM Payment")
+                                "name": metadata.get("product", "TAKO Payment")
                             },
                         },
                         "quantity": 1,
@@ -166,7 +166,7 @@ SUBSCRIPTION_PLANS = {
 }
 
 # Create the main app
-app = FastAPI(title="earnrm CRM API")
+app = FastAPI(title="TAKO CRM API")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -479,7 +479,7 @@ class BulkAddToCampaignRequest(BaseModel):
 class PlatformSettings(BaseModel):
     model_config = ConfigDict(extra="ignore")
     setting_id: str = "platform_settings"
-    support_email: str = "support@earnrm.com"
+    support_email: str = "support@tako.software"
     stripe_api_key: Optional[str] = None
     paypal_client_id: Optional[str] = None
     paypal_client_secret: Optional[str] = None
@@ -915,10 +915,10 @@ async def forgot_password(email: str):
             result = await asyncio.to_thread(resend.Emails.send, {
                 "from": SENDER_EMAIL,
                 "to": [email.lower()],
-                "subject": "Reset your earnrm password",
+                "subject": "Reset your TAKO password",
                 "html": f"""<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
                     <h2 style="color: #3B0764;">Reset your password</h2>
-                    <p>You requested a password reset for your earnrm account.</p>
+                    <p>You requested a password reset for your TAKO account.</p>
                     <p><a href="{reset_link}" style="background: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Reset Password</a></p>
                     <p style="color: #666; font-size: 14px;">This link expires in 1 hour. If you did not request this, ignore this email.</p>
                 </div>"""
@@ -1520,12 +1520,12 @@ async def send_email_invites(
                 resend.Emails.send({
                     "from": SENDER_EMAIL,
                     "to": [email],
-                    "subject": f"You're invited to join {org_name} on earnrm",
+                    "subject": f"You're invited to join {org_name} on TAKO",
                     "html": f"""
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                         <h2 style="color: #A100FF;">You're Invited!</h2>
-                        <p>{current_user['name']} has invited you to join <strong>{org_name}</strong> on earnrm.</p>
-                        <p>earnrm is an AI-powered CRM that helps teams manage leads, deals, and customer relationships more effectively.</p>
+                        <p>{current_user['name']} has invited you to join <strong>{org_name}</strong> on TAKO.</p>
+                        <p>TAKO is an AI-powered CRM that helps teams manage leads, deals, and customer relationships more effectively.</p>
                         <p style="color: #666; font-size: 14px;">Already have an account? Log in and use the link below to switch organisations.</p>
                         <div style="margin: 30px 0;">
                             <a href="{invite_link}" style="background-color: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
@@ -2630,7 +2630,7 @@ async def invite_to_event(event_id: str, emails: List[str], current_user: dict =
         ical = f"""BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
-UID:{event_id}@earnrm.com
+UID:{event_id}@tako.software
 DTSTART:{start_dt.strftime('%Y%m%dT%H%M%SZ')}
 DTEND:{end_dt.strftime('%Y%m%dT%H%M%SZ')}
 SUMMARY:{title}
@@ -2647,7 +2647,7 @@ END:VCALENDAR"""
                     "from": SENDER_EMAIL,
                     "to": [email_addr],
                     "subject": f"Invitation: {title} on {start_dt.strftime('%b %d at %H:%M')}",
-                    "html": f"<div style='font-family:sans-serif;max-width:500px'><h2>{title}</h2><p><strong>When:</strong> {start_dt.strftime('%A, %B %d at %H:%M')} to {end_dt.strftime('%H:%M')}</p><p><strong>Invited by:</strong> {inviter}</p>{f'<p><strong>Notes:</strong> {notes}</p>' if notes else ''}<p style='color:#666;font-size:14px;margin-top:20px'>This invitation was sent from earnrm.</p></div>",
+                    "html": f"<div style='font-family:sans-serif;max-width:500px'><h2>{title}</h2><p><strong>When:</strong> {start_dt.strftime('%A, %B %d at %H:%M')} to {end_dt.strftime('%H:%M')}</p><p><strong>Invited by:</strong> {inviter}</p>{f'<p><strong>Notes:</strong> {notes}</p>' if notes else ''}<p style='color:#666;font-size:14px;margin-top:20px'>This invitation was sent from TAKO.</p></div>",
                     "attachments": [{"filename": "invite.ics", "content": ical}]
                 })
                 sent += 1
@@ -3212,7 +3212,7 @@ async def send_campaign_via_kit(campaign_id: str, current_user: dict = Depends(g
         if sent > 0:
             return {"success": True, "message": f"Campaign sent via email to {sent}/{len(recipients)} recipients"}
         else:
-            raise HTTPException(status_code=400, detail=f"Could not send to any of {len(recipients)} recipients. Email domain (earnrm.com) may need verification in Resend, or add your Kit.com API Secret for Kit.com delivery.")
+            raise HTTPException(status_code=400, detail=f"Could not send to any of {len(recipients)} recipients. Email domain (tako.software) may need verification in Resend, or add your Kit.com API Secret for Kit.com delivery.")
     
     # Neither Kit nor Resend configured properly
     if not KIT_API_SECRET and not recipients:
@@ -3388,7 +3388,7 @@ async def draft_email(
             "thank_you": "Thank them for their time or business."
         }
 
-        system_msg = f"""You are an expert B2B sales email writer for earnrm CRM.
+        system_msg = f"""You are an expert B2B sales email writer for TAKO CRM.
 {tone_instructions.get(tone, tone_instructions['professional'])}
 Write concise, engaging emails that get responses. Keep emails under 150 words.
 Always include a clear call-to-action. Personalize based on the recipient's context."""
@@ -3397,7 +3397,7 @@ Always include a clear call-to-action. Personalize based on the recipient's cont
 
 Lead Context:{lead_context}
 
-Sender: {current_user.get('name', 'Sales Team')} from earnrm
+Sender: {current_user.get('name', 'Sales Team')} from TAKO
 {f"Additional context: {custom_context}" if custom_context else ""}
 
 Write the email now. Start with a compelling subject line on the first line, then the email body."""
@@ -4311,7 +4311,7 @@ async def export_report_csv(entity: str, current_user: dict = Depends(require_su
             row[k] = str(v) if isinstance(v, (dict, list)) else v
         writer.writerow(row)
     
-    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=earnrm_{entity}_{datetime.now().strftime('%Y%m%d')}.csv"})
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=tako_{entity}_{datetime.now().strftime('%Y%m%d')}.csv"})
 
 # ==================== SUPER ADMIN SETUP ====================
 
@@ -4766,7 +4766,7 @@ async def submit_contact_form(contact: ContactFormSubmit):
     
     # Get platform settings to find support email
     settings = await db.platform_settings.find_one({"setting_id": "platform_settings"}, {"_id": 0})
-    support_email = settings.get("support_email", "support@earnrm.com") if settings else "support@earnrm.com"
+    support_email = settings.get("support_email", "support@tako.software") if settings else "support@tako.software"
     
     # Send email notification via Resend
     email_sent = False
@@ -4784,14 +4784,14 @@ async def submit_contact_form(contact: ContactFormSubmit):
                         {contact.message}
                     </div>
                 </div>
-                <p style="color: #64748b; font-size: 12px;">This message was sent from the earnrm contact form.</p>
+                <p style="color: #64748b; font-size: 12px;">This message was sent from the TAKO contact form.</p>
             </div>
             """
             
             await asyncio.to_thread(resend.Emails.send, {
                 "from": SENDER_EMAIL,
                 "to": [support_email],
-                "subject": f"[earnrm Contact] {contact.subject}",
+                "subject": f"[TAKO Contact] {contact.subject}",
                 "html": support_html
             })
             
@@ -4805,16 +4805,16 @@ async def submit_contact_form(contact: ContactFormSubmit):
                     <p><strong>Your message:</strong></p>
                     <p style="color: #475569;">{contact.message}</p>
                 </div>
-                <p>Best regards,<br>The earnrm Team</p>
+                <p>Best regards,<br>The TAKO Team</p>
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                <p style="color: #64748b; font-size: 12px;">earnrm CRM - Simplify your sales</p>
+                <p style="color: #64748b; font-size: 12px;">TAKO CRM - Simplify your sales</p>
             </div>
             """
             
             await asyncio.to_thread(resend.Emails.send, {
                 "from": SENDER_EMAIL,
                 "to": [contact.email],
-                "subject": "We received your message - earnrm",
+                "subject": "We received your message - TAKO",
                 "html": confirmation_html
             })
             
@@ -4964,7 +4964,7 @@ async def get_platform_settings(current_user: dict = Depends(require_super_admin
         # Return defaults
         settings = {
             "setting_id": "platform_settings",
-            "support_email": "support@earnrm.com",
+            "support_email": "support@tako.software",
             "stripe_api_key": None,
             "paypal_client_id": None,
             "paypal_client_secret": None,
@@ -5444,7 +5444,7 @@ async def send_invoice_email(invoice: dict):
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #1e293b;">Terms & Conditions</h2>
             <h3>1. Service Agreement</h3>
-            <p>By subscribing to earnrm CRM services, you agree to these terms and conditions.</p>
+            <p>By subscribing to TAKO CRM services, you agree to these terms and conditions.</p>
             
             <h3>2. Subscription & Billing</h3>
             <ul>
@@ -5464,7 +5464,7 @@ async def send_invoice_email(invoice: dict):
             <p>You may cancel your subscription at any time. Access continues until the end of your billing period.</p>
             
             <h3>6. Contact</h3>
-            <p>For support, please contact support@earnrm.com</p>
+            <p>For support, please contact support@tako.software</p>
             
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
             <p style="color: #64748b; font-size: 12px;">
@@ -5479,7 +5479,7 @@ async def send_invoice_email(invoice: dict):
         full_html = f"""
         <div style="font-family: Arial, sans-serif;">
             <p>Dear {invoice['billing_name']},</p>
-            <p>Thank you for subscribing to earnrm CRM! Please find your invoice details below.</p>
+            <p>Thank you for subscribing to TAKO CRM! Please find your invoice details below.</p>
             
             {invoice_html}
             
@@ -5487,14 +5487,14 @@ async def send_invoice_email(invoice: dict):
             
             {terms_html}
             
-            <p style="margin-top: 30px;">Best regards,<br>The earnrm Team</p>
+            <p style="margin-top: 30px;">Best regards,<br>The TAKO Team</p>
         </div>
         """
         
         await asyncio.to_thread(resend.Emails.send, {
             "from": SENDER_EMAIL,
             "to": [invoice["email"]],
-            "subject": f"Your earnrm Invoice {invoice['invoice_number']}",
+            "subject": f"Your TAKO Invoice {invoice['invoice_number']}",
             "html": full_html
         })
         
@@ -6869,7 +6869,7 @@ Return ONLY valid JSON, no markdown.""",
 @api_router.post("/api-keys")
 async def create_api_key(name: str = "Default", current_user: dict = Depends(get_current_user)):
     """Generate an API key for programmatic access"""
-    key = f"earnrm_{secrets.token_hex(24)}"
+    key = f"tako_{secrets.token_hex(24)}"
     doc = {
         "key_id": f"key_{uuid.uuid4().hex[:12]}",
         "key_hash": hash_password(key),
@@ -6909,7 +6909,7 @@ async def revoke_api_key(key_id: str, current_user: dict = Depends(get_current_u
 async def get_api_key_user(request: Request):
     """Authenticate via API key (for n8n, Notion, etc.)"""
     auth = request.headers.get("X-API-Key") or request.headers.get("Authorization", "").replace("Bearer ", "")
-    if not auth or not auth.startswith("earnrm_"):
+    if not auth or not auth.startswith("tako_"):
         raise HTTPException(status_code=401, detail="Valid API key required")
     
     keys = await db.api_keys.find({"is_active": True}, {"_id": 0}).to_list(100)
@@ -7066,9 +7066,9 @@ async def notion_sync(entity_type: str = "leads", user: dict = Depends(get_api_k
 async def api_docs():
     """API documentation for external integrations"""
     return {
-        "name": "earnrm External API",
+        "name": "TAKO External API",
         "version": "1.0",
-        "auth": "Include header 'X-API-Key: earnrm_xxx' or 'Authorization: Bearer earnrm_xxx'",
+        "auth": "Include header 'X-API-Key: tako_xxx' or 'Authorization: Bearer tako_xxx'",
         "endpoints": {
             "GET /api/v1/leads": {"params": "limit, status", "desc": "List leads"},
             "POST /api/v1/leads": {"body": "first_name, last_name, email, phone, company", "desc": "Create lead"},
@@ -7642,9 +7642,9 @@ async def get_booking_ical(user_id: str, booking_id: str):
     
     ical = f"""BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//earnrm//Booking//EN
+PRODID:-//tako//Booking//EN
 BEGIN:VEVENT
-UID:{booking_id}@earnrm.com
+UID:{booking_id}@tako.software
 DTSTART:{start.strftime('%Y%m%dT%H%M%SZ')}
 DTEND:{end.strftime('%Y%m%dT%H%M%SZ')}
 SUMMARY:Meeting: {booking.get('guest_name', 'Guest')}
@@ -7836,7 +7836,7 @@ async def api_chat_send_compat(channel_id: str, content: str, sender_name: str =
 
 @api_router.get("/")
 async def root():
-    return {"message": "earnrm CRM API", "version": "1.0.0"}
+    return {"message": "TAKO CRM API", "version": "1.0.0"}
 
 @api_router.get("/health")
 async def health():
