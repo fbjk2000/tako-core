@@ -146,7 +146,7 @@ Each provider exposes: `authorize_url()`, `exchange_code()`, `refresh_token()`, 
 ```
 listeners
   listener_id:      str, PK, "lst_<uuid>"
-  org_id:           str
+  organization_id:  str
   campaign_id:      str, FK → campaigns
   channel:          str, one of "facebook" (future: "instagram", "linkedin")
   status:           "active" | "paused" | "archived"
@@ -227,10 +227,11 @@ class ListenerConfig(BaseModel):
 
 class Listener(BaseModel):
     listener_id: str
-    org_id: str
+    organization_id: str
     campaign_id: str
     channel: Literal["facebook"]
     status: Literal["active", "paused", "archived"] = "active"
+    paused_reason: Optional[str] = None  # system-driven pause cause; null for user pauses
     config: ListenerConfig
     stats: dict = Field(default_factory=dict)
     created_by: str
