@@ -6987,6 +6987,97 @@ async def api_create_task(task: TaskCreate, user: dict = Depends(get_api_key_use
     await fire_webhooks(user.get("organization_id", ""), "task.created", doc)
     return doc
 
+@api_router.patch("/v1/tasks/{task_id}")
+async def api_update_task(task_id: str, updates: dict, user: dict = Depends(get_api_key_user)):
+    """External API: partial update a task.
+
+    Mirrors PUT /tasks/{task_id} (JWT) but scoped to API-key integrations:
+    - Only whitelisted fields are settable (no arbitrary write).
+    - Activity log entries are appended for auditable changes, crediting the
+      API key's owning user.
+    """
+    allowed_fields = {
+        "title", "description", "status", "priority",
+        "due_date", "assigned_to", "project_id",
+        "related_lead_id", "related_deal_id",
+    }
+    patch = {k: v for k, v in (updates or {}).items() if k in allowed_fields}
+    if not patch:
+        raise HTTPException(status_code=400, detail="No updatable fields in payload")
+
+    org_id = user.get("organization_id")
+    old_task = await db.tasks.find_one({"task_id": task_id, "organization_id": org_id}, {"_id": 0})
+    if not old_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    now = datetime.now(timezone.utc)
+    activities = []
+    for field in ["status", "priority", "assigned_to", "due_date", "description", "title", "project_id"]:
+        if field in patch and patch[field] != old_task.get(field):
+            activities.append({
+                "action": f"{field}_changed",
+                "from": str(old_task.get(field, "")),
+                "to": str(patch[field]),
+                "by": user.get("user_id", ""),
+                "by_name": user.get("name", "API key"),
+                "at": now.isoformat(),
+            })
+
+    if patch.get("due_date") and isinstance(patch["due_date"], datetime):
+        patch["due_date"] = patch["due_date"].isoformat()
+    patch["updated_at"] = now.isoformat()
+
+    update_ops = {"$set": patch}
+    if activities:
+        update_ops["$push"] = {"activity": {"$each": activities}}
+    await db.tasks.update_one({"task_id": task_id, "organization_id": org_id}, update_ops)
+
+    doc = await db.tasks.find_one({"task_id": task_id}, {"_id": 0})
+    await fire_webhooks(org_id or "", "task.updated", doc)
+    return doc
+
+@api_router.get("/v1/projects")
+async def api_get_projects(limit: int = 100, user: dict = Depends(get_api_key_user)):
+    """External API: Get projects for the API key's organization."""
+    projects = await db.projects.find(
+        {"organization_id": user.get("organization_id")},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    return {"data": projects, "count": len(projects)}
+
+@api_router.post("/v1/projects")
+async def api_create_project(data: ProjectCreate, user: dict = Depends(get_api_key_user)):
+    """External API: Create a project.
+
+    Mirrors POST /projects (JWT) minus the chat-channel sidecar — that's a
+    UI-first affordance; external integrations (n8n, Notion, Claude-generated
+    task batches) rarely want the chat channel auto-provisioned and the
+    relationship is additive either way.
+    """
+    project_id = f"proj_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+
+    members = list(data.members) if data.members else [user["user_id"]]
+    if user["user_id"] not in members:
+        members.append(user["user_id"])
+
+    doc = {
+        "project_id": project_id,
+        "organization_id": user["organization_id"],
+        "name": data.name,
+        "description": data.description,
+        "status": data.status,
+        "deal_id": data.deal_id,
+        "members": members,
+        "created_by": user["user_id"],
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    await db.projects.insert_one(doc)
+    doc.pop("_id", None)
+    await fire_webhooks(user.get("organization_id", ""), "project.created", doc)
+    return doc
+
 # ==================== WEBHOOKS ====================
 
 async def fire_webhooks(org_id: str, event: str, data: dict):
