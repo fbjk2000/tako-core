@@ -47,6 +47,25 @@ Lead time: 1–3 business days once documents are uploaded.
 - `publish_to_groups` or any groups-write scope.
 - `instagram_*` scopes — Instagram is a separate review in Phase 4.
 
+#### Note on `public_profile` and `email`
+
+As of PR #1, `backend/oauth/meta.py` also includes `public_profile` and `email` in the requested scope list. Neither is used by any Tako code path — there is no `/me` call, no email stored, no identity propagated into the user record. They are vestigial defaults from Facebook Login templates.
+
+Recommendation: **drop both from the scope list before submitting to Meta**. Every extra scope the review surfaces is one more thing the reviewer may ask for justification on, and "we don't use it" is an awkward answer. One-line change in `backend/oauth/meta.py`:
+
+```python
+# Before
+scopes: list[str] = ["public_profile", "email", "pages_show_list", "pages_read_engagement"]
+# After
+scopes: list[str] = ["pages_show_list", "pages_read_engagement"]
+```
+
+If for any reason you want to keep them (e.g., to reuse the access token for a future login flow that isn't on the Listener roadmap), add this paragraph to §2.1 as a preemptive answer to reviewer pushback:
+
+> Tako requests `public_profile` and `email` as part of its standard Facebook Login for Business flow, used only to distinguish the authorizing admin in audit logs. These fields are never transmitted to third parties, never surfaced in any report, and are purged alongside all other Meta data when the user disconnects or requests deletion (see §4).
+
+The code-trim path is cleaner. Left as a product decision.
+
 ### 1.4 App settings (to configure in Meta Developer console)
 
 - **App Domains**: `tako.software`
@@ -194,12 +213,14 @@ User tasks (can't be done from this repo):
 - [ ] In Meta Developer console → App Review → Permissions and Features, request the three items from §1.3. Paste §2 answers. Attach screencast. Submit.
 - [ ] After initial review, respond to any rework requests within 72 hours to keep the review warm.
 
-Engineering tasks (to bundle into a later PR once frontend exists):
+Engineering tasks:
 
-- [ ] Implement `/api/webhooks/meta/data-deletion` endpoint.
-- [ ] Implement `tako.software/data-deletion` request form + confirmation lookup.
-- [ ] Add `META_APP_ID` / `META_APP_SECRET` to `backend/oauth/meta.py` config and `.env.example`.
-- [ ] Add admin-facing audit log entry when a Listener auto-pauses due to token revocation.
+- [x] Implement `/api/webhooks/meta/data-deletion` endpoint. — PR #4 (`backend/listeners/data_deletion.py`)
+- [x] Implement confirmation lookup page + status endpoint. — PR #4 (`/data-deletion/:code` on the app; status at `GET /api/account/data-deletion/{code}`)
+- [x] Add `META_APP_ID` / `META_APP_SECRET` to `backend/oauth/meta.py` config. — PR #1
+- [x] Decide on `public_profile` + `email` scopes (see §1.3 note). — PR #5 (trim to pages-only scopes after product sign-off)
+- [ ] Add admin-facing audit log entry when a Listener auto-pauses due to token revocation — follow-up, not on the Meta-review critical path.
+- [ ] Optional marketing-site `tako.software/data-deletion` that deep-links to the app endpoint above (a plain redirect is fine — the in-app page is already the functional one).
 
 ## 7. Timeline (target)
 
