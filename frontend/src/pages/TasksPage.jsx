@@ -290,7 +290,7 @@ const TasksPage = () => {
         </div>
 
         {/* Filters */}
-        <Card className="px-4 py-3">
+        <Card className="px-4 py-3 relative z-10">
           <div className="space-y-2">
             {/* Row 1: search + stage + priority + project */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -355,44 +355,46 @@ const TasksPage = () => {
           /* List View */
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-slate-50">
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.title')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.status')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.priority')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.assignTo')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.dueDate')}</th>
-                  <th className="py-3 px-4 w-20"></th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 min-w-[180px]">{t('forms.title')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-36 shrink-0">{t('forms.status')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-24 shrink-0">{t('forms.priority')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-32 shrink-0">{t('forms.assignTo')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-28 shrink-0">{t('forms.dueDate')}</th>
+                  <th className="py-3 px-4 w-12 shrink-0"></th>
                 </tr></thead>
                 <tbody>
                   {filteredTasks.map(task => (
                     <tr key={task.task_id} className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" onClick={() => openTaskDetail(task)} data-testid={`task-list-${task.task_id}`}>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${priorities.find(p => p.value === task.priority)?.color || 'bg-slate-400'}`} />
-                          <span className="font-medium">{task.title}</span>
-                          {task.subtask_count > 0 && <Badge variant="secondary" className="text-xs">{task.subtasks_done}/{task.subtask_count}</Badge>}
-                          {task.comments?.length > 0 && <Badge variant="outline" className="text-xs">{task.comments.length} {t('tasks.updates').toLowerCase()}</Badge>}
+                      <td className="py-3 px-4 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${priorities.find(p => p.value === task.priority)?.color || 'bg-slate-400'}`} />
+                          <span className="font-medium truncate">{task.title}</span>
+                          {task.subtask_count > 0 && <Badge variant="secondary" className="text-xs shrink-0">{task.subtasks_done}/{task.subtask_count}</Badge>}
+                          {task.comments?.length > 0 && <Badge variant="outline" className="text-xs shrink-0">{task.comments.length} {t('tasks.updates').toLowerCase()}</Badge>}
                         </div>
                       </td>
-                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 px-4 w-36 shrink-0" onClick={e => e.stopPropagation()}>
                         <Select value={task.status} onValueChange={v => handleStatusChange(task.task_id, v)}>
                           <SelectTrigger className="w-32 h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                         </Select>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 w-24 shrink-0">
                         <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'high' ? 'bg-rose-100 text-rose-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{task.priority}</span>
                       </td>
-                      <td className="py-3 px-4 text-xs text-slate-600">{task.assigned_to ? getOwnerName(task.assigned_to) : '-'}</td>
-                      <td className="py-3 px-4 text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
-                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 px-4 w-32 shrink-0 text-xs text-slate-600 truncate">{task.assigned_to ? getOwnerName(task.assigned_to) : '-'}</td>
+                      <td className="py-3 px-4 w-28 shrink-0 text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
+                      <td className="py-3 px-4 w-12 shrink-0" onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="sm" className="text-red-500 h-7" onClick={() => handleDeleteTask(task.task_id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
               {filteredTasks.length === 0 && <p className="text-center text-slate-500 py-8">{t('tasks.dropHere')}</p>}
             </CardContent>
           </Card>
