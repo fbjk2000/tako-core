@@ -39,7 +39,11 @@ import {
   Upload,
   UserPlus,
   X,
-  Key
+  Key,
+  Radar,
+  Facebook,
+  Chrome as ChromeIcon,
+  RefreshCw
 } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -1342,6 +1346,12 @@ const SettingsPage = () => {
                   </div>
                   <Badge className="bg-slate-100 text-slate-600">Optional</Badge>
                 </div>
+                {/* Meta (Facebook) — powers the Listener feature */}
+                <MetaIntegrationCard headers={headers} />
+
+                {/* Tako Chrome extension — ingests posts from Facebook Groups the user belongs to */}
+                <ExtensionPairingCard headers={headers} />
+
                 <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
@@ -1555,6 +1565,215 @@ const SettingsPage = () => {
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+};
+
+// ---- Meta (Facebook) OAuth integration card ---------------------------------
+// Connect flow: GET /api/oauth/meta/authorize-url → redirect → callback lands
+// back here with ?tab=integrations&meta=connected per the backend redirect.
+const MetaIntegrationCard = ({ headers }) => {
+  const [searchParams] = useSearchParams();
+  const [connecting, setConnecting] = useState(false);
+  // Heuristic: Meta callback flags completion via query param. Persistent state
+  // (real "is this org connected" check) can be added once /settings/integrations
+  // exposes oauth_tokens.meta — until then, treat the post-callback flag as the
+  // authoritative signal for the user.
+  const justConnected = searchParams.get('meta') === 'connected';
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const res = await axios.get(`${API}/oauth/meta/authorize-url`, { headers });
+      if (res.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+      } else {
+        toast.error('No auth URL returned');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to start Meta OAuth');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between" data-testid="meta-integration-card">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
+          <Facebook className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <p className="font-medium text-slate-900">Meta (Facebook)</p>
+          <p className="text-sm text-slate-500">Read Pages + public posts for Listener campaigns. Read-only.</p>
+        </div>
+      </div>
+      {justConnected ? (
+        <Badge className="bg-emerald-100 text-emerald-700">Connected</Badge>
+      ) : (
+        <Button variant="outline" size="sm" onClick={connect} disabled={connecting} data-testid="connect-meta-btn">
+          {connecting ? 'Opening…' : 'Connect'}
+        </Button>
+      )}
+    </div>
+  );
+};
+
+// ---- Chrome extension pairing card ------------------------------------------
+// Device-code flow: UI calls pair/start → user enters user_code in extension →
+// UI calls pair/confirm to retrieve the extension_token (displayed once, then
+// the extension holds it). Lists paired tokens and allows revocation.
+const ExtensionPairingCard = ({ headers }) => {
+  const [tokens, setTokens] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [pair, setPair] = useState(null); // {device_code, user_code, expires_at}
+  const [confirming, setConfirming] = useState(false);
+  const [confirmed, setConfirmed] = useState(null); // {extension_token}
+
+  const loadTokens = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/extension/tokens`, { headers });
+      setTokens(res.data || []);
+    } catch {
+      // Silently ignore — the card still renders with a pair button.
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadTokens(); /* eslint-disable-next-line */ }, []);
+
+  const startPairing = async () => {
+    try {
+      const res = await axios.post(`${API}/extension/pair/start`, {}, { headers });
+      setPair(res.data);
+      setConfirmed(null);
+      setDialogOpen(true);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to start pairing');
+    }
+  };
+
+  const confirmPairing = async () => {
+    if (!pair?.device_code) return;
+    setConfirming(true);
+    try {
+      const res = await axios.post(`${API}/extension/pair/confirm`, { device_code: pair.device_code }, { headers });
+      setConfirmed(res.data);
+      toast.success('Extension paired');
+      loadTokens();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Pairing not yet claimed by the extension');
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const revoke = async (token_id) => {
+    if (!window.confirm('Revoke this paired extension? The extension will stop ingesting.')) return;
+    try {
+      await axios.delete(`${API}/extension/tokens/${token_id}`, { headers });
+      toast.success('Revoked');
+      loadTokens();
+    } catch (err) {
+      toast.error('Failed to revoke');
+    }
+  };
+
+  return (
+    <div className="p-4 border border-slate-200 rounded-lg" data-testid="extension-pairing-card">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
+            <ChromeIcon className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="font-medium text-slate-900">Tako Chrome extension</p>
+            <p className="text-sm text-slate-500">Pair to ingest posts from Facebook Groups you're already in.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={loadTokens} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button variant="outline" size="sm" onClick={startPairing} data-testid="pair-extension-btn">
+            Pair extension
+          </Button>
+        </div>
+      </div>
+
+      {tokens.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {tokens.map((tk) => (
+            <div key={tk.token_id || tk.id} className="flex items-center justify-between text-sm p-2 rounded bg-slate-50">
+              <div className="flex items-center gap-2">
+                <Radar className="w-4 h-4 text-slate-400" />
+                <span className="font-medium text-slate-700">{tk.name || tk.device_label || 'Paired extension'}</span>
+                <span className="text-xs text-slate-500">
+                  · paired {tk.created_at ? new Date(tk.created_at).toLocaleDateString() : '—'}
+                </span>
+              </div>
+              <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => revoke(tk.token_id || tk.id)}>
+                Revoke
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setPair(null); setConfirmed(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pair Tako Chrome extension</DialogTitle>
+          </DialogHeader>
+          {confirmed ? (
+            <div className="space-y-3 pt-2">
+              <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm">
+                <p className="font-medium text-emerald-800 mb-1">Pairing complete</p>
+                <p className="text-emerald-700">The extension is now authorized to send posts to your Tako org.</p>
+              </div>
+              {confirmed.extension_token && (
+                <div className="space-y-2">
+                  <Label>Extension token</Label>
+                  <Input value={confirmed.extension_token} readOnly onFocus={(e) => e.target.select()} />
+                  <p className="text-xs text-slate-500">
+                    Usually the extension receives this automatically. If yours asks for it, paste this once — you
+                    won't be shown it again.
+                  </p>
+                </div>
+              )}
+              <Button className="w-full bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setDialogOpen(false)}>Done</Button>
+            </div>
+          ) : pair ? (
+            <div className="space-y-4 pt-2">
+              <ol className="text-sm text-slate-600 space-y-1 list-decimal pl-4">
+                <li>Open the Tako Chrome extension popup.</li>
+                <li>Paste the code below.</li>
+                <li>Click <b>Pair</b> in the extension, then return and click <b>Confirm pairing</b>.</li>
+              </ol>
+              <div className="p-4 rounded-lg bg-slate-900 text-white text-center">
+                <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">User code</p>
+                <p className="text-3xl font-mono tracking-wider select-all">{pair.user_code}</p>
+                {pair.expires_at && (
+                  <p className="text-xs text-slate-400 mt-3">
+                    Expires {new Date(pair.expires_at).toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+              <Button
+                className="w-full bg-[#0EA5A0] hover:bg-teal-700"
+                onClick={confirmPairing}
+                disabled={confirming}
+                data-testid="confirm-pair-btn"
+              >
+                {confirming ? 'Confirming…' : 'Confirm pairing'}
+              </Button>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

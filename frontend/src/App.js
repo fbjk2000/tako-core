@@ -14,6 +14,7 @@ import DealsPage from './pages/DealsPage';
 import TasksPage from './pages/TasksPage';
 import CompaniesPage from './pages/CompaniesPage';
 import CampaignsPage from './pages/CampaignsPage';
+import ListenersPage from './pages/ListenersPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import PricingPage from './pages/PricingPage';
@@ -266,6 +267,14 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <CampaignsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/listeners"
+        element={
+          <ProtectedRoute>
+            <ListenersPage />
           </ProtectedRoute>
         }
       />

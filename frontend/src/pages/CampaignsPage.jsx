@@ -9,12 +9,31 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Plus, Mail, Send, Zap, Eye, MousePointer, RefreshCw, Check, ExternalLink, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Mail, Send, Zap, Eye, MousePointer, RefreshCw, Check, ExternalLink, Users, Radar, Facebook } from 'lucide-react';
+
+// Channels supported when creating a campaign. Email is the legacy default;
+// social channels create a campaign shell that's configured via the Listeners page.
+const CAMPAIGN_CHANNELS = [
+  { value: 'email', label: 'Email', icon: Mail, isSocial: false },
+  { value: 'facebook', label: 'Facebook (Listener)', icon: Facebook, isSocial: true },
+];
+
+const channelBadgeClass = (ch) => {
+  switch (ch) {
+    case 'facebook': return 'bg-blue-100 text-blue-700';
+    case 'instagram': return 'bg-pink-100 text-pink-700';
+    case 'linkedin': return 'bg-sky-100 text-sky-700';
+    default: return 'bg-slate-100 text-slate-600';
+  }
+};
 
 const CampaignsPage = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const { t } = useT();
   const [loading, setLoading] = useState(true);
@@ -24,7 +43,8 @@ const CampaignsPage = () => {
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     subject: '',
-    content: ''
+    content: '',
+    channel_type: 'email'
   });
 
   // Kit.com states
@@ -93,12 +113,23 @@ const CampaignsPage = () => {
 
   const handleAddCampaign = async (e) => {
     e.preventDefault();
+    const channelMeta = CAMPAIGN_CHANNELS.find(c => c.value === newCampaign.channel_type) || CAMPAIGN_CHANNELS[0];
+    // Social channels don't use subject/content — send only name + channel_type.
+    const payload = channelMeta.isSocial
+      ? { name: newCampaign.name, channel_type: newCampaign.channel_type }
+      : newCampaign;
     try {
-      await axios.post(`${API}/campaigns`, newCampaign, { headers, withCredentials: true });
+      const res = await axios.post(`${API}/campaigns`, payload, { headers, withCredentials: true });
       toast.success('Campaign created successfully');
       setIsAddDialogOpen(false);
-      setNewCampaign({ name: '', subject: '', content: '' });
+      const createdChannel = res.data?.channel_type || payload.channel_type;
+      setNewCampaign({ name: '', subject: '', content: '', channel_type: 'email' });
       fetchCampaigns();
+      if (channelMeta.isSocial) {
+        // Nudge the user into Listener configuration — that's where the real work happens for social.
+        toast.info('Configure the Listener next', { description: 'Redirecting to Listeners…' });
+        setTimeout(() => navigate('/listeners'), 600);
+      }
     } catch (error) {
       toast.error('Failed to create campaign');
     }
@@ -196,9 +227,23 @@ const CampaignsPage = () => {
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Create Email Campaign</DialogTitle>
+                  <DialogTitle>Create Campaign</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleAddCampaign} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Channel *</Label>
+                    <Select
+                      value={newCampaign.channel_type}
+                      onValueChange={(v) => setNewCampaign({ ...newCampaign, channel_type: v })}
+                    >
+                      <SelectTrigger data-testid="campaign-channel"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CAMPAIGN_CHANNELS.map(c => (
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label>Campaign Name *</Label>
                     <Input
@@ -209,27 +254,43 @@ const CampaignsPage = () => {
                       data-testid="campaign-name"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Subject Line *</Label>
-                    <Input
-                      value={newCampaign.subject}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, subject: e.target.value })}
-                      placeholder="Your email subject"
-                      required
-                      data-testid="campaign-subject"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email Content *</Label>
-                    <Textarea
-                      value={newCampaign.content}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, content: e.target.value })}
-                      placeholder="Write your email content..."
-                      rows={8}
-                      required
-                      data-testid="campaign-content"
-                    />
-                  </div>
+                  {newCampaign.channel_type === 'email' ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Subject Line *</Label>
+                        <Input
+                          value={newCampaign.subject}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, subject: e.target.value })}
+                          placeholder="Your email subject"
+                          required
+                          data-testid="campaign-subject"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email Content *</Label>
+                        <Textarea
+                          value={newCampaign.content}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, content: e.target.value })}
+                          placeholder="Write your email content..."
+                          rows={8}
+                          required
+                          data-testid="campaign-content"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-4 rounded-lg bg-teal-50/50 border border-teal-100 flex items-start gap-3">
+                      <Radar className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-slate-700">
+                        <p className="font-medium text-slate-900">Listener campaign</p>
+                        <p className="mt-1">
+                          After creation, you'll configure keywords, sources, and the Chrome extension on the
+                          <b> Listeners</b> page. Nothing is posted on your behalf — Tako only surfaces
+                          matching conversations as tasks.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-campaign-btn">
                     Create Campaign
                   </Button>
@@ -300,9 +361,20 @@ const CampaignsPage = () => {
                             <span className={`text-xs px-2 py-1 rounded-full capitalize ${getStatusColor(campaign.status)}`}>
                               {campaign.status}
                             </span>
+                            <span className={`text-xs px-2 py-1 rounded-full capitalize ${channelBadgeClass(campaign.channel_type || 'email')}`}>
+                              {campaign.channel_type || 'email'}
+                            </span>
                           </div>
-                          <p className="text-sm text-slate-600 mb-2">Subject: {campaign.subject}</p>
-                          <p className="text-sm text-slate-500 line-clamp-2">{campaign.content}</p>
+                          {(campaign.channel_type || 'email') === 'email' ? (
+                            <>
+                              <p className="text-sm text-slate-600 mb-2">Subject: {campaign.subject}</p>
+                              <p className="text-sm text-slate-500 line-clamp-2">{campaign.content}</p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-slate-500">
+                              Listener campaign — <button type="button" onClick={() => navigate('/listeners')} className="text-[#0EA5A0] hover:underline">configure on Listeners page</button>
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 ml-4">
                           <div className="flex items-center gap-6 text-sm text-slate-500">
@@ -328,7 +400,7 @@ const CampaignsPage = () => {
                               <span className="text-xs">Clicks</span>
                             </div>
                           </div>
-                          {campaign.status === 'draft' && (
+                          {campaign.status === 'draft' && (campaign.channel_type || 'email') === 'email' && (
                             <Button
                               size="sm"
                               className="bg-[#0EA5A0] hover:bg-teal-700"

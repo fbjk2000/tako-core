@@ -19,10 +19,11 @@ import {
   BarChart3,
   HelpCircle,
   MessageSquare,
-  Phone
+  Phone,
+  Radar
 } from 'lucide-react';
 
-const ICONS = { LayoutDashboard, Users, Target, CheckSquare, Building, Mail, Settings, Shield, MessageSquare, Phone, BarChart3, HelpCircle };
+const ICONS = { LayoutDashboard, Users, Target, CheckSquare, Building, Mail, Settings, Shield, MessageSquare, Phone, BarChart3, HelpCircle, Radar };
 
 const DashboardLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -34,8 +35,8 @@ const DashboardLayout = ({ children }) => {
   const isAdmin = user?.role === 'super_admin' || user?.role === 'deputy_admin' || user?.email === 'florian@unyted.world';
 
   const labels = {
-    en: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Contacts', deals: 'Deals', tasks: 'Tasks', projects: 'Projects', pipeline: 'Pipeline', companies: 'Companies', campaigns: 'Campaigns', teamChat: 'Team Chat', calls: 'Calls', calendar: 'Calendar', bookings: 'Bookings', admin: 'Admin', settings: 'Settings', support: 'Support', signOut: 'Sign Out' },
-    de: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Kontakte', deals: 'Deals', tasks: 'Aufgaben', projects: 'Projekte', pipeline: 'Pipeline', companies: 'Unternehmen', campaigns: 'Kampagnen', teamChat: 'Team-Chat', calls: 'Anrufe', calendar: 'Kalender', bookings: 'Buchungen', admin: 'Admin', settings: 'Einstellungen', support: 'Support', signOut: 'Abmelden' }
+    en: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Contacts', deals: 'Deals', tasks: 'Tasks', projects: 'Projects', pipeline: 'Pipeline', companies: 'Companies', campaigns: 'Campaigns', listeners: 'Listeners', teamChat: 'Team Chat', calls: 'Calls', calendar: 'Calendar', bookings: 'Bookings', admin: 'Admin', settings: 'Settings', support: 'Support', signOut: 'Sign Out' },
+    de: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Kontakte', deals: 'Deals', tasks: 'Aufgaben', projects: 'Projekte', pipeline: 'Pipeline', companies: 'Unternehmen', campaigns: 'Kampagnen', listeners: 'Listener', teamChat: 'Team-Chat', calls: 'Anrufe', calendar: 'Kalender', bookings: 'Buchungen', admin: 'Admin', settings: 'Einstellungen', support: 'Support', signOut: 'Abmelden' }
   };
   const l = labels[lang] || labels.en;
 
@@ -56,6 +57,7 @@ const DashboardLayout = ({ children }) => {
     { path: '/pipeline', label: l.pipeline, iconKey: 'BarChart3' },
     { path: '/companies', label: l.companies, iconKey: 'Building' },
     { path: '/campaigns', label: l.campaigns, iconKey: 'Mail' },
+    { path: '/listeners', label: l.listeners, iconKey: 'Radar' },
     { path: '/chat', label: l.teamChat, iconKey: 'MessageSquare' },
     { path: '/calls', label: l.calls, iconKey: 'Phone' },
     { path: '/calendar', label: l.calendar, iconKey: 'CheckSquare' },
