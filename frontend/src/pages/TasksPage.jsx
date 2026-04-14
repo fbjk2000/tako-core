@@ -31,6 +31,7 @@ const TasksPage = () => {
   const [filterDue, setFilterDue] = useState('');
   const [projects, setProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [taskStages, setTaskStages] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
@@ -56,11 +57,15 @@ const TasksPage = () => {
 
   const getAx = () => ({ headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
 
-  const statuses = [
+  const defaultStatuses = [
     { id: 'todo', name: t('tasks.statuses.todo'), color: 'border-slate-300' },
     { id: 'in_progress', name: t('tasks.statuses.in_progress'), color: 'border-blue-400' },
     { id: 'done', name: t('tasks.statuses.done'), color: 'border-emerald-400' }
   ];
+  const stageColors = ['border-slate-300', 'border-blue-400', 'border-amber-400', 'border-purple-400', 'border-emerald-400'];
+  const statuses = taskStages.length > 0
+    ? taskStages.map((s, i) => ({ id: s.id, name: s.name, color: stageColors[i % stageColors.length] }))
+    : defaultStatuses;
 
   const priorities = [
     { value: 'low', label: 'Low', color: 'bg-slate-400' },
@@ -68,7 +73,7 @@ const TasksPage = () => {
     { value: 'high', label: 'High', color: 'bg-rose-500' }
   ];
 
-  useEffect(() => { if (!token) return; fetchTasks(); fetchMembers(); fetchProjects(); }, [token, filterStatus, filterOwner, filterProject, filterPriority, filterDue, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!token) return; fetchTasks(); fetchMembers(); fetchProjects(); fetchTaskStages(); }, [token, filterStatus, filterOwner, filterProject, filterPriority, filterDue, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTasks = async () => {
     try {
@@ -88,6 +93,13 @@ const TasksPage = () => {
     try {
       const res = await axios.get(`${API}/projects`, getAx());
       setProjects(res.data || []);
+    } catch {}
+  };
+
+  const fetchTaskStages = async () => {
+    try {
+      const res = await axios.get(`${API}/settings/stages`, getAx());
+      if (res.data?.task_stages?.length) setTaskStages(res.data.task_stages);
     } catch {}
   };
 
@@ -278,60 +290,61 @@ const TasksPage = () => {
         </div>
 
         {/* Filters */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="w-4 h-4 text-slate-500 shrink-0" />
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search tasks…"
-                data-testid="filter-search"
-                className="h-9 pl-8 pr-3 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/30 focus:border-[#0EA5A0] w-44"
-              />
+        <Card className="px-4 py-3">
+          <div className="space-y-2">
+            {/* Row 1: search + stage + priority + project */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="relative flex-1 min-w-[140px] max-w-xs">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search tasks…"
+                  data-testid="filter-search"
+                  className="h-9 w-full pl-8 pr-3 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/30 focus:border-[#0EA5A0]"
+                />
+              </div>
+              <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-status"><SelectValue placeholder="All Stages" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All Stages</SelectItem>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={filterPriority || 'all'} onValueChange={(v) => setFilterPriority(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-priority"><SelectValue placeholder="All Priorities" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="low"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />Low</span></SelectItem>
+                  <SelectItem value="medium"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Medium</span></SelectItem>
+                  <SelectItem value="high"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />High</span></SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterProject || 'all'} onValueChange={(v) => setFilterProject(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-project"><SelectValue placeholder="All Projects" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {projects.map(p => <SelectItem key={p.project_id} value={p.project_id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterDue || 'all'} onValueChange={(v) => setFilterDue(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-due"><SelectValue placeholder="Any Due Date" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any Due Date</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="today">Due Today</SelectItem>
+                  <SelectItem value="this_week">Due This Week</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterOwner || 'all'} onValueChange={(v) => setFilterOwner(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-owner"><SelectValue placeholder="All Owners" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All Owners</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
+              </Select>
+              {hasFilters && (
+                <Button variant="ghost" size="sm" className="h-9 flex-shrink-0 text-slate-500" onClick={() => { setFilterStatus(''); setFilterOwner(''); setFilterProject(''); setFilterPriority(''); setFilterDue(''); setSearchQuery(''); }}>
+                  <X className="w-3 h-3 mr-1" />Clear
+                </Button>
+              )}
             </div>
-            <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-36 h-9" data-testid="filter-status"><SelectValue placeholder="All Stages" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">{ t('common.all') }</SelectItem>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={filterPriority || 'all'} onValueChange={(v) => setFilterPriority(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-38 h-9" data-testid="filter-priority"><SelectValue placeholder="All Priorities" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="low"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />Low</span></SelectItem>
-                <SelectItem value="medium"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Medium</span></SelectItem>
-                <SelectItem value="high"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />High</span></SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterProject || 'all'} onValueChange={(v) => setFilterProject(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-38 h-9" data-testid="filter-project">
-                <span className="flex items-center gap-1.5"><FolderOpen className="w-3.5 h-3.5 text-slate-400" /><SelectValue placeholder="All Projects" /></span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(p => <SelectItem key={p.project_id} value={p.project_id}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filterDue || 'all'} onValueChange={(v) => setFilterDue(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-40 h-9" data-testid="filter-due"><SelectValue placeholder="Any Due Date" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any Due Date</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="today">Due Today</SelectItem>
-                <SelectItem value="this_week">Due This Week</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterOwner || 'all'} onValueChange={(v) => setFilterOwner(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-36 h-9" data-testid="filter-owner"><SelectValue placeholder="All Owners" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">{ t('common.all') }</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
-            </Select>
-            {hasFilters && (
-              <Button variant="ghost" size="sm" className="h-9" onClick={() => { setFilterStatus(''); setFilterOwner(''); setFilterProject(''); setFilterPriority(''); setFilterDue(''); setSearchQuery(''); }}>
-                <X className="w-3 h-3 mr-1" />Clear All
-              </Button>
-            )}
           </div>
         </Card>
 
