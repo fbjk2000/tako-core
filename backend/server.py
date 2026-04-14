@@ -7148,24 +7148,46 @@ async def upload_file(
     }
     await db.files.insert_one(file_doc)
     
-    # AI analysis in background
+    # AI analysis — extract text then summarise
     ai_summary = None
     try:
-        analyzable = file.content_type and (file.content_type.startswith('text/') or file.content_type in ['application/pdf', 'application/json', 'text/csv'])
-        if analyzable and len(contents) < 500000:
-            text_content = contents.decode('utf-8', errors='ignore')[:5000]
-            resp = await tako_ai_text(
-                "Summarize this document in 2-3 sentences. Then suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
-                f"File: {file.filename}\n\nContent:\n{text_content}",
-                user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
-            )
+        text_content = None
+        ct = file.content_type or ""
+
+        # --- PDF ---
+        if ct == "application/pdf":
             try:
-                ai_summary = json.loads(resp.strip().strip('```json').strip('```'))
-            except:
-                ai_summary = {"summary": resp[:300], "follow_ups": []}
-        elif file.content_type and file.content_type.startswith('image/'):
+                import io
+                from pypdf import PdfReader
+                reader = PdfReader(io.BytesIO(contents))
+                pages_text = []
+                for page in reader.pages[:30]:  # first 30 pages
+                    t = page.extract_text() or ""
+                    pages_text.append(t)
+                text_content = "\n".join(pages_text)[:8000]
+            except Exception as pdf_err:
+                logger.warning(f"PDF text extraction failed: {pdf_err}")
+
+        # --- DOCX ---
+        elif ct in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                     "application/msword"):
+            try:
+                import io
+                from docx import Document as DocxDocument
+                doc = DocxDocument(io.BytesIO(contents))
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                text_content = "\n".join(paragraphs)[:8000]
+            except Exception as docx_err:
+                logger.warning(f"DOCX text extraction failed: {docx_err}")
+
+        # --- Plain text / CSV / JSON ---
+        elif ct.startswith("text/") or ct in ("application/json", "text/csv"):
+            text_content = contents.decode("utf-8", errors="ignore")[:8000]
+
+        # --- Images → vision ---
+        elif ct.startswith("image/") and len(contents) < 5_000_000:
             import base64
-            img_b64 = base64.b64encode(contents).decode('utf-8')
+            img_b64 = base64.b64encode(contents).decode("utf-8")
             resp = await tako_ai_vision(
                 "Describe this image in 2-3 sentences. Suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
                 f"Analyze this file: {file.filename}",
@@ -7173,10 +7195,22 @@ async def upload_file(
                 user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
             )
             try:
-                ai_summary = json.loads(resp.strip().strip('```json').strip('```'))
-            except:
+                ai_summary = json.loads(resp.strip().strip("```json").strip("```"))
+            except Exception:
                 ai_summary = {"summary": resp[:300], "follow_ups": []}
-        
+
+        # --- Summarise extracted text ---
+        if text_content and text_content.strip():
+            resp = await tako_ai_text(
+                "Summarize this document in 2-3 sentences. Then suggest 1-2 follow-up actions. Return JSON: {summary, follow_ups: [{title, type: 'internal'|'external', priority: 'high'|'medium'|'low'}]}. Return ONLY valid JSON.",
+                f"File: {file.filename}\n\nContent:\n{text_content}",
+                user_email=current_user.get("email", ""), org_id=current_user.get("organization_id")
+            )
+            try:
+                ai_summary = json.loads(resp.strip().strip("```json").strip("```"))
+            except Exception:
+                ai_summary = {"summary": resp[:300], "follow_ups": []}
+
         if ai_summary:
             await db.files.update_one({"file_id": file_id}, {"$set": {"ai_summary": ai_summary}})
     except Exception as e:
