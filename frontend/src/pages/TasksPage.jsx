@@ -11,7 +11,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Plus, MoreVertical, Calendar, Trash2, Filter, X, User, Edit2, Save, GripVertical, MessageSquare, CheckSquare, Clock, RotateCcw, LayoutGrid, List } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, Trash2, Filter, X, User, Edit2, Save, GripVertical, MessageSquare, CheckSquare, Clock, RotateCcw, LayoutGrid, List, Facebook } from 'lucide-react';
+import { Link as RouterLink } from 'react-router-dom';
+
+// Shared helper: render a "Source: Facebook" chip when the task was auto-created
+// by a Listener. Clicking it deep-links to /listeners so the user can see the
+// underlying hit / campaign context.
+const ListenerSourceChip = ({ task, compact = false }) => {
+  if (!task?.related_listener_id) return null;
+  const size = compact ? 'text-[10px] h-4 px-1.5' : 'text-xs';
+  return (
+    <RouterLink
+      to="/listeners"
+      onClick={(e) => e.stopPropagation()}
+      className={`inline-flex items-center gap-1 rounded ${size} bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors`}
+      title="Auto-created by a Facebook Listener — click to open Listeners"
+    >
+      <Facebook className="w-3 h-3" />
+      {compact ? 'FB' : 'Facebook'}
+    </RouterLink>
+  );
+};
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Badge } from '../components/ui/badge';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -296,6 +316,7 @@ const TasksPage = () => {
                           <span className="font-medium">{task.title}</span>
                           {task.subtask_count > 0 && <Badge variant="secondary" className="text-xs">{task.subtasks_done}/{task.subtask_count}</Badge>}
                           {task.comments?.length > 0 && <Badge variant="outline" className="text-xs">{task.comments.length} {t('tasks.updates').toLowerCase()}</Badge>}
+                          <ListenerSourceChip task={task} />
                         </div>
                       </td>
                       <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
@@ -350,6 +371,7 @@ const TasksPage = () => {
                                         <div className="flex items-center gap-2 mb-1">
                                           <div className={`w-2 h-2 rounded-full ${priorities.find(p => p.value === task.priority)?.color || 'bg-slate-400'}`} />
                                           <p className="font-medium text-slate-900 text-sm truncate">{task.title}</p>
+                                          <ListenerSourceChip task={task} compact />
                                         </div>
                                         {task.description && <p className="text-xs text-slate-500 line-clamp-2">{task.description}</p>}
                                         {task.assigned_to && <div className="flex items-center gap-1 mt-2 text-xs text-[#0EA5A0]"><User className="w-3 h-3" />{getOwnerName(task.assigned_to)}</div>}
