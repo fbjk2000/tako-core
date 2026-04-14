@@ -39,7 +39,8 @@ import {
   Upload,
   UserPlus,
   X,
-  Key
+  Key,
+  CheckSquare
 } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -62,6 +63,8 @@ const SettingsPage = () => {
   const [newWebhookName, setNewWebhookName] = useState('');
   const [editingStages, setEditingStages] = useState(false);
   const [dealStages, setDealStages] = useState([]);
+  const [editingTaskStages, setEditingTaskStages] = useState(false);
+  const [taskStages, setTaskStages] = useState([]);
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const [newPipeline, setNewPipeline] = useState({ name: '', stages: [] });
   
@@ -122,6 +125,7 @@ const SettingsPage = () => {
       });
       setOrgSettings(response.data);
       setDealStages(response.data.deal_stages || []);
+      setTaskStages(response.data.task_stages || []);
     } catch (error) {
       console.error('Failed to fetch org settings');
     }
@@ -430,6 +434,39 @@ const SettingsPage = () => {
     const updated = [...dealStages];
     updated[index] = { ...updated[index], [field]: value };
     setDealStages(updated);
+  };
+
+  const handleSaveTaskStages = async () => {
+    try {
+      await axios.put(`${API}/organizations/settings`, { task_stages: taskStages }, {
+        headers,
+        withCredentials: true
+      });
+      toast.success('Task stages saved');
+      setEditingTaskStages(false);
+      fetchOrgSettings();
+    } catch (error) {
+      toast.error('Failed to save task stages');
+    }
+  };
+
+  const addTaskStage = () => {
+    const newStage = {
+      id: `stage_${Date.now()}`,
+      name: 'New Step'
+    };
+    setTaskStages([...taskStages, newStage]);
+  };
+
+  const removeTaskStage = (index) => {
+    if (taskStages.length <= 1) return;
+    setTaskStages(taskStages.filter((_, i) => i !== index));
+  };
+
+  const updateTaskStage = (index, field, value) => {
+    const updated = [...taskStages];
+    updated[index] = { ...updated[index], [field]: value };
+    setTaskStages(updated);
   };
 
   const handleLogout = async () => {
@@ -881,6 +918,74 @@ const SettingsPage = () => {
                       <Button variant="outline" size="sm" onClick={addDealStage} className="mt-2">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Stage
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Task Steps Configuration - Only for owner/admin */}
+            {organization && (user?.role === 'owner' || user?.role === 'admin' || user?.role === 'super_admin') && (
+              <Card className="mt-4">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CheckSquare className="w-5 h-5" />
+                      Task Steps
+                    </CardTitle>
+                    <CardDescription>Customize your task workflow steps</CardDescription>
+                  </div>
+                  {!editingTaskStages ? (
+                    <Button variant="outline" size="sm" onClick={() => setEditingTaskStages(true)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Steps
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setEditingTaskStages(false); setTaskStages(orgSettings?.task_stages || []); }}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={handleSaveTaskStages}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {taskStages.map((stage, index) => (
+                      <div key={stage.id} className="flex items-center gap-2">
+                        <span className="w-8 text-sm text-slate-400">{index + 1}.</span>
+                        {editingTaskStages ? (
+                          <>
+                            <Input
+                              value={stage.name}
+                              onChange={(e) => updateTaskStage(index, 'name', e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-rose-500"
+                              onClick={() => removeTaskStage(index)}
+                              disabled={taskStages.length <= 1}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="flex-1 p-2 bg-slate-50 rounded">
+                            <span className="text-slate-700">{stage.name}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {editingTaskStages && (
+                      <Button variant="outline" size="sm" onClick={addTaskStage} className="mt-2">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Step
                       </Button>
                     )}
                   </div>
