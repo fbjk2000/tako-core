@@ -653,9 +653,9 @@ const SettingsPage = () => {
                         <p className="text-xs text-slate-500">Download these images to promote TAKO on your social channels. Pair them with your referral link!</p>
                         <div className="grid grid-cols-3 gap-3">
                           {[
-                            { label: 'Banner (1536x1024)', desc: 'Facebook, LinkedIn, X', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/d4c7d179cc49d6bcdd5bdeba2bd3c0ee15d214451c0e4ac91a8035ff9554f03b.png' },
-                            { label: 'Story (1024x1536)', desc: 'Instagram, TikTok', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/787c03120f149891b257071153f2eb541a6f5057f2cc6d8c73a78a8d7720db63.png' },
-                            { label: 'Square (1024x1024)', desc: 'Instagram, LinkedIn', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/21cf5a85c9e37c38bbb86ca92cb16d4d2f280e64b08783bff72de6dc2ce7650b.png' },
+                            { label: 'Banner (1536×1024)', desc: 'Facebook, LinkedIn, X', url: '/assets/social-banner.png' },
+                            { label: 'Story (1024×1536)', desc: 'Instagram, TikTok', url: '/assets/social-story.png' },
+                            { label: 'Square (1024×1024)', desc: 'Instagram, LinkedIn', url: '/assets/social-square.png' },
                           ].map((asset, i) => (
                             <div key={i} className="border border-slate-100 rounded-lg overflow-hidden">
                               <img src={asset.url} alt={asset.label} className="w-full h-28 object-cover bg-slate-100" />
