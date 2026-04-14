@@ -44,6 +44,11 @@ class Listener(BaseModel):
     campaign_id: str
     channel: Literal["facebook"] = "facebook"
     status: Literal["active", "paused", "archived"] = "active"
+    # Machine-readable reason set alongside status transitions driven by the
+    # system (e.g. "meta_data_deletion", "oauth_revoked", "token_expired"). Null
+    # for user-initiated pauses. Kept open-ended string rather than Literal so
+    # new reasons can be introduced without a model migration.
+    paused_reason: Optional[str] = None
     config: ListenerConfig
     stats: dict = Field(default_factory=dict)
     created_by: str
