@@ -406,6 +406,71 @@ const CalendarPage = () => {
     }
   };
 
+  // Given a list of timed events on a single day, annotate each with
+  // `_col` (zero-based column index) and `_numCols` (how many columns the
+  // overlap cluster spans). Uses the classic column-sweep algorithm used by
+  // Google Calendar / FullCalendar: group transitively-overlapping events
+  // into clusters, then greedily assign each event to the first column whose
+  // latest-ending event finishes before this one starts.
+  const layoutDayEvents = useCallback((evts) => {
+    if (!evts.length) return [];
+    const startMs = (e) => { try { return new Date(e.date).getTime(); } catch { return 0; } };
+    const endMs = (e) => {
+      try {
+        if (e.end_date) return new Date(e.end_date).getTime();
+        return startMs(e) + 60 * 60 * 1000; // default 1h
+      } catch { return startMs(e) + 60 * 60 * 1000; }
+    };
+    const sorted = [...evts].sort((a, b) => {
+      const sa = startMs(a), sb = startMs(b);
+      if (sa !== sb) return sa - sb;
+      return endMs(b) - endMs(a); // longer events first on ties
+    });
+
+    const result = [];
+    let cluster = [];
+    let clusterEnd = 0;
+
+    const flushCluster = () => {
+      if (!cluster.length) return;
+      // Assign columns greedily
+      const columns = []; // each entry = last-end time in that column
+      cluster.forEach(item => {
+        let placed = false;
+        for (let c = 0; c < columns.length; c++) {
+          if (columns[c] <= startMs(item.evt)) {
+            item.col = c;
+            columns[c] = endMs(item.evt);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          item.col = columns.length;
+          columns.push(endMs(item.evt));
+        }
+      });
+      const numCols = columns.length;
+      cluster.forEach(item => {
+        result.push({ ...item.evt, _col: item.col, _numCols: numCols });
+      });
+      cluster = [];
+      clusterEnd = 0;
+    };
+
+    sorted.forEach(evt => {
+      const s = startMs(evt);
+      if (cluster.length && s >= clusterEnd) {
+        // Gap — close previous cluster
+        flushCluster();
+      }
+      cluster.push({ evt, col: 0 });
+      clusterEnd = Math.max(clusterEnd, endMs(evt));
+    });
+    flushCluster();
+    return result;
+  }, []);
+
   // Compute position of the now-indicator line within the visible hour range
   const nowLineTop = useMemo(() => {
     const now = new Date();
@@ -458,17 +523,25 @@ const CalendarPage = () => {
   const renderTimedEvent = (evt, dayIndex, columnCount = 7) => {
     const pos = getEventPosition(evt);
     const color = TYPE_COLORS[evt.type] || '#0C1024';
-    const widthPct = 100 / columnCount;
+    const subCol = evt._col || 0;
+    const subCount = evt._numCols || 1;
+    // Day column width fraction: (100% - 60px) / columnCount
+    // Within a day column, an event occupies one of subCount sub-columns.
+    // Side-by-side layout: each event uses 1/subCount of the day width.
+    // Add a small right-overlap (~10%) for a cascaded look when 2+ events overlap.
+    const overlap = subCount > 1 ? 0.1 : 0; // percent of sub-col to overlap into the next
+    const subFrac = 1 / subCount;            // fraction of the day column
     return (
       <div
         key={`${evt.id}-${dayIndex}`}
-        className="rounded px-1.5 py-0.5 cursor-pointer overflow-hidden hover:opacity-90 transition-opacity z-10 shadow-sm"
+        className="rounded px-1.5 py-0.5 cursor-pointer overflow-hidden hover:opacity-90 transition-opacity shadow-sm"
         style={{
           position: 'absolute',
           top: `${pos.top}px`,
           height: `${pos.height}px`,
-          left: `calc(60px + ${dayIndex} * (100% - 60px) / ${columnCount} + 2px)`,
-          width: `calc((100% - 60px) / ${columnCount} - 4px)`,
+          left: `calc(60px + ${dayIndex} * ((100% - 60px) / ${columnCount}) + ${subCol} * ((100% - 60px) / ${columnCount} * ${subFrac}) + 2px)`,
+          width: `calc((100% - 60px) / ${columnCount} * ${subFrac + overlap} - 4px)`,
+          zIndex: 10 + subCol,
           backgroundColor: color + '1a',
           borderLeft: `3px solid ${color}`,
         }}
@@ -676,8 +749,9 @@ const CalendarPage = () => {
                       />
                     </React.Fragment>
                   ))}
-                  {/* Timed events */}
-                  {getEventsForDay(currentDate).filter(e => !e.all_day).map(evt => renderTimedEvent(evt, 0, 1))}
+                  {/* Timed events (with overlap-aware column layout) */}
+                  {layoutDayEvents(getEventsForDay(currentDate).filter(e => !e.all_day))
+                    .map(evt => renderTimedEvent(evt, 0, 1))}
                   {/* Now-line */}
                   {isToday(currentDate) && nowLineTop != null && (
                     <div className="pointer-events-none absolute z-20" style={{ top: `${nowLineTop}px`, left: '60px', right: 0 }}>
@@ -719,9 +793,10 @@ const CalendarPage = () => {
                       ))}
                     </React.Fragment>
                   ))}
-                  {/* Timed event overlays */}
+                  {/* Timed event overlays (with overlap-aware column layout per day) */}
                   {weekDays.map((d, di) =>
-                    getEventsForDay(d).filter(e => !e.all_day).map(evt => renderTimedEvent(evt, di, 7))
+                    layoutDayEvents(getEventsForDay(d).filter(e => !e.all_day))
+                      .map(evt => renderTimedEvent(evt, di, 7))
                   )}
                   {/* Now-line — only drawn if today is in the visible week */}
                   {nowLineTop != null && weekDays.some(isToday) && (
