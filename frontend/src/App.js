@@ -30,6 +30,7 @@ import CapturePage from './pages/CapturePage';
 import FilesPage from './pages/FilesPage';
 import ListenersPage from './pages/ListenersPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
+import LegalPage from './pages/LegalPage';
 
 import './App.css';
 
@@ -374,6 +375,8 @@ const AppRouter = () => {
           </ProtectedRoute>
         }
       />
+      <Route path="/privacy" element={<LegalPage />} />
+      <Route path="/terms" element={<LegalPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

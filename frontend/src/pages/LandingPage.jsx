@@ -489,8 +489,8 @@ const LandingPage = () => {
             <div>
               <h4 className="text-white/60 text-xs tracking-[0.15em] uppercase font-medium mb-4">Legal</h4>
               <div className="space-y-2 text-sm">
-                <a href="#" className="block text-white/40 hover:text-white/70 transition-colors">Privacy Policy</a>
-                <a href="#" className="block text-white/40 hover:text-white/70 transition-colors">Terms of Service</a>
+                <Link to="/privacy" className="block text-white/40 hover:text-white/70 transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="block text-white/40 hover:text-white/70 transition-colors">Terms of Service</Link>
                 <a href="mailto:support@tako.software" className="block text-white/40 hover:text-white/70 transition-colors">support@tako.software</a>
               </div>
             </div>
