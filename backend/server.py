@@ -2698,20 +2698,23 @@ async def google_calendar_auth_url(request: Request, current_user: dict = Depend
     """Get Google OAuth URL for Calendar access"""
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=400, detail="Google Calendar not configured")
-    
+
+    import secrets as _secrets
     from google_auth_oauthlib.flow import Flow
-    
+
     redirect_uri = f"{FRONTEND_URL}/api/auth/google/callback"
     flow = Flow.from_client_config(
         {"web": {"client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET, "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token"}},
         scopes=GOOGLE_SCOPES,
         redirect_uri=redirect_uri
     )
-    auth_url, state = flow.authorization_url(access_type='offline', prompt='consent')
-    
-    # Store state for verification
-    await db.google_calendar_states.insert_one({"state": state, "user_id": current_user["user_id"], "created_at": datetime.now(timezone.utc).isoformat()})
-    
+    # Google requires PKCE for all OAuth flows — generate verifier here, store it, pass to fetch_token later
+    code_verifier = _secrets.token_urlsafe(96)
+    auth_url, state = flow.authorization_url(access_type='offline', prompt='consent', code_verifier=code_verifier)
+
+    # Store state + code_verifier for callback verification
+    await db.google_calendar_states.insert_one({"state": state, "user_id": current_user["user_id"], "code_verifier": code_verifier, "created_at": datetime.now(timezone.utc).isoformat()})
+
     return {"auth_url": auth_url, "state": state}
 
 @api_router.get("/auth/google/callback")
@@ -2725,15 +2728,19 @@ async def google_calendar_callback(code: str, state: str):
         raise HTTPException(status_code=400, detail="Invalid state")
     
     user_id = state_doc["user_id"]
+    code_verifier = state_doc.get("code_verifier")
     redirect_uri = f"{FRONTEND_URL}/api/auth/google/callback"
-    
+
     flow = Flow.from_client_config(
         {"web": {"client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET, "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token"}},
         scopes=GOOGLE_SCOPES,
         redirect_uri=redirect_uri,
         state=state
     )
-    flow.fetch_token(code=code)
+    fetch_kwargs = {"code": code}
+    if code_verifier:
+        fetch_kwargs["code_verifier"] = code_verifier
+    flow.fetch_token(**fetch_kwargs)
     credentials = flow.credentials
     
     # Store tokens
