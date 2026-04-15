@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Plus, Mail, Send, Zap, Eye, MousePointer, RefreshCw, Check, ExternalLink, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Plus, Mail, Send, Zap, Eye, MousePointer, RefreshCw, Check, ExternalLink, Users, Radio } from 'lucide-react';
 
 const CampaignsPage = () => {
   const { token } = useAuth();
@@ -24,7 +25,8 @@ const CampaignsPage = () => {
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     subject: '',
-    content: ''
+    content: '',
+    channel_type: 'email'
   });
 
   // Kit.com states
@@ -97,7 +99,7 @@ const CampaignsPage = () => {
       await axios.post(`${API}/campaigns`, newCampaign, { headers, withCredentials: true });
       toast.success('Campaign created successfully');
       setIsAddDialogOpen(false);
-      setNewCampaign({ name: '', subject: '', content: '' });
+      setNewCampaign({ name: '', subject: '', content: '', channel_type: 'email' });
       fetchCampaigns();
     } catch (error) {
       toast.error('Failed to create campaign');
@@ -210,26 +212,59 @@ const CampaignsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Subject Line *</Label>
-                    <Input
-                      value={newCampaign.subject}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, subject: e.target.value })}
-                      placeholder="Your email subject"
-                      required
-                      data-testid="campaign-subject"
-                    />
+                    <Label>Channel</Label>
+                    <Select value={newCampaign.channel_type} onValueChange={v => setNewCampaign({ ...newCampaign, channel_type: v })}>
+                      <SelectTrigger data-testid="campaign-channel">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="email"><span className="flex items-center gap-2"><Mail className="w-3.5 h-3.5" />Email</span></SelectItem>
+                        <SelectItem value="facebook"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />Facebook</span></SelectItem>
+                        <SelectItem value="instagram"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />Instagram</span></SelectItem>
+                        <SelectItem value="linkedin"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />LinkedIn</span></SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Email Content *</Label>
-                    <Textarea
-                      value={newCampaign.content}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, content: e.target.value })}
-                      placeholder="Write your email content..."
-                      rows={8}
-                      required
-                      data-testid="campaign-content"
-                    />
-                  </div>
+
+                  {newCampaign.channel_type === 'email' ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Subject Line *</Label>
+                        <Input
+                          value={newCampaign.subject}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, subject: e.target.value })}
+                          placeholder="Your email subject"
+                          required
+                          data-testid="campaign-subject"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email Content *</Label>
+                        <Textarea
+                          value={newCampaign.content}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, content: e.target.value })}
+                          placeholder="Write your email content..."
+                          rows={6}
+                          required
+                          data-testid="campaign-content"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-lg bg-[#0EA5A0]/5 border border-[#0EA5A0]/20 p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-[#0EA5A0] font-medium text-sm">
+                        <Radio className="w-4 h-4" />
+                        Social Listener Campaign
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        This campaign type uses a <strong>Listener</strong> instead of a recipient list.
+                        After creating, go to <strong>Listeners</strong> in the sidebar to configure keywords,
+                        sources, and polling cadence.
+                      </p>
+                      <p className="text-xs text-slate-400">Subject and content are not used for social campaigns.</p>
+                    </div>
+                  )}
+
                   <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-campaign-btn">
                     Create Campaign
                   </Button>
@@ -300,8 +335,16 @@ const CampaignsPage = () => {
                             <span className={`text-xs px-2 py-1 rounded-full capitalize ${getStatusColor(campaign.status)}`}>
                               {campaign.status}
                             </span>
+                            {campaign.channel_type && campaign.channel_type !== 'email' && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-[#0EA5A0]/10 text-[#0EA5A0] capitalize flex items-center gap-1">
+                                <Radio className="w-3 h-3" />{campaign.channel_type}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-sm text-slate-600 mb-2">Subject: {campaign.subject}</p>
+                          {campaign.channel_type === 'email' || !campaign.channel_type
+                            ? <p className="text-sm text-slate-600 mb-2">Subject: {campaign.subject}</p>
+                            : <p className="text-sm text-slate-500 mb-2">Social listener campaign — configure in Listeners</p>
+                          }
                           <p className="text-sm text-slate-500 line-clamp-2">{campaign.content}</p>
                         </div>
                         <div className="flex items-center gap-4 ml-4">

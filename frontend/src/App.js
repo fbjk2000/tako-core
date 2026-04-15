@@ -28,6 +28,7 @@ import CalendarPage from './pages/CalendarPage';
 import BookingPage, { PublicBookingPage } from './pages/BookingPage';
 import CapturePage from './pages/CapturePage';
 import FilesPage from './pages/FilesPage';
+import ListenersPage from './pages/ListenersPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
 
 import './App.css';
@@ -362,6 +363,14 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <FilesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/listeners"
+        element={
+          <ProtectedRoute>
+            <ListenersPage />
           </ProtectedRoute>
         }
       />
