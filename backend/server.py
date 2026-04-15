@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, UploadFile, File, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, FileResponse
 from dotenv import load_dotenv
@@ -2758,7 +2758,16 @@ async def google_calendar_callback(code: str, state: str):
     await db.google_calendar_tokens.delete_many({"user_id": user_id})
     await db.google_calendar_tokens.insert_one(token_doc)
     await db.google_calendar_states.delete_many({"user_id": user_id})
-    
+    # Also wipe any stale cached events from a previous connection
+    await db.google_calendar_events.delete_many({"user_id": user_id})
+
+    # Kick off initial sync so the user sees their events immediately
+    try:
+        import google_calendar as gcal
+        await gcal.sync_user_calendar(db, user_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Initial Google Calendar sync failed for user=%s: %s", user_id, e)
+
     # Redirect back to calendar settings
     from starlette.responses import RedirectResponse
     return RedirectResponse(url=f"{FRONTEND_URL}/settings?tab=integrations&google=connected")
@@ -2770,70 +2779,106 @@ async def google_calendar_status(current_user: dict = Depends(get_current_user))
     return {"connected": token is not None, "connected_at": token.get("connected_at") if token else None}
 
 @api_router.get("/calendar/google/events")
-async def google_calendar_events(current_user: dict = Depends(get_current_user)):
-    """Fetch events from Google Calendar"""
-    token_doc = await db.google_calendar_tokens.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
+async def google_calendar_events(
+    current_user: dict = Depends(get_current_user),
+    sync: bool = False,
+):
+    """Return Google Calendar events from the local cache.
+
+    Pass ?sync=true to force a fresh sync from Google before returning.
+    Otherwise the request is served from the cache populated by the
+    background job (every 2 minutes) and manual syncs — the happy path.
+    """
+    import google_calendar as gcal
+    user_id = current_user["user_id"]
+    token_doc = await db.google_calendar_tokens.find_one({"user_id": user_id}, {"user_id": 1})
     if not token_doc:
         raise HTTPException(status_code=400, detail="Google Calendar not connected")
-    
+    if sync:
+        await gcal.sync_user_calendar(db, user_id)
+    return await gcal.list_cached_events(db, user_id)
+
+
+@api_router.post("/calendar/google/sync")
+async def google_calendar_sync(current_user: dict = Depends(get_current_user)):
+    """Manually trigger an incremental sync for the current user."""
+    import google_calendar as gcal
+    user_id = current_user["user_id"]
+    result = await gcal.sync_user_calendar(db, user_id)
+    if result["status"] == "not_connected":
+        raise HTTPException(status_code=400, detail="Google Calendar not connected")
+    if result["status"] == "error":
+        raise HTTPException(status_code=502, detail=f"Sync failed: {result['error']}")
+    # Return the fresh event list along with sync metadata
+    events = await gcal.list_cached_events(db, user_id)
+    return {"mode": result["mode"], "count": len(events), "events": events}
+
+
+@api_router.post("/calendar/google/events")
+async def google_calendar_create(
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Create a Google Calendar event.
+
+    Body shape:
+      { summary, description?, location?, start_iso, end_iso, timezone?,
+        all_day?: bool, start_date?, end_date?, attendees?: [email, ...] }
+    """
+    import google_calendar as gcal
     try:
-        from google.oauth2.credentials import Credentials
-        from googleapiclient.discovery import build
-        
-        creds = Credentials(
-            token=token_doc["access_token"],
-            refresh_token=token_doc.get("refresh_token"),
-            token_uri=token_doc.get("token_uri", "https://oauth2.googleapis.com/token"),
-            client_id=token_doc.get("client_id", GOOGLE_CLIENT_ID),
-            client_secret=token_doc.get("client_secret", GOOGLE_CLIENT_SECRET),
-            scopes=token_doc.get("scopes", GOOGLE_SCOPES)
-        )
-        
-        service = build('calendar', 'v3', credentials=creds)
-        
-        now = datetime.now(timezone.utc)
-        time_min = (now - timedelta(days=30)).isoformat()
-        time_max = (now + timedelta(days=90)).isoformat()
-        
-        events_result = service.events().list(
-            calendarId='primary',
-            timeMin=time_min,
-            timeMax=time_max,
-            maxResults=200,
-            singleEvents=True,
-            orderBy='startTime'
-        ).execute()
-        
-        events = []
-        for e in events_result.get('items', []):
-            start = e.get('start', {}).get('dateTime', e.get('start', {}).get('date', ''))
-            events.append({
-                "id": f"gcal_{e['id']}",
-                "title": e.get('summary', 'No title'),
-                "date": start,
-                "type": "google",
-                "color": "#4285f4",
-                "notes": e.get('description', ''),
-                "location": e.get('location', ''),
-                "google_id": e['id']
-            })
-        
-        # Update stored token if refreshed
-        if creds.token != token_doc["access_token"]:
-            await db.google_calendar_tokens.update_one(
-                {"user_id": current_user["user_id"]},
-                {"$set": {"access_token": creds.token, "expiry": creds.expiry.isoformat() if creds.expiry else None}}
-            )
-        
-        return events
-    except Exception as e:
-        logger.error(f"Google Calendar error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Google Calendar: {str(e)}")
+        return await gcal.create_event(db, current_user["user_id"], payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Google Calendar create failed: %s", e)
+        raise HTTPException(status_code=502, detail=f"Failed to create event: {e}")
+
+
+@api_router.put("/calendar/google/events/{event_id}")
+async def google_calendar_update(
+    event_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Update an existing Google Calendar event (PATCH semantics)."""
+    import google_calendar as gcal
+    try:
+        return await gcal.update_event(db, current_user["user_id"], event_id, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Google Calendar update failed: %s", e)
+        raise HTTPException(status_code=502, detail=f"Failed to update event: {e}")
+
+
+@api_router.delete("/calendar/google/events/{event_id}")
+async def google_calendar_delete(
+    event_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete a Google Calendar event."""
+    import google_calendar as gcal
+    try:
+        await gcal.delete_event(db, current_user["user_id"], event_id)
+        return {"ok": True}
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Google Calendar delete failed: %s", e)
+        raise HTTPException(status_code=502, detail=f"Failed to delete event: {e}")
+
 
 @api_router.delete("/calendar/google/disconnect")
 async def disconnect_google_calendar(current_user: dict = Depends(get_current_user)):
     """Disconnect Google Calendar"""
-    await db.google_calendar_tokens.delete_many({"user_id": current_user["user_id"]})
+    user_id = current_user["user_id"]
+    await db.google_calendar_tokens.delete_many({"user_id": user_id})
+    await db.google_calendar_events.delete_many({"user_id": user_id})
     return {"message": "Google Calendar disconnected"}
 
 # ==================== CAMPAIGNS ROUTES ====================
@@ -8007,15 +8052,35 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def _tako_startup() -> None:
-    """Start the APScheduler, ensure listener Mongo indexes, rehydrate jobs."""
+    """Start the APScheduler, ensure indexes, rehydrate jobs, register sync jobs."""
     try:
-        from jobs import start_scheduler
+        from jobs import start_scheduler, scheduler
         from listeners.indexes import ensure_indexes
         from listeners.poller import reschedule_all_listeners
+        from google_calendar import google_calendar_sync_all
 
         start_scheduler()
         await ensure_indexes()
         await reschedule_all_listeners()
+
+        # Google Calendar: indexes
+        try:
+            await db.google_calendar_events.create_index([("user_id", 1), ("google_event_id", 1)], unique=True)
+            await db.google_calendar_events.create_index([("user_id", 1), ("start_iso", 1)])
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not create google_calendar_events indexes: %s", e)
+
+        # Google Calendar: periodic sync every 2 minutes (top-level function so
+        # it pickles correctly for the MongoDB jobstore).
+        scheduler.add_job(
+            google_calendar_sync_all,
+            "interval",
+            minutes=2,
+            id="google_calendar_sync_all",
+            replace_existing=True,
+            next_run_time=datetime.now(timezone.utc) + timedelta(seconds=30),
+        )
+        logger.info("Google Calendar sync job scheduled (every 2 minutes)")
     except Exception as e:  # noqa: BLE001
         logger.exception("Startup hook failed: %s", e)
 
