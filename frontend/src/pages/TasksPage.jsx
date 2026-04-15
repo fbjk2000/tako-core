@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Plus, MoreVertical, Calendar, Trash2, Filter, X, User, Edit2, Save, GripVertical, MessageSquare, CheckSquare, Clock, RotateCcw, LayoutGrid, List } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, Trash2, Filter, X, User, Edit2, Save, GripVertical, MessageSquare, CheckSquare, Clock, RotateCcw, LayoutGrid, List, Search, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Badge } from '../components/ui/badge';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -26,6 +26,12 @@ const TasksPage = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterOwner, setFilterOwner] = useState('');
+  const [filterProject, setFilterProject] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [filterDue, setFilterDue] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [taskStages, setTaskStages] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
@@ -51,11 +57,15 @@ const TasksPage = () => {
 
   const getAx = () => ({ headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
 
-  const statuses = [
+  const defaultStatuses = [
     { id: 'todo', name: t('tasks.statuses.todo'), color: 'border-slate-300' },
     { id: 'in_progress', name: t('tasks.statuses.in_progress'), color: 'border-blue-400' },
     { id: 'done', name: t('tasks.statuses.done'), color: 'border-emerald-400' }
   ];
+  const stageColors = ['border-slate-300', 'border-blue-400', 'border-amber-400', 'border-purple-400', 'border-emerald-400'];
+  const statuses = taskStages.length > 0
+    ? taskStages.map((s, i) => ({ id: s.id, name: s.name, color: stageColors[i % stageColors.length] }))
+    : defaultStatuses;
 
   const priorities = [
     { value: 'low', label: 'Low', color: 'bg-slate-400' },
@@ -63,7 +73,7 @@ const TasksPage = () => {
     { value: 'high', label: 'High', color: 'bg-rose-500' }
   ];
 
-  useEffect(() => { if (!token) return; fetchTasks(); fetchMembers(); }, [token, filterStatus, filterOwner]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!token) return; fetchTasks(); fetchMembers(); fetchProjects(); fetchTaskStages(); }, [token, filterStatus, filterOwner, filterProject, filterPriority, filterDue, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTasks = async () => {
     try {
@@ -71,11 +81,26 @@ const TasksPage = () => {
       const params = [];
       if (filterStatus) params.push(`status=${filterStatus}`);
       if (filterOwner) params.push(`assigned_to=${filterOwner}`);
+      if (filterProject) params.push(`project_id=${filterProject}`);
       if (params.length) url += `?${params.join('&')}`;
       const res = await axios.get(url, getAx());
       setTasks(res.data);
     } catch { toast.error('Failed to load tasks'); }
     finally { setLoading(false); }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const res = await axios.get(`${API}/projects`, getAx());
+      setProjects(res.data || []);
+    } catch {}
+  };
+
+  const fetchTaskStages = async () => {
+    try {
+      const res = await axios.get(`${API}/settings/stages`, getAx());
+      if (res.data?.task_statuses?.length) setTaskStages(res.data.task_statuses);
+    } catch {}
   };
 
   const fetchMembers = async () => {
@@ -201,9 +226,18 @@ const TasksPage = () => {
     handleStatusChange(taskId, newStatus);
   };
 
-  const getStatusTasks = (statusId) => tasks.filter(t => t.status === statusId);
+  const filteredTasks = tasks.filter(task => {
+    if (filterPriority && task.priority !== filterPriority) return false;
+    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterDue === 'overdue') return task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done';
+    if (filterDue === 'today') { const d = new Date(task.due_date); const t = new Date(); return task.due_date && d.toDateString() === t.toDateString(); }
+    if (filterDue === 'this_week') { const d = new Date(task.due_date); const now = new Date(); const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7); return task.due_date && d >= now && d <= weekEnd; }
+    return true;
+  });
+
+  const getStatusTasks = (statusId) => filteredTasks.filter(t => t.status === statusId);
   const getOwnerName = (uid) => members.find(m => m.user_id === uid)?.name || 'Unknown';
-  const hasFilters = filterStatus || filterOwner;
+  const hasFilters = filterStatus || filterOwner || filterProject || filterPriority || filterDue || searchQuery;
 
   return (
     <DashboardLayout>
@@ -256,18 +290,61 @@ const TasksPage = () => {
         </div>
 
         {/* Filters */}
-        <Card className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <Filter className="w-4 h-4 text-slate-500" />
-            <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-36" data-testid="filter-status"><SelectValue placeholder="All Stages" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">{ t('common.all') }</SelectItem>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={filterOwner || 'all'} onValueChange={(v) => setFilterOwner(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-36" data-testid="filter-owner"><SelectValue placeholder="All Owners" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">{ t('common.all') }</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
-            </Select>
-            {hasFilters && <Button variant="ghost" size="sm" onClick={() => { setFilterStatus(''); setFilterOwner(''); }}><X className="w-3 h-3 mr-1" />Clear</Button>}
+        <Card className="px-4 py-3 relative z-10">
+          <div className="space-y-2">
+            {/* Row 1: search + stage + priority + project */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="relative flex-1 min-w-[140px] max-w-xs">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search tasks…"
+                  data-testid="filter-search"
+                  className="h-9 w-full pl-8 pr-3 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/30 focus:border-[#0EA5A0]"
+                />
+              </div>
+              <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-status"><SelectValue placeholder="All Stages" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All Stages</SelectItem>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={filterPriority || 'all'} onValueChange={(v) => setFilterPriority(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-priority"><SelectValue placeholder="All Priorities" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="low"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />Low</span></SelectItem>
+                  <SelectItem value="medium"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Medium</span></SelectItem>
+                  <SelectItem value="high"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />High</span></SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterProject || 'all'} onValueChange={(v) => setFilterProject(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-project"><SelectValue placeholder="All Projects" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {projects.map(p => <SelectItem key={p.project_id} value={p.project_id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterDue || 'all'} onValueChange={(v) => setFilterDue(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-due"><SelectValue placeholder="Any Due Date" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any Due Date</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="today">Due Today</SelectItem>
+                  <SelectItem value="this_week">Due This Week</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterOwner || 'all'} onValueChange={(v) => setFilterOwner(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-owner"><SelectValue placeholder="All Owners" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All Owners</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
+              </Select>
+              {hasFilters && (
+                <Button variant="ghost" size="sm" className="h-9 flex-shrink-0 text-slate-500" onClick={() => { setFilterStatus(''); setFilterOwner(''); setFilterProject(''); setFilterPriority(''); setFilterDue(''); setSearchQuery(''); }}>
+                  <X className="w-3 h-3 mr-1" />Clear
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -278,45 +355,47 @@ const TasksPage = () => {
           /* List View */
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-slate-50">
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.title')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.status')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.priority')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.assignTo')}</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('forms.dueDate')}</th>
-                  <th className="py-3 px-4 w-20"></th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 min-w-[180px]">{t('forms.title')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-36 shrink-0">{t('forms.status')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-24 shrink-0">{t('forms.priority')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-32 shrink-0">{t('forms.assignTo')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500 w-28 shrink-0">{t('forms.dueDate')}</th>
+                  <th className="py-3 px-4 w-12 shrink-0"></th>
                 </tr></thead>
                 <tbody>
-                  {tasks.map(task => (
+                  {filteredTasks.map(task => (
                     <tr key={task.task_id} className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" onClick={() => openTaskDetail(task)} data-testid={`task-list-${task.task_id}`}>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${priorities.find(p => p.value === task.priority)?.color || 'bg-slate-400'}`} />
-                          <span className="font-medium">{task.title}</span>
-                          {task.subtask_count > 0 && <Badge variant="secondary" className="text-xs">{task.subtasks_done}/{task.subtask_count}</Badge>}
-                          {task.comments?.length > 0 && <Badge variant="outline" className="text-xs">{task.comments.length} {t('tasks.updates').toLowerCase()}</Badge>}
+                      <td className="py-3 px-4 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${priorities.find(p => p.value === task.priority)?.color || 'bg-slate-400'}`} />
+                          <span className="font-medium truncate">{task.title}</span>
+                          {task.subtask_count > 0 && <Badge variant="secondary" className="text-xs shrink-0">{task.subtasks_done}/{task.subtask_count}</Badge>}
+                          {task.comments?.length > 0 && <Badge variant="outline" className="text-xs shrink-0">{task.comments.length} {t('tasks.updates').toLowerCase()}</Badge>}
                         </div>
                       </td>
-                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 px-4 w-36 shrink-0" onClick={e => e.stopPropagation()}>
                         <Select value={task.status} onValueChange={v => handleStatusChange(task.task_id, v)}>
                           <SelectTrigger className="w-32 h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                         </Select>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 w-24 shrink-0">
                         <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'high' ? 'bg-rose-100 text-rose-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{task.priority}</span>
                       </td>
-                      <td className="py-3 px-4 text-xs text-slate-600">{task.assigned_to ? getOwnerName(task.assigned_to) : '-'}</td>
-                      <td className="py-3 px-4 text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
-                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 px-4 w-32 shrink-0 text-xs text-slate-600 truncate">{task.assigned_to ? getOwnerName(task.assigned_to) : '-'}</td>
+                      <td className="py-3 px-4 w-28 shrink-0 text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
+                      <td className="py-3 px-4 w-12 shrink-0" onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="sm" className="text-red-500 h-7" onClick={() => handleDeleteTask(task.task_id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {tasks.length === 0 && <p className="text-center text-slate-500 py-8">{t('tasks.dropHere')}</p>}
+              </div>
+              {filteredTasks.length === 0 && <p className="text-center text-slate-500 py-8">{t('tasks.dropHere')}</p>}
             </CardContent>
           </Card>
         ) : (

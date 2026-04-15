@@ -39,7 +39,8 @@ import {
   Upload,
   UserPlus,
   X,
-  Key
+  Key,
+  CheckSquare
 } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -62,6 +63,8 @@ const SettingsPage = () => {
   const [newWebhookName, setNewWebhookName] = useState('');
   const [editingStages, setEditingStages] = useState(false);
   const [dealStages, setDealStages] = useState([]);
+  const [editingTaskStages, setEditingTaskStages] = useState(false);
+  const [taskStages, setTaskStages] = useState([]);
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const [newPipeline, setNewPipeline] = useState({ name: '', stages: [] });
   
@@ -122,6 +125,12 @@ const SettingsPage = () => {
       });
       setOrgSettings(response.data);
       setDealStages(response.data.deal_stages || []);
+      // task stages live in /settings/stages under task_statuses
+      try {
+        const stagesResp = await axios.get(`${API}/settings/stages`, { headers, withCredentials: true });
+        setTaskStages(stagesResp.data.task_statuses || []);
+      } catch {}
+
     } catch (error) {
       console.error('Failed to fetch org settings');
     }
@@ -432,6 +441,39 @@ const SettingsPage = () => {
     setDealStages(updated);
   };
 
+  const handleSaveTaskStages = async () => {
+    try {
+      await axios.put(`${API}/settings/stages`, { task_statuses: taskStages }, {
+        headers,
+        withCredentials: true
+      });
+      toast.success('Task steps saved');
+      setEditingTaskStages(false);
+      fetchOrgSettings();
+    } catch (error) {
+      toast.error('Failed to save task steps');
+    }
+  };
+
+  const addTaskStage = () => {
+    const newStage = {
+      id: `stage_${Date.now()}`,
+      name: 'New Step'
+    };
+    setTaskStages([...taskStages, newStage]);
+  };
+
+  const removeTaskStage = (index) => {
+    if (taskStages.length <= 1) return;
+    setTaskStages(taskStages.filter((_, i) => i !== index));
+  };
+
+  const updateTaskStage = (index, field, value) => {
+    const updated = [...taskStages];
+    updated[index] = { ...updated[index], [field]: value };
+    setTaskStages(updated);
+  };
+
   const handleLogout = async () => {
     await logout();
     window.location.href = '/';
@@ -616,9 +658,9 @@ const SettingsPage = () => {
                         <p className="text-xs text-slate-500">Download these images to promote TAKO on your social channels. Pair them with your referral link!</p>
                         <div className="grid grid-cols-3 gap-3">
                           {[
-                            { label: 'Banner (1536x1024)', desc: 'Facebook, LinkedIn, X', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/d4c7d179cc49d6bcdd5bdeba2bd3c0ee15d214451c0e4ac91a8035ff9554f03b.png' },
-                            { label: 'Story (1024x1536)', desc: 'Instagram, TikTok', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/787c03120f149891b257071153f2eb541a6f5057f2cc6d8c73a78a8d7720db63.png' },
-                            { label: 'Square (1024x1024)', desc: 'Instagram, LinkedIn', url: 'https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/21cf5a85c9e37c38bbb86ca92cb16d4d2f280e64b08783bff72de6dc2ce7650b.png' },
+                            { label: 'Banner (1536×1024)', desc: 'Facebook, LinkedIn, X', url: '/assets/social-banner.png' },
+                            { label: 'Story (1024×1536)', desc: 'Instagram, TikTok', url: '/assets/social-story.png' },
+                            { label: 'Square (1024×1024)', desc: 'Instagram, LinkedIn', url: '/assets/social-square.png' },
                           ].map((asset, i) => (
                             <div key={i} className="border border-slate-100 rounded-lg overflow-hidden">
                               <img src={asset.url} alt={asset.label} className="w-full h-28 object-cover bg-slate-100" />
@@ -881,6 +923,74 @@ const SettingsPage = () => {
                       <Button variant="outline" size="sm" onClick={addDealStage} className="mt-2">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Stage
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Task Steps Configuration - Only for owner/admin */}
+            {organization && (user?.role === 'owner' || user?.role === 'admin' || user?.role === 'super_admin') && (
+              <Card className="mt-4">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CheckSquare className="w-5 h-5" />
+                      Task Steps
+                    </CardTitle>
+                    <CardDescription>Customize your task workflow steps</CardDescription>
+                  </div>
+                  {!editingTaskStages ? (
+                    <Button variant="outline" size="sm" onClick={() => setEditingTaskStages(true)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Steps
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setEditingTaskStages(false); fetchOrgSettings(); }}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={handleSaveTaskStages}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {taskStages.map((stage, index) => (
+                      <div key={stage.id} className="flex items-center gap-2">
+                        <span className="w-8 text-sm text-slate-400">{index + 1}.</span>
+                        {editingTaskStages ? (
+                          <>
+                            <Input
+                              value={stage.name}
+                              onChange={(e) => updateTaskStage(index, 'name', e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-rose-500"
+                              onClick={() => removeTaskStage(index)}
+                              disabled={taskStages.length <= 1}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="flex-1 p-2 bg-slate-50 rounded">
+                            <span className="text-slate-700">{stage.name}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {editingTaskStages && (
+                      <Button variant="outline" size="sm" onClick={addTaskStage} className="mt-2">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Step
                       </Button>
                     )}
                   </div>
