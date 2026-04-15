@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Toaster } from './components/ui/sonner';
+import { toast } from 'sonner';
 import './i18n';
 
 // Pages
@@ -42,6 +43,45 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   window.deferredPWAPrompt = e;
 });
+
+// Global axios interceptor: intercept structured 403s (AI trial expired,
+// key missing, etc.), surface a rich toast with an action button, and
+// normalize the error.response.data.detail to a plain string so existing
+// per-page handlers (toast.error(e.response?.data?.detail)) still work.
+let _lastStructuredToastAt = 0;
+axios.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    try {
+      const detail = error?.response?.data?.detail;
+      if (detail && typeof detail === 'object' && detail.code) {
+        const now = Date.now();
+        // Debounce: avoid stacking toasts when multiple AI calls fail in a row.
+        if (now - _lastStructuredToastAt > 3000) {
+          _lastStructuredToastAt = now;
+          const msg = detail.message || 'Action required';
+          const desc = detail.action || undefined;
+          const target = detail.settings_url || detail.support_url || null;
+          toast.error(msg, {
+            description: desc,
+            duration: 8000,
+            action: target
+              ? {
+                  label: detail.code === 'ai_trial_expired' ? 'Add key' : 'Open settings',
+                  onClick: () => { window.location.href = target; },
+                }
+              : undefined,
+          });
+        }
+        // Replace dict with a plain string so existing handlers don't print [object Object].
+        error.response.data.detail = [detail.message, detail.action].filter(Boolean).join(' ');
+      }
+    } catch (e) {
+      // Never let the interceptor itself throw.
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Auth Context
 const AuthContext = createContext(null);
@@ -198,6 +238,33 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return children;
+};
+
+// Scroll to top on route change (skip when a hash anchor is present so
+// in-page anchor links like /#features still work). Also disables the
+// browser's default scroll restoration so refreshes land at the top.
+const ScrollToTop = () => {
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      try { window.history.scrollRestoration = 'manual'; } catch (e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hash) {
+      // Let the browser handle in-page anchors after render.
+      const el = document.getElementById(hash.slice(1));
+      if (el) {
+        requestAnimationFrame(() => el.scrollIntoView({ behavior: 'auto', block: 'start' }));
+        return;
+      }
+    }
+    window.scrollTo(0, 0);
+  }, [pathname, hash]);
+
+  return null;
 };
 
 // App Router
@@ -386,6 +453,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ScrollToTop />
         <AppRouter />
         <Toaster position="top-right" />
       </AuthProvider>

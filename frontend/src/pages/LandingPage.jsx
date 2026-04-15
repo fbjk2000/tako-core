@@ -285,7 +285,7 @@ const LandingPage = () => {
           </div>
 
           {/* Product Preview */}
-          <div className="mt-16 bg-[#0F0A1E] rounded-2xl p-2 shadow-2xl shadow-[#0C1024]/10" id="product" data-testid="hero-image">
+          <div className="mt-16 scroll-mt-24 bg-[#0F0A1E] rounded-2xl p-2 shadow-2xl shadow-[#0C1024]/10" id="product" data-testid="hero-image">
             <div className="bg-[#1a1230] rounded-xl p-6 md:p-8">
               <div className="grid grid-cols-4 gap-4 mb-6">
                 {[{ label: 'Active Leads', value: '284', change: '+12%' }, { label: 'Pipeline Value', value: '428,500', change: '+8%', prefix: '\u20AC' }, { label: 'Win Rate', value: '34%', change: '+3pp' }, { label: 'Avg. Deal Size', value: '18,200', prefix: '\u20AC', change: '+5%' }].map((s, i) => (
@@ -337,7 +337,7 @@ const LandingPage = () => {
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6" id="features">
+      <section className="py-24 px-6 scroll-mt-20" id="features">
         <div className="max-w-5xl mx-auto">
           <div className="max-w-2xl mb-16">
             <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#0EA5A0] mb-4">{t('landing.featuresTag')}</p>
@@ -388,7 +388,7 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing */}
-      <section className="py-24 px-6" id="pricing">
+      <section className="py-24 px-6 scroll-mt-20" id="pricing">
         <div className="max-w-5xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#0EA5A0] mb-4">Pricing</p>

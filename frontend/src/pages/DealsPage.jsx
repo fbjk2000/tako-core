@@ -685,12 +685,12 @@ const DealsPage = () => {
           </Card>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="overflow-x-auto pb-4 -mx-6 px-6" style={{ scrollbarWidth: 'thin' }}>
-              <div className="flex gap-4" style={{ minWidth: `${stages.length * 288}px` }}>
+            <div className="overflow-x-auto pb-4 -mx-6 lg:-mx-8 px-6 lg:px-8" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex gap-4" style={{ width: `${stages.length * 304}px` }}>
                 {stages.map((stage) => (
                   <Droppable droppableId={stage.id} key={stage.id}>
                     {(provided, snapshot) => (
-                      <div className="w-72 flex-shrink-0" data-testid={`stage-${stage.id}`}>
+                      <div className="w-72 shrink-0" data-testid={`stage-${stage.id}`}>
                         <Card className={`border-t-4 ${stage.color} ${snapshot.isDraggingOver ? 'ring-2 ring-[#0EA5A0]/30' : ''}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">

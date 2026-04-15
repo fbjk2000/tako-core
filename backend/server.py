@@ -652,23 +652,94 @@ def _is_internal_user(email: str) -> bool:
     domain = email_lower.split("@")[-1]
     return domain in _TAKO_INTERNAL_DOMAINS
 
+# Number of days a new organization gets free AI access on TAKO's platform key
+# before they must supply their own Anthropic key. Can be overridden via env.
+AI_TRIAL_DAYS = int(os.environ.get("AI_TRIAL_DAYS", "30"))
+
+
+async def _ai_trial_info(org_id: str | None) -> dict:
+    """Return trial status for an organization.
+    Shape: { active: bool, ends_at: iso|None, days_remaining: int|None }.
+    For orgs created before the trial feature, we back-fill from created_at."""
+    if not org_id:
+        return {"active": False, "ends_at": None, "days_remaining": None}
+    org = await db.organizations.find_one(
+        {"organization_id": org_id},
+        {"ai_trial_ends_at": 1, "created_at": 1, "_id": 0},
+    )
+    if not org:
+        return {"active": False, "ends_at": None, "days_remaining": None}
+    ends_iso = org.get("ai_trial_ends_at")
+    if not ends_iso and org.get("created_at"):
+        try:
+            created = datetime.fromisoformat(org["created_at"].replace("Z", "+00:00"))
+            ends_iso = (created + timedelta(days=AI_TRIAL_DAYS)).isoformat()
+            # Persist so subsequent reads are cheap and consistent.
+            await db.organizations.update_one(
+                {"organization_id": org_id},
+                {"$set": {"ai_trial_ends_at": ends_iso}},
+            )
+        except Exception:
+            ends_iso = None
+    if not ends_iso:
+        return {"active": False, "ends_at": None, "days_remaining": None}
+    try:
+        ends_at = datetime.fromisoformat(ends_iso.replace("Z", "+00:00"))
+    except Exception:
+        return {"active": False, "ends_at": None, "days_remaining": None}
+    now = datetime.now(timezone.utc)
+    active = ends_at > now
+    delta = ends_at - now
+    days_remaining = max(0, delta.days + (1 if delta.seconds else 0)) if active else 0
+    return {"active": active, "ends_at": ends_iso, "days_remaining": days_remaining}
+
+
 async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
     """Determine the Anthropic API key to use.
-    Priority: 1) internal team → platform key, 2) org-level key from DB, 3) reject."""
+    Priority:
+      1) internal TAKO team → platform key
+      2) org-level key the customer has configured
+      3) active trial window on the org → platform key (if configured)
+      4) reject with a clear upgrade message
+    """
     if _is_internal_user(user_email):
         if ANTHROPIC_API_KEY:
             return ANTHROPIC_API_KEY
         raise HTTPException(status_code=500, detail="AI not configured — platform ANTHROPIC_API_KEY missing")
 
-    # Look up org-level key
+    # Look up org-level key first — customers who bring their own key always use it.
     if org_id:
         settings = await db.org_integrations.find_one({"organization_id": org_id}, {"anthropic_api_key": 1})
         if settings and settings.get("anthropic_api_key"):
             return settings["anthropic_api_key"]
 
+    # Trial: during the trial window the platform key is used.
+    trial = await _ai_trial_info(org_id)
+    if trial["active"] and ANTHROPIC_API_KEY:
+        return ANTHROPIC_API_KEY
+
+    # Structured error so the frontend can render an actionable modal
+    # (settings link + support link) instead of a plain toast.
+    if trial["ends_at"] and not trial["active"]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "ai_trial_expired",
+                "message": "Your 30-day AI trial has ended.",
+                "action": "Add your own Anthropic API key to keep AI features on, or reach out to support — we'll help you get set up.",
+                "settings_url": "/settings?tab=integrations",
+                "support_url": "/support",
+            },
+        )
     raise HTTPException(
         status_code=403,
-        detail="AI features require an API key. Go to Settings → Integrations → AI / LLM to add your Anthropic API key."
+        detail={
+            "code": "ai_key_missing",
+            "message": "AI features require an Anthropic API key.",
+            "action": "Add your key in Settings → Integrations → AI / LLM.",
+            "settings_url": "/settings?tab=integrations",
+            "support_url": "/support",
+        },
     )
 
 async def tako_ai_text(system_prompt: str, user_prompt: str, user_email: str = "", org_id: str | None = None) -> str:
@@ -796,7 +867,8 @@ async def register(user_data: UserCreate, response: Response):
             "max_free_users": 3,
             "max_users": 3,
             "email_domain": email_domain,
-            "created_at": now.isoformat()
+            "created_at": now.isoformat(),
+            "ai_trial_ends_at": (now + timedelta(days=AI_TRIAL_DAYS)).isoformat(),
         }
         await db.organizations.insert_one(org_doc)
     else:
@@ -1106,7 +1178,8 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "name": current_user["name"],
         "picture": current_user.get("picture"),
         "organization_id": current_user.get("organization_id"),
-        "role": current_user.get("role", "member")
+        "role": current_user.get("role", "member"),
+        "timezone": current_user.get("timezone")
     }
 
 @api_router.post("/auth/logout")
@@ -1116,6 +1189,52 @@ async def logout(request: Request, response: Response):
         await db.user_sessions.delete_one({"session_token": session_token})
     response.delete_cookie("session_token", path="/")
     return {"message": "Logged out successfully"}
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    picture: Optional[str] = None
+    timezone: Optional[str] = None
+
+@api_router.put("/auth/me")
+async def update_me(data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
+    update: Dict[str, Any] = {}
+    if data.name is not None:
+        name = data.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        update["name"] = name
+    if data.picture is not None:
+        update["picture"] = data.picture.strip() or None
+    if data.timezone is not None:
+        update["timezone"] = data.timezone.strip() or None
+    if not update:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one({"user_id": current_user["user_id"]}, {"$set": update})
+    user = await db.users.find_one({"user_id": current_user["user_id"]}, {"_id": 0, "password_hash": 0})
+    return user
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+@api_router.post("/auth/change-password")
+async def change_password(data: PasswordChange, current_user: dict = Depends(get_current_user)):
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    user = await db.users.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing_hash = user.get("password_hash")
+    if not existing_hash:
+        raise HTTPException(status_code=400, detail="This account uses single sign-on; password cannot be changed here.")
+    if not verify_password(data.current_password, existing_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    await db.users.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"password_hash": hash_password(data.new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Password updated"}
 
 # ==================== ORGANIZATION ROUTES ====================
 
@@ -1134,10 +1253,11 @@ async def create_organization(name: str, current_user: dict = Depends(get_curren
         "plan": "free",
         "user_count": 1,
         "max_free_users": 3,
-        "created_at": now.isoformat()
+        "created_at": now.isoformat(),
+        "ai_trial_ends_at": (now + timedelta(days=AI_TRIAL_DAYS)).isoformat(),
     }
     await db.organizations.insert_one(org_doc)
-    
+
     await db.users.update_one(
         {"user_id": current_user["user_id"]},
         {"$set": {"organization_id": organization_id, "role": "owner"}}
@@ -2054,17 +2174,29 @@ async def update_org_integrations(updates: dict, current_user: dict = Depends(ge
 async def get_ai_status(current_user: dict = Depends(get_current_user)):
     """Check whether AI features are available for the current user."""
     email = current_user.get("email", "")
-    if _is_internal_user(email):
-        return {"ai_available": True, "source": "platform", "provider": "anthropic"}
     org_id = current_user.get("organization_id")
+    trial = await _ai_trial_info(org_id)
+
+    if _is_internal_user(email):
+        return {
+            "ai_available": True,
+            "source": "platform",
+            "provider": "anthropic",
+            "trial": trial,
+        }
+
     if org_id:
         settings = await db.org_integrations.find_one({"organization_id": org_id}, {"anthropic_api_key": 1, "openai_api_key": 1})
         if settings:
             if settings.get("anthropic_api_key"):
-                return {"ai_available": True, "source": "organization", "provider": "anthropic"}
+                return {"ai_available": True, "source": "organization", "provider": "anthropic", "trial": trial}
             if settings.get("openai_api_key"):
-                return {"ai_available": True, "source": "organization", "provider": "openai"}
-    return {"ai_available": False, "source": None, "provider": None}
+                return {"ai_available": True, "source": "organization", "provider": "openai", "trial": trial}
+
+    # No org key — trial may still cover them
+    if trial["active"]:
+        return {"ai_available": True, "source": "trial", "provider": "anthropic", "trial": trial}
+    return {"ai_available": False, "source": None, "provider": None, "trial": trial}
 
 
 # ==================== CUSTOMIZABLE STAGES ====================
@@ -7621,6 +7753,20 @@ async def update_booking_settings(settings: BookingSettings, current_user: dict 
     doc["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.booking_settings.update_one({"user_id": current_user["user_id"]}, {"$set": doc}, upsert=True)
     return doc
+
+@api_router.get("/booking/{user_id}/info")
+async def get_public_booking_info(user_id: str):
+    """Public endpoint: return minimal host info for the public booking page."""
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="Host not found")
+    settings = await db.booking_settings.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    return {
+        "name": user_doc.get("name") or "Your host",
+        "picture": user_doc.get("picture"),
+        "welcome_message": settings.get("welcome_message") or "",
+        "timezone": settings.get("timezone") or "Europe/London",
+    }
 
 @api_router.get("/booking/{user_id}/available")
 async def get_available_slots(user_id: str, date: str, duration: int = 30):

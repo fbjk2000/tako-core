@@ -103,18 +103,24 @@ const PipelineReportPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {!pipelineData?.is_admin_view && (
-              <Badge variant="outline" className="text-slate-500">
-                <Lock className="w-3 h-3 mr-1" />
-                Personal View
-              </Badge>
-            )}
-            {pipelineData?.is_admin_view && (
-              <Badge className="bg-[#0EA5A0]">
-                <Users className="w-3 h-3 mr-1" />
-                Admin View
-              </Badge>
-            )}
+            {(() => {
+              const teamSize = teamData?.members?.length || 0;
+              // Only show view-scope badges when there's a real team (>1 member).
+              // Solo users don't need an "Admin View" / "Personal View" label.
+              const hasTeam = teamSize > 1 || (!isAdmin && !!user?.organization_id);
+              if (!hasTeam) return null;
+              return pipelineData?.is_admin_view ? (
+                <Badge className="bg-[#0EA5A0]">
+                  <Users className="w-3 h-3 mr-1" />
+                  Admin View
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-slate-500">
+                  <Lock className="w-3 h-3 mr-1" />
+                  Personal View
+                </Badge>
+              );
+            })()}
             <Button variant="outline" onClick={() => { fetchPipelineReport(); if(isAdmin) fetchTeamSummary(); }} data-testid="refresh-btn">
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -177,7 +183,9 @@ const PipelineReportPage = () => {
           <TabsList data-testid="report-tabs">
             <TabsTrigger value="stages">By Stage</TabsTrigger>
             <TabsTrigger value="deals">All Deals</TabsTrigger>
-            {isAdmin && <TabsTrigger value="team">Team Summary</TabsTrigger>}
+            {isAdmin && (teamData?.members?.length || 0) > 1 && (
+              <TabsTrigger value="team">Team Summary</TabsTrigger>
+            )}
           </TabsList>
 
           {/* Stages Tab */}

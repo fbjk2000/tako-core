@@ -44,7 +44,7 @@
 - **File Analysis** — Auto-summary and follow-up task suggestions on uploaded documents
 - **Hit Classification** — Claude classifies social Listener hits in real time: category, confidence, sentiment, suggested reply
 - **Digest Reports** — AI-generated daily/weekly summaries of Listener activity with recommended actions
-- **Access Control** — Internal team (Fintery, TAKO, AIOS, Unyted, OpenClaw, floriankrueger.com) use the platform key; external orgs supply their own Anthropic API key in Settings → Integrations
+- **Access Control** — Internal team (Fintery, TAKO, AIOS, Unyted, OpenClaw, floriankrueger.com) always use the platform key. New external organizations get a **30-day free AI trial** on the platform key; afterwards they supply their own Anthropic API key in Settings → Integrations. Trial length is configurable via `AI_TRIAL_DAYS`.
 
 ### Communication
 - **Outbound Calling** — Twilio integration for direct calls from the CRM
@@ -156,8 +156,10 @@ PUBLIC_URL=https://tako.software
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-# AI (platform key — internal team only; external orgs add their own in Settings)
+# AI (platform key — used by internal team + new orgs during their AI trial)
 ANTHROPIC_API_KEY=sk-ant-...
+# Free AI trial duration (days) for new external orgs before they must add their own key
+AI_TRIAL_DAYS=30
 
 # Social Listening (Meta / Facebook Listeners)
 META_APP_ID=your_meta_app_id
@@ -204,7 +206,7 @@ REACT_APP_BACKEND_URL=https://tako.software
 TAKO uses **Anthropic Claude** for all AI features.
 
 - **Internal team**: Set `ANTHROPIC_API_KEY` in `.env`. Users whose email domain matches `fintery.com`, `tako.software`, `aios.dev`, `unyted.world`, `unyted.chat`, `openclaw.com`, or `floriankrueger.com` (plus explicit aliases) use the platform key automatically.
-- **External organizations**: Admins go to **Settings → Integrations → AI / LLM** and enter their own Anthropic API key.
+- **External organizations**: Every new org gets a **30-day free AI trial** on the platform key (orgs created before the trial feature are back-filled from `created_at`). When the trial ends, admins go to **Settings → Integrations → AI / LLM** and enter their own Anthropic API key. The Settings panel shows trial state live; the backend returns structured `ai_trial_expired` / `ai_key_missing` errors that the frontend surfaces as actionable toasts. Trial length defaults to 30 days and can be overridden with `AI_TRIAL_DAYS`.
 
 ---
 
@@ -362,6 +364,24 @@ server {
     location / { proxy_pass http://127.0.0.1:3000/; }
 }
 ```
+
+---
+
+## Recent Updates (Apr 2026 — Pre-launch QA)
+
+Tracked under the 25-item ship-readiness audit. Highlights:
+
+- **AI trial window** — 30-day platform-key grant on every new org, with back-fill for legacy orgs. Trial state surfaced in Settings → Integrations → AI; trial-expired and key-missing errors return structured payloads (`code`, `message`, `action`, `settings_url`, `support_url`) and render as actionable toasts with a one-click path to Settings.
+- **Public booking page** — now renders host name, avatar, and welcome message from `GET /booking/{user_id}/info`.
+- **Profile editing** — `PUT /auth/me` lets users update name, avatar, and timezone from Settings → Profile. IANA timezone picker uses `Intl.supportedValuesOf('timeZone')` with a fallback list and a "use my current timezone" one-click.
+- **Password change** — `POST /auth/change-password` with bcrypt verification, 8-char minimum, plus a richer UI: strength meter, show/hide toggles, inline validation for mismatch / too-short / same-as-current, and post-save confirmation.
+- **Calendar time picker** — date + time split with 5-minute steps, duration quick-picks (15m/30m/45m/1h/90m/2h), auto-preserved duration when start changes, and a live duration readout.
+- **Landing page** — global `ScrollToTop` route listener disables browser scroll restoration and handles hash anchors; `#features`, `#pricing`, `#product` get `scroll-mt-20` so the fixed nav doesn't cover section headers.
+- **Stripe row gating** — the Stripe integration row in Settings is visible only to internal/affiliated domains (`unyted.world`, `fintery.com`, `floriankrueger.com`, `davidaltun.com`, `alakai.digital`, `aios.institute`) plus two personal gmail addresses.
+- **Admin View badge / Team Summary tab** — hidden for solo admins in Pipeline Reports.
+- **Empty states** — Contacts, Leads, Listeners, and Files got richer empty states with explanatory copy and clear CTAs (plus gated upload/form UI).
+- **Sidebar + nav** — Deals/Pipeline overlap resolved, sidebar overflow fixed, TAKO logo floating-dot artefact removed, duplicate Sign Out in Settings removed, Settings tabs no longer wrap, Kit.com tab hidden when unconnected.
+- **Onboarding** — inline onboarding checklist on Dashboard with one-click copy-to-tasks into an "Onboarding" project.
 
 ---
 

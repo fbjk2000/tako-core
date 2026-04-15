@@ -219,7 +219,7 @@ const CampaignsPage = () => {
         <Tabs defaultValue="campaigns" className="space-y-6">
           <TabsList data-testid="campaigns-tabs">
             <TabsTrigger value="campaigns">All Campaigns</TabsTrigger>
-            <TabsTrigger value="kit">Kit.com</TabsTrigger>
+            {kitAccount && <TabsTrigger value="kit">Kit.com</TabsTrigger>}
           </TabsList>
 
           {/* Campaigns Tab */}

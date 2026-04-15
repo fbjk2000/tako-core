@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { SmartSearch, AIEmailComposer } from '../components/AIAssistant';
+import OnboardingChecklist from '../components/OnboardingChecklist';
 import {
   Users,
   Target,
@@ -109,9 +110,17 @@ const DashboardPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900" data-testid="dashboard-title">
-              Welcome back, {user?.name?.split(' ')[0] || 'there'}!
+              {(() => {
+                const hasActivity = (stats?.total_leads || 0) + (stats?.total_deals || 0) + (stats?.total_tasks || 0) > 0;
+                const firstName = user?.name?.split(' ')[0] || 'there';
+                return hasActivity ? `Welcome back, ${firstName}!` : `Welcome, ${firstName}!`;
+              })()}
             </h1>
-            <p className="text-slate-600 mt-1">Here's what's happening with your sales today.</p>
+            <p className="text-slate-600 mt-1">
+              {(stats?.total_leads || 0) + (stats?.total_deals || 0) + (stats?.total_tasks || 0) > 0
+                ? "Here's what's happening with your sales today."
+                : "Let's get your CRM set up — follow the checklist below to launch fast."}
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <SmartSearch onSelectResult={(type, item) => {
@@ -134,6 +143,9 @@ const DashboardPage = () => {
             </Link>
           </div>
         </div>
+
+        {/* Onboarding Checklist — auto-hides when dismissed */}
+        <OnboardingChecklist />
 
         {/* AI Assistant Card */}
         <Card className="bg-gradient-to-r from-[#0EA5A0]/5 to-teal-50 border-teal-100">

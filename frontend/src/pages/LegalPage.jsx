@@ -11,11 +11,8 @@ const LegalPage = () => {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#0EA5A0] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-base">T</span>
-            </div>
-            <span className="text-xl font-semibold text-slate-900">TAKO</span>
+          <Link to="/" className="flex items-center">
+            <img src="/logo-horizontal.svg" alt="TAKO" className="h-7" />
           </Link>
           <Link to="/">
             <button className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">

@@ -200,3 +200,6 @@ credentials.json
 !frontend/.env.example
 !backend/.env.production.template
 !frontend/.env.production.template
+
+# Claude Code agent state (worktrees, logs)
+.claude/

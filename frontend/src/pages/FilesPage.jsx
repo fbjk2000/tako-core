@@ -26,6 +26,7 @@ const FilesPage = () => {
   const [entities, setEntities] = useState({ leads: [], contacts: [], companies: [], deals: [], projects: [], campaigns: [] });
   const fileRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const getCfg = () => ({ headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
 
@@ -69,6 +70,9 @@ const FilesPage = () => {
       if (res.data.ai_summary) toast.success(`AI: ${res.data.ai_summary.summary?.slice(0, 80)}...`);
       fetchFiles();
       setDescription('');
+      setLinkedType('none');
+      setLinkedId('none');
+      setUploadOpen(false);
       if (fileRef.current) fileRef.current.value = '';
     } catch (err) { console.error(err); toast.error(err.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(false); }
@@ -105,55 +109,77 @@ const FilesPage = () => {
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6" data-testid="files-page">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Files</h1>
-          <p className="text-slate-500 text-sm mt-1">Upload, manage, and link files to your CRM records</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Files</h1>
+            <p className="text-slate-500 text-sm mt-1">Upload, manage, and link files to your CRM records</p>
+          </div>
+          {files.length > 0 && (
+            <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setUploadOpen(true)} data-testid="upload-file-btn">
+              <Upload className="w-4 h-4 mr-2" /> Upload File
+            </Button>
+          )}
         </div>
 
-        {/* Upload Section */}
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div><Label className="text-xs">Link to type</Label>
-                <Select value={linkedType} onValueChange={v => { setLinkedType(v); setLinkedId('none'); }}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="lead">Lead</SelectItem>
-                    <SelectItem value="contact">Contact</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
-                    <SelectItem value="deal">Deal</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="campaign">Campaign</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {linkedType !== 'none' && (
-                <div><Label className="text-xs">Select record</Label>
-                  <Select value={linkedId} onValueChange={setLinkedId}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+        <input ref={fileRef} type="file" onChange={handleUpload} className="hidden" />
+
+        {/* Upload Dialog */}
+        <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Upload a file</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Link to type</Label>
+                  <Select value={linkedType} onValueChange={v => { setLinkedType(v); setLinkedId('none'); }}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
-                      {entityOptions.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
+                      <SelectItem value="lead">Lead</SelectItem>
+                      <SelectItem value="contact">Contact</SelectItem>
+                      <SelectItem value="company">Company</SelectItem>
+                      <SelectItem value="deal">Deal</SelectItem>
+                      <SelectItem value="project">Project</SelectItem>
+                      <SelectItem value="campaign">Campaign</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              <div><Label className="text-xs">Description</Label><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional" className="h-8 text-xs" /></div>
-              <div className="flex items-end">
-                <Button className="w-full h-8 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-xs" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                  {uploading ? 'Uploading...' : <><Upload className="w-3.5 h-3.5 mr-1" /> Upload File</>}
-                </Button>
-                <input ref={fileRef} type="file" onChange={handleUpload} className="hidden" />
+                {linkedType !== 'none' && (
+                  <div>
+                    <Label className="text-xs">Select record</Label>
+                    <Select value={linkedId} onValueChange={setLinkedId}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {entityOptions.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
+              <div>
+                <Label className="text-xs">Description</Label>
+                <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional — what's in this file?" />
+              </div>
+              <Button
+                className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading…' : <><Upload className="w-4 h-4 mr-2" /> Choose file and upload</>}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
-        </div>
+        {files.length > 0 && (
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+          </div>
+        )}
 
         {/* File List */}
         <Card>
@@ -161,10 +187,21 @@ const FilesPage = () => {
             {loading ? (
               <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filtered.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
+              <div className="p-10 text-center text-slate-500">
                 <Upload className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                <p className="font-medium">No files yet</p>
-                <p className="text-sm mt-1">Upload files and link them to your CRM records</p>
+                <p className="font-medium text-slate-700">
+                  {files.length === 0 ? 'No files yet' : 'No files match your search'}
+                </p>
+                <p className="text-sm mt-1 max-w-md mx-auto">
+                  {files.length === 0
+                    ? 'Upload PDFs, images or documents and link them to leads, deals, or projects. AI will summarise and suggest follow-up tasks.'
+                    : 'Try a different search term.'}
+                </p>
+                {files.length === 0 && (
+                  <Button className="mt-4 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setUploadOpen(true)} data-testid="empty-upload-btn">
+                    <Upload className="w-4 h-4 mr-2" /> Upload your first file
+                  </Button>
+                )}
               </div>
             ) : (
               <table className="w-full text-sm">

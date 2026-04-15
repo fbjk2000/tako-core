@@ -14,11 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from 'sonner';
 import axios from 'axios';
 import { 
-  User, 
-  Building, 
-  Mail, 
-  LogOut, 
-  Plus, 
+  User,
+  Building,
+  Mail,
+  Plus,
   CreditCard, 
   FileText, 
   Download,
@@ -40,11 +39,13 @@ import {
   UserPlus,
   X,
   Key,
-  CheckSquare
+  CheckSquare,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const SettingsPage = () => {
-  const { user, token, logout, checkAuth } = useAuth();
+  const { user, token, checkAuth } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [organization, setOrganization] = useState(null);
@@ -82,6 +83,14 @@ const SettingsPage = () => {
   const [pendingInvites, setPendingInvites] = useState([]);
   const [sendingInvites, setSendingInvites] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
+
+  // Profile editing
+  const [profileForm, setProfileForm] = useState({ name: '', picture: '', timezone: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [pwShow, setPwShow] = useState({ current: false, next: false, confirm: false });
+  const [pwJustChanged, setPwJustChanged] = useState(false);
 
   const defaultTab = searchParams.get('tab') || 'profile';
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -474,9 +483,66 @@ const SettingsPage = () => {
     setTaskStages(updated);
   };
 
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = '/';
+  // Keep profile form in sync with the auth user
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || '',
+        picture: user.picture || '',
+        timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
+      });
+    }
+  }, [user]);
+
+  const saveProfile = async () => {
+    if (!profileForm.name.trim()) { toast.error('Name cannot be empty'); return; }
+    setSavingProfile(true);
+    try {
+      await axios.put(`${API}/auth/me`, profileForm, { headers, withCredentials: true });
+      await checkAuth();
+      toast.success('Profile updated');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const changePassword = async () => {
+    // Inline validation is handled by disabled button state + helper text;
+    // this guard is defense-in-depth.
+    if (!pwForm.current_password || !pwForm.new_password) {
+      toast.error('Please fill in both password fields');
+      return;
+    }
+    if (pwForm.new_password.length < 8) {
+      toast.error('New password must be at least 8 characters');
+      return;
+    }
+    if (pwForm.new_password !== pwForm.confirm_password) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (pwForm.new_password === pwForm.current_password) {
+      toast.error('New password must be different from current password');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await axios.post(`${API}/auth/change-password`, {
+        current_password: pwForm.current_password,
+        new_password: pwForm.new_password,
+      }, { headers, withCredentials: true });
+      toast.success('Password updated');
+      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+      setPwShow({ current: false, next: false, confirm: false });
+      setPwJustChanged(true);
+      setTimeout(() => setPwJustChanged(false), 5000);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not update password');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const viewInvoice = async (invoiceId) => {
@@ -508,18 +574,18 @@ const SettingsPage = () => {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className="flex flex-wrap">
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="organization">Organization</TabsTrigger>
-            <TabsTrigger value="team">Team & Invites</TabsTrigger>
-            <TabsTrigger value="billing">Billing & Invoices</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="api" data-testid="settings-api-tab">API & Webhooks</TabsTrigger>
+            <TabsTrigger value="api" data-testid="settings-api-tab">API</TabsTrigger>
             <TabsTrigger value="app" data-testid="settings-app-tab">Mobile App</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
-          <TabsContent value="profile">
+          <TabsContent value="profile" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -528,26 +594,26 @@ const SettingsPage = () => {
                 </CardTitle>
                 <CardDescription>Your personal account information</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div className="flex items-center gap-4">
-                  {user?.picture ? (
+                  {profileForm.picture ? (
                     <img
-                      src={user.picture}
-                      alt={user.name}
-                      className="w-16 h-16 rounded-full"
+                      src={profileForm.picture}
+                      alt={profileForm.name || user?.name || 'User'}
+                      className="w-16 h-16 rounded-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
                       <span className="text-2xl font-semibold text-[#0EA5A0]">
-                        {user?.name?.[0]?.toUpperCase() || 'U'}
+                        {(profileForm.name || user?.name || 'U')[0]?.toUpperCase()}
                       </span>
                     </div>
                   )}
-                  <div>
-                    <p className="font-semibold text-slate-900" data-testid="user-name">{user?.name}</p>
-                    <p className="text-sm text-slate-500 flex items-center gap-1">
-                      <Mail className="w-4 h-4" />
-                      {user?.email}
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-500 flex items-center gap-1 truncate">
+                      <Mail className="w-4 h-4 shrink-0" />
+                      <span className="truncate" data-testid="user-email">{user?.email}</span>
                     </p>
                     <Badge variant="outline" className="mt-2 capitalize">
                       {user?.role || 'member'}
@@ -555,17 +621,283 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="profile-name">Full name</Label>
+                    <Input
+                      id="profile-name"
+                      value={profileForm.name}
+                      onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                      placeholder="Your name"
+                      data-testid="profile-name-input"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="profile-timezone">Timezone</Label>
+                    {(() => {
+                      // Prefer the native IANA list from the browser; fall back to a curated set.
+                      let zones = [];
+                      try {
+                        if (typeof Intl.supportedValuesOf === 'function') {
+                          zones = Intl.supportedValuesOf('timeZone');
+                        }
+                      } catch (e) { /* ignore */ }
+                      if (!zones.length) {
+                        zones = [
+                          'UTC',
+                          'Europe/London','Europe/Berlin','Europe/Paris','Europe/Madrid','Europe/Amsterdam','Europe/Zurich','Europe/Rome','Europe/Athens','Europe/Moscow',
+                          'America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Phoenix','America/Toronto','America/Mexico_City','America/Sao_Paulo','America/Buenos_Aires',
+                          'Asia/Tokyo','Asia/Shanghai','Asia/Hong_Kong','Asia/Singapore','Asia/Seoul','Asia/Dubai','Asia/Kolkata','Asia/Bangkok','Asia/Jakarta',
+                          'Australia/Sydney','Australia/Melbourne','Australia/Perth','Pacific/Auckland','Africa/Johannesburg','Africa/Cairo','Africa/Lagos',
+                        ];
+                      }
+                      const browserTz = (() => {
+                        try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; }
+                      })();
+                      const valid = zones.includes(profileForm.timezone);
+                      return (
+                        <>
+                          <Input
+                            id="profile-timezone"
+                            list="profile-timezone-list"
+                            value={profileForm.timezone}
+                            onChange={(e) => setProfileForm({ ...profileForm, timezone: e.target.value })}
+                            placeholder="Start typing a city or region…"
+                            data-testid="profile-timezone-input"
+                            className={profileForm.timezone && !valid ? 'border-amber-400' : ''}
+                          />
+                          <datalist id="profile-timezone-list">
+                            {zones.map((z) => <option key={z} value={z} />)}
+                          </datalist>
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <p className="text-xs text-slate-500">
+                              {profileForm.timezone && !valid
+                                ? <span className="text-amber-600">Not a recognized IANA zone — pick from the list.</span>
+                                : <>IANA format, e.g. <code>Europe/London</code>, <code>America/New_York</code>.</>}
+                            </p>
+                            {browserTz && profileForm.timezone !== browserTz && (
+                              <button
+                                type="button"
+                                className="text-xs text-teal-700 hover:underline"
+                                onClick={() => setProfileForm({ ...profileForm, timezone: browserTz })}
+                              >
+                                Use my current timezone ({browserTz})
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="profile-picture">Avatar URL</Label>
+                    <Input
+                      id="profile-picture"
+                      value={profileForm.picture}
+                      onChange={(e) => setProfileForm({ ...profileForm, picture: e.target.value })}
+                      placeholder="https://..."
+                      data-testid="profile-picture-input"
+                    />
+                    <p className="text-xs text-slate-500">Paste a public image URL. Leave blank to use your initials.</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
                   <Button
-                    variant="outline"
-                    className="text-rose-600 border-rose-200 hover:bg-rose-50"
-                    onClick={handleLogout}
-                    data-testid="logout-btn"
+                    onClick={saveProfile}
+                    disabled={savingProfile}
+                    className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"
+                    data-testid="profile-save-btn"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    <Save className="w-4 h-4 mr-2" />
+                    {savingProfile ? 'Saving…' : 'Save changes'}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Key className="w-5 h-5" />
+                  Change password
+                </CardTitle>
+                <CardDescription>
+                  If you sign in with Google, you can skip this section.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(() => {
+                  const newPw = pwForm.new_password || '';
+                  const confirmPw = pwForm.confirm_password || '';
+                  // Lightweight strength scoring — length + character variety.
+                  const hasLower = /[a-z]/.test(newPw);
+                  const hasUpper = /[A-Z]/.test(newPw);
+                  const hasDigit = /\d/.test(newPw);
+                  const hasSymbol = /[^A-Za-z0-9]/.test(newPw);
+                  const variety = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+                  let score = 0;
+                  if (newPw.length >= 8) score += 1;
+                  if (newPw.length >= 12) score += 1;
+                  if (variety >= 2) score += 1;
+                  if (variety >= 3) score += 1;
+                  if (newPw.length >= 16 && variety >= 3) score += 1;
+                  const strengthLabel = !newPw
+                    ? ''
+                    : score <= 1
+                      ? 'Weak'
+                      : score === 2
+                        ? 'Fair'
+                        : score === 3
+                          ? 'Good'
+                          : 'Strong';
+                  const strengthColor = score <= 1
+                    ? 'bg-red-500'
+                    : score === 2
+                      ? 'bg-amber-500'
+                      : score === 3
+                        ? 'bg-teal-500'
+                        : 'bg-emerald-500';
+                  const strengthPct = Math.min(100, (score / 5) * 100);
+                  const tooShort = newPw.length > 0 && newPw.length < 8;
+                  const mismatch = confirmPw.length > 0 && confirmPw !== newPw;
+                  const sameAsCurrent = newPw.length > 0 && newPw === pwForm.current_password;
+                  const canSubmit =
+                    !!pwForm.current_password &&
+                    newPw.length >= 8 &&
+                    confirmPw === newPw &&
+                    !sameAsCurrent &&
+                    !savingPassword;
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="pw-current">Current password</Label>
+                          <div className="relative">
+                            <Input
+                              id="pw-current"
+                              type={pwShow.current ? 'text' : 'password'}
+                              value={pwForm.current_password}
+                              onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })}
+                              autoComplete="current-password"
+                              data-testid="pw-current-input"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setPwShow({ ...pwShow, current: !pwShow.current })}
+                              className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                              aria-label={pwShow.current ? 'Hide password' : 'Show password'}
+                            >
+                              {pwShow.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="pw-new">New password</Label>
+                          <div className="relative">
+                            <Input
+                              id="pw-new"
+                              type={pwShow.next ? 'text' : 'password'}
+                              value={pwForm.new_password}
+                              onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
+                              autoComplete="new-password"
+                              data-testid="pw-new-input"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setPwShow({ ...pwShow, next: !pwShow.next })}
+                              className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                              aria-label={pwShow.next ? 'Hide password' : 'Show password'}
+                            >
+                              {pwShow.next ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="pw-confirm">Confirm new password</Label>
+                          <div className="relative">
+                            <Input
+                              id="pw-confirm"
+                              type={pwShow.confirm ? 'text' : 'password'}
+                              value={pwForm.confirm_password}
+                              onChange={(e) => setPwForm({ ...pwForm, confirm_password: e.target.value })}
+                              autoComplete="new-password"
+                              data-testid="pw-confirm-input"
+                              className={`pr-10 ${mismatch ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit) changePassword(); }}
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setPwShow({ ...pwShow, confirm: !pwShow.confirm })}
+                              className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                              aria-label={pwShow.confirm ? 'Hide password' : 'Show password'}
+                            >
+                              {pwShow.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Strength meter + inline guidance */}
+                      {newPw && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${strengthColor}`}
+                                style={{ width: `${strengthPct}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-medium ${
+                              score <= 1 ? 'text-red-600' : score === 2 ? 'text-amber-600' : score === 3 ? 'text-teal-700' : 'text-emerald-700'
+                            }`}>
+                              {strengthLabel}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            Use 12+ characters with a mix of upper/lowercase, numbers, and symbols for best security.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Inline validation messages */}
+                      <div className="space-y-1">
+                        {tooShort && (
+                          <p className="text-xs text-red-600">New password must be at least 8 characters.</p>
+                        )}
+                        {mismatch && (
+                          <p className="text-xs text-red-600">Passwords don't match.</p>
+                        )}
+                        {sameAsCurrent && (
+                          <p className="text-xs text-red-600">New password must be different from your current password.</p>
+                        )}
+                        {pwJustChanged && (
+                          <p className="text-xs text-emerald-700 flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Password updated. You'll stay signed in on this device.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={changePassword}
+                          disabled={!canSubmit}
+                          variant="outline"
+                          data-testid="pw-save-btn"
+                        >
+                          {savingPassword ? 'Updating…' : 'Update password'}
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
 
@@ -1347,25 +1679,67 @@ const SettingsPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Status indicator */}
-                <div className={`p-3 rounded-lg border ${aiStatus?.ai_available ? 'border-emerald-200 bg-emerald-50/50' : 'border-amber-200 bg-amber-50/50'}`}>
-                  <div className="flex items-center gap-2">
-                    {aiStatus?.ai_available ? (
-                      <>
-                        <CheckCircle className="w-4 h-4 text-emerald-600" />
-                        <span className="text-sm font-medium text-emerald-700">
-                          AI active — using {aiStatus.provider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI'} ({aiStatus.source === 'platform' ? 'platform key' : 'your key'})
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-4 h-4 text-amber-600" />
-                        <span className="text-sm font-medium text-amber-700">
-                          AI features disabled — add an API key below to enable
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
+                {(() => {
+                  const trial = aiStatus?.trial || {};
+                  const source = aiStatus?.source;
+                  const provider = aiStatus?.provider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI';
+                  const trialExpired = !!trial.ends_at && !trial.active && source !== 'organization' && source !== 'platform';
+                  const onTrial = source === 'trial' && trial.active;
+                  const sourceLabel = source === 'organization'
+                    ? 'your key'
+                    : source === 'platform'
+                      ? 'platform key'
+                      : source === 'trial'
+                        ? `free trial — ${trial.days_remaining} day${trial.days_remaining === 1 ? '' : 's'} left`
+                        : '';
+                  const toneClass = aiStatus?.ai_available
+                    ? (onTrial ? 'border-teal-200 bg-teal-50/50' : 'border-emerald-200 bg-emerald-50/50')
+                    : 'border-amber-200 bg-amber-50/50';
+                  const textClass = aiStatus?.ai_available
+                    ? (onTrial ? 'text-teal-700' : 'text-emerald-700')
+                    : 'text-amber-700';
+                  return (
+                    <div className={`p-3 rounded-lg border ${toneClass}`}>
+                      <div className="flex items-center gap-2">
+                        {aiStatus?.ai_available ? (
+                          <>
+                            <CheckCircle className={`w-4 h-4 ${onTrial ? 'text-teal-600' : 'text-emerald-600'}`} />
+                            <span className={`text-sm font-medium ${textClass}`}>
+                              AI active — using {provider} ({sourceLabel})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-4 h-4 text-amber-600" />
+                            <span className="text-sm font-medium text-amber-700">
+                              {trialExpired
+                                ? 'Your 30-day AI trial has ended.'
+                                : 'AI features disabled — add an API key below to enable.'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {onTrial && (
+                        <p className="text-xs text-teal-700/80 mt-1.5">
+                          We're covering AI costs during your trial.
+                          {trial.ends_at ? ` Trial ends ${new Date(trial.ends_at).toLocaleDateString()}.` : ''}
+                          {' '}Add your own Anthropic key any time to continue without interruption.
+                        </p>
+                      )}
+                      {trialExpired && (
+                        <div className="text-xs text-amber-700/90 mt-2 space-y-2">
+                          <p>
+                            Add your own Anthropic API key below to keep AI features on —
+                            keys start free at <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer" className="underline">console.anthropic.com</a>.
+                          </p>
+                          <p>
+                            Not sure where to start? <a href="/support" className="underline font-medium">Talk to support</a> — we'll walk you through it.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Anthropic key */}
                 <div className="space-y-2">
@@ -1481,18 +1855,41 @@ const SettingsPage = () => {
                     } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                   }} data-testid="connect-google-cal-btn">Connect</Button>
                 </div>
-                <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">S</span>
+                {(() => {
+                  // Stripe is only relevant for TAKO's own internal/affiliated accounts
+                  // (TAKO-controlled domains + a couple of personal addresses).
+                  // Regular customers don't connect Stripe from here.
+                  const email = (user?.email || '').toLowerCase();
+                  const stripeWhitelist = [
+                    'fbjk2000@gmail.com',
+                    'fbjk2000ai@gmail.com',
+                  ];
+                  const stripeWhitelistDomains = [
+                    'unyted.world',
+                    'fintery.com',
+                    'floriankrueger.com',
+                    'davidaltun.com',
+                    'alakai.digital',
+                    'aios.institute',
+                  ];
+                  const stripeVisible = stripeWhitelist.includes(email)
+                    || stripeWhitelistDomains.some(d => email.endsWith(`@${d}`));
+                  if (!stripeVisible) return null;
+                  return (
+                    <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between" data-testid="stripe-integration-row">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">S</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">Stripe</p>
+                          <p className="text-sm text-slate-500">Payment processing (internal)</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-emerald-100 text-emerald-700">Connected</Badge>
                     </div>
-                    <div>
-                      <p className="font-medium text-slate-900">Stripe</p>
-                      <p className="text-sm text-slate-500">Payment processing</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-emerald-100 text-emerald-700">Connected</Badge>
-                </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>

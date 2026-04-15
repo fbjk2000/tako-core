@@ -25,7 +25,7 @@ const PricingPage = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const [userCount, setUserCount] = useState(1);
+  const [userCount, setUserCount] = useState(0);
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [useCrypto, setUseCrypto] = useState(false);
@@ -282,7 +282,7 @@ const PricingPage = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setUserCount(Math.max(1, userCount - 1))}
+                    onClick={() => setUserCount(Math.max(0, userCount - 1))}
                     data-testid="decrease-users"
                   >
                     -
@@ -290,9 +290,9 @@ const PricingPage = () => {
                   <Input
                     type="number"
                     value={userCount}
-                    onChange={(e) => setUserCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => setUserCount(Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-24 text-center text-lg font-semibold"
-                    min={1}
+                    min={0}
                     data-testid="users-input"
                   />
                   <Button
@@ -306,7 +306,10 @@ const PricingPage = () => {
                 </div>
                 <p className="text-sm text-slate-500 mt-3">
                   <Check className="w-4 h-4 inline text-emerald-500 mr-1" />
-                  First 3 users are always <strong>free</strong>. You're adding {userCount} paid user(s).
+                  First 3 users are always <strong>free</strong>.
+                  {userCount === 0
+                    ? ' Start free — add paid seats when your team grows past 3.'
+                    : ` You're adding ${userCount} paid user${userCount === 1 ? '' : 's'} (4th seat onward).`}
                 </p>
               </CardContent>
             </Card>
@@ -471,7 +474,7 @@ const PricingPage = () => {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Check className="w-4 h-4 text-emerald-500" />
-                    14-day money-back guarantee
+                    30-day money-back guarantee
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Check className="w-4 h-4 text-emerald-500" />

@@ -482,6 +482,45 @@ const CalendarPage = () => {
 
   const formatTime = (iso) => { try { return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
+  // ---- Time-picker helpers (used by create + edit dialogs) ------------------
+  // Values in newEvent.date / end_date are stored as 'YYYY-MM-DDTHH:mm'
+  // (datetime-local format, timezone-naive), matching what the server expects.
+  const toDatePart = (dt) => (dt || '').slice(0, 10);
+  const toTimePart = (dt) => (dt || '').slice(11, 16);
+  const fmtLocal = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const combineDateTime = (date, time) => {
+    if (!date) return '';
+    return `${date}T${time || '09:00'}`;
+  };
+  const addMinutes = (localStr, minutes) => {
+    if (!localStr) return '';
+    const [d, t] = localStr.split('T');
+    const [y, mo, da] = d.split('-').map(Number);
+    const [h, mi] = (t || '00:00').split(':').map(Number);
+    return fmtLocal(new Date(y, mo - 1, da, h, mi + minutes));
+  };
+  const diffMinutes = (startStr, endStr) => {
+    if (!startStr || !endStr) return null;
+    const [sd, st] = startStr.split('T');
+    const [ed, et] = endStr.split('T');
+    const [sy, smo, sda] = sd.split('-').map(Number);
+    const [sh, smi] = (st || '00:00').split(':').map(Number);
+    const [ey, emo, eda] = ed.split('-').map(Number);
+    const [eh, emi] = (et || '00:00').split(':').map(Number);
+    const start = new Date(sy, smo - 1, sda, sh, smi);
+    const end = new Date(ey, emo - 1, eda, eh, emi);
+    return Math.round((end.getTime() - start.getTime()) / 60000);
+  };
+  const formatDuration = (mins) => {
+    if (mins == null) return '';
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  };
+  const DURATION_PRESETS = [15, 30, 45, 60, 90, 120];
+
   // Fill create dialog time range for a given day & hour
   const openCreateAtTime = (d, hour) => {
     const dt = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00`;
@@ -848,24 +887,115 @@ const CalendarPage = () => {
               <Label className="m-0">All day</Label>
               <Switch checked={!!newEvent.all_day} onCheckedChange={v => setNewEvent({ ...newEvent, all_day: v })} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Start *</Label>
-                <Input
-                  type={newEvent.all_day ? 'date' : 'datetime-local'}
-                  value={newEvent.all_day ? (newEvent.date || '').slice(0, 10) : newEvent.date}
-                  onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
-                  data-testid="event-date"
-                />
+            {newEvent.all_day ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Start *</Label>
+                  <Input
+                    type="date"
+                    value={toDatePart(newEvent.date)}
+                    onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
+                    data-testid="event-date"
+                  />
+                </div>
+                <div><Label>End</Label>
+                  <Input
+                    type="date"
+                    value={toDatePart(newEvent.end_date)}
+                    onChange={e => setNewEvent({ ...newEvent, end_date: e.target.value })}
+                    data-testid="event-end-date"
+                  />
+                </div>
               </div>
-              <div><Label>End</Label>
-                <Input
-                  type={newEvent.all_day ? 'date' : 'datetime-local'}
-                  value={newEvent.all_day ? (newEvent.end_date || '').slice(0, 10) : newEvent.end_date}
-                  onChange={e => setNewEvent({ ...newEvent, end_date: e.target.value })}
-                  data-testid="event-end-date"
-                />
+            ) : (
+              <div className="space-y-2">
+                <div><Label>Date *</Label>
+                  <Input
+                    type="date"
+                    value={toDatePart(newEvent.date) || toDatePart(fmtLocal(new Date()))}
+                    onChange={e => {
+                      const newDate = e.target.value;
+                      const startTime = toTimePart(newEvent.date) || '09:00';
+                      const prevDuration = diffMinutes(newEvent.date, newEvent.end_date);
+                      const nextStart = combineDateTime(newDate, startTime);
+                      const nextEnd = prevDuration && prevDuration > 0
+                        ? addMinutes(nextStart, prevDuration)
+                        : addMinutes(nextStart, 60);
+                      setNewEvent({ ...newEvent, date: nextStart, end_date: nextEnd });
+                    }}
+                    data-testid="event-date"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Start *</Label>
+                    <Input
+                      type="time"
+                      step={300}
+                      value={toTimePart(newEvent.date)}
+                      onChange={e => {
+                        const date = toDatePart(newEvent.date) || toDatePart(fmtLocal(new Date()));
+                        const nextStart = combineDateTime(date, e.target.value);
+                        const prevDuration = diffMinutes(newEvent.date, newEvent.end_date);
+                        const nextEnd = prevDuration && prevDuration > 0
+                          ? addMinutes(nextStart, prevDuration)
+                          : addMinutes(nextStart, 60);
+                        setNewEvent({ ...newEvent, date: nextStart, end_date: nextEnd });
+                      }}
+                      data-testid="event-start-time"
+                    />
+                  </div>
+                  <div><Label>End</Label>
+                    <Input
+                      type="time"
+                      step={300}
+                      value={toTimePart(newEvent.end_date)}
+                      onChange={e => {
+                        const date = toDatePart(newEvent.end_date) || toDatePart(newEvent.date) || toDatePart(fmtLocal(new Date()));
+                        setNewEvent({ ...newEvent, end_date: combineDateTime(date, e.target.value) });
+                      }}
+                      data-testid="event-end-time"
+                    />
+                  </div>
+                </div>
+                {/* Duration quick-picks */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-slate-500 mr-0.5">Duration:</span>
+                  {DURATION_PRESETS.map((min) => {
+                    const active = diffMinutes(newEvent.date, newEvent.end_date) === min;
+                    return (
+                      <button
+                        key={min}
+                        type="button"
+                        onClick={() => {
+                          if (!newEvent.date) return;
+                          setNewEvent({ ...newEvent, end_date: addMinutes(newEvent.date, min) });
+                        }}
+                        className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                          active
+                            ? 'border-[#0C1024] bg-[#0C1024] text-white'
+                            : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                        data-testid={`event-duration-${min}`}
+                      >
+                        {formatDuration(min)}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Validation + duration readout */}
+                {(() => {
+                  const mins = diffMinutes(newEvent.date, newEvent.end_date);
+                  if (mins == null) return null;
+                  if (mins <= 0) {
+                    return <p className="text-xs text-red-600">End time must be after start.</p>;
+                  }
+                  // Hide the readout when a preset chip is already showing it.
+                  if (DURATION_PRESETS.includes(mins)) return null;
+                  return (
+                    <p className="text-[11px] text-slate-500">Duration: {formatDuration(mins)}</p>
+                  );
+                })()}
               </div>
-            </div>
+            )}
             <div><Label>Location</Label><Input value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} placeholder="Office, Zoom link, address…" /></div>
             <div><Label>Notes</Label><Input value={newEvent.notes} onChange={e => setNewEvent({ ...newEvent, notes: e.target.value })} placeholder="Optional details" /></div>
             <div><Label>{newEvent.destination === 'google' ? 'Attendees (emails, comma separated)' : 'Invite (emails, comma separated)'}</Label><Input value={newEvent.invitees} onChange={e => setNewEvent({ ...newEvent, invitees: e.target.value })} placeholder="anna@company.com, bob@team.com" /></div>
@@ -935,22 +1065,102 @@ const CalendarPage = () => {
               {editingEvent ? (
                 <div className="space-y-3 pt-2">
                   <div><Label>Title</Label><Input value={editEventData.title || ''} onChange={e => setEditEventData({ ...editEventData, title: e.target.value })} /></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Start</Label>
-                      <Input
-                        type={selectedEvent.all_day ? 'date' : 'datetime-local'}
-                        value={selectedEvent.all_day ? (editEventData.date || '').slice(0, 10) : (editEventData.date ? editEventData.date.slice(0, 16) : '')}
-                        onChange={e => setEditEventData({ ...editEventData, date: e.target.value })}
-                      />
+                  {selectedEvent.all_day ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>Start</Label>
+                        <Input
+                          type="date"
+                          value={toDatePart(editEventData.date)}
+                          onChange={e => setEditEventData({ ...editEventData, date: e.target.value })}
+                        />
+                      </div>
+                      <div><Label>End</Label>
+                        <Input
+                          type="date"
+                          value={toDatePart(editEventData.end_date)}
+                          onChange={e => setEditEventData({ ...editEventData, end_date: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div><Label>End</Label>
-                      <Input
-                        type={selectedEvent.all_day ? 'date' : 'datetime-local'}
-                        value={selectedEvent.all_day ? (editEventData.end_date || '').slice(0, 10) : (editEventData.end_date ? editEventData.end_date.slice(0, 16) : '')}
-                        onChange={e => setEditEventData({ ...editEventData, end_date: e.target.value })}
-                      />
+                  ) : (
+                    <div className="space-y-2">
+                      <div><Label>Date</Label>
+                        <Input
+                          type="date"
+                          value={toDatePart(editEventData.date)}
+                          onChange={e => {
+                            const newDate = e.target.value;
+                            const startTime = toTimePart(editEventData.date) || '09:00';
+                            const prevDuration = diffMinutes(editEventData.date, editEventData.end_date);
+                            const nextStart = combineDateTime(newDate, startTime);
+                            const nextEnd = prevDuration && prevDuration > 0
+                              ? addMinutes(nextStart, prevDuration)
+                              : addMinutes(nextStart, 60);
+                            setEditEventData({ ...editEventData, date: nextStart, end_date: nextEnd });
+                          }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Start</Label>
+                          <Input
+                            type="time"
+                            step={300}
+                            value={toTimePart(editEventData.date)}
+                            onChange={e => {
+                              const date = toDatePart(editEventData.date) || toDatePart(fmtLocal(new Date()));
+                              const nextStart = combineDateTime(date, e.target.value);
+                              const prevDuration = diffMinutes(editEventData.date, editEventData.end_date);
+                              const nextEnd = prevDuration && prevDuration > 0
+                                ? addMinutes(nextStart, prevDuration)
+                                : addMinutes(nextStart, 60);
+                              setEditEventData({ ...editEventData, date: nextStart, end_date: nextEnd });
+                            }}
+                          />
+                        </div>
+                        <div><Label>End</Label>
+                          <Input
+                            type="time"
+                            step={300}
+                            value={toTimePart(editEventData.end_date)}
+                            onChange={e => {
+                              const date = toDatePart(editEventData.end_date) || toDatePart(editEventData.date);
+                              setEditEventData({ ...editEventData, end_date: combineDateTime(date, e.target.value) });
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[11px] text-slate-500 mr-0.5">Duration:</span>
+                        {DURATION_PRESETS.map((min) => {
+                          const active = diffMinutes(editEventData.date, editEventData.end_date) === min;
+                          return (
+                            <button
+                              key={min}
+                              type="button"
+                              onClick={() => {
+                                if (!editEventData.date) return;
+                                setEditEventData({ ...editEventData, end_date: addMinutes(editEventData.date, min) });
+                              }}
+                              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                                active
+                                  ? 'border-[#0C1024] bg-[#0C1024] text-white'
+                                  : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              {formatDuration(min)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {(() => {
+                        const mins = diffMinutes(editEventData.date, editEventData.end_date);
+                        if (mins == null) return null;
+                        if (mins <= 0) return <p className="text-xs text-red-600">End time must be after start.</p>;
+                        if (DURATION_PRESETS.includes(mins)) return null;
+                        return <p className="text-[11px] text-slate-500">Duration: {formatDuration(mins)}</p>;
+                      })()}
                     </div>
-                  </div>
+                  )}
                   <div><Label>Location</Label><Input value={editEventData.location || ''} onChange={e => setEditEventData({ ...editEventData, location: e.target.value })} /></div>
                   <div><Label>Notes</Label><Input value={editEventData.notes || ''} onChange={e => setEditEventData({ ...editEventData, notes: e.target.value })} /></div>
                   {selectedEvent.type === 'google' && (

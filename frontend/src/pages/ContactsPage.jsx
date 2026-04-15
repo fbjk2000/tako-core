@@ -205,10 +205,21 @@ const ContactsPage = () => {
             {loading ? (
               <div className="p-8 text-center"><div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filtered.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
+              <div className="p-10 text-center text-slate-500">
                 <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                <p className="font-medium">No contacts yet</p>
-                <p className="text-sm mt-1">Convert qualified leads to create contacts</p>
+                <p className="font-medium text-slate-700">No contacts yet</p>
+                <p className="text-sm mt-1 max-w-md mx-auto">
+                  Contacts are people you've already qualified — someone you've spoken to or done business with.
+                  Add one directly, or convert a qualified lead.
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button onClick={() => setShowAddDialog(true)} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="empty-add-contact">
+                    <Plus className="w-4 h-4 mr-2" /> Add Contact
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <a href="/leads">Go to Leads</a>
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">

@@ -82,7 +82,6 @@ const BookingPage = () => {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowSettings(true)} data-testid="booking-settings-btn"><Settings className="w-4 h-4 mr-1" /> { t('bookings.settings') }</Button>
-            <Button variant="outline" onClick={copyLink} data-testid="copy-booking-link"><Copy className="w-4 h-4 mr-1" /> { t('bookings.copyLink') }</Button>
             <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => { if (user) window.open(`/book/${user.user_id}`, '_blank'); }} data-testid="preview-booking">{ t('bookings.preview') }</Button>
           </div>
         </div>
@@ -171,6 +170,14 @@ export const PublicBookingPage = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' });
   const [booked, setBooked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [host, setHost] = useState(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    axios.get(`${API}/booking/${userId}/info`)
+      .then(r => setHost(r.data))
+      .catch(err => { console.error('host info error', err); setHost({ name: 'Your host' }); });
+  }, [userId]);
 
   const fetchSlots = async (date) => {
     if (!date || !userId) return;
@@ -216,8 +223,15 @@ export const PublicBookingPage = () => {
       <Card className="max-w-2xl w-full">
         <CardHeader className="text-center border-b">
           <img src="/logo-horizontal.svg" alt="TAKO" className="h-8 mx-auto mb-3" />
-          <CardTitle className="text-xl">Book a Meeting</CardTitle>
-          <CardDescription>Select a date and time that works for you</CardDescription>
+          {host?.picture && (
+            <img src={host.picture} alt={host?.name || 'Host'} className="w-14 h-14 rounded-full mx-auto mb-2 border-2 border-white shadow" />
+          )}
+          <CardTitle className="text-xl">
+            {host?.name ? `Book a Meeting with ${host.name}` : 'Book a Meeting'}
+          </CardTitle>
+          <CardDescription>
+            {host?.welcome_message || 'Select a date and time that works for you'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid md:grid-cols-2 gap-6">

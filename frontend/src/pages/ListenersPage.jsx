@@ -286,8 +286,11 @@ export default function ListenersPage() {
             {!loading && listeners.length === 0 && (
               <Card className="p-6 text-center text-slate-500">
                 <Radio className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                <p className="text-sm">No listeners yet</p>
-                <p className="text-xs mt-1">Create one to start monitoring social channels</p>
+                <p className="text-sm font-medium text-slate-700">No listeners yet</p>
+                <p className="text-xs mt-1">A listener watches a social campaign for keywords and lets AI classify incoming posts.</p>
+                <Button size="sm" className="mt-3 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setIsAddOpen(true)}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first listener
+                </Button>
               </Card>
             )}
             {listeners.map(l => (
@@ -332,12 +335,35 @@ export default function ListenersPage() {
           {/* Detail Panel */}
           <div className="lg:col-span-2">
             {!selectedListener ? (
-              <Card className="h-64 flex items-center justify-center text-slate-400">
-                <div className="text-center">
-                  <ChevronRight className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm">Select a listener to view details</p>
-                </div>
-              </Card>
+              listeners.length === 0 ? (
+                <Card className="h-full min-h-[320px]">
+                  <CardContent className="p-8 h-full flex flex-col items-center justify-center text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center mb-4">
+                      <Radio className="w-7 h-7 text-[#0EA5A0]" />
+                    </div>
+                    <p className="font-semibold text-slate-900">What's a listener?</p>
+                    <p className="text-sm text-slate-600 mt-2 max-w-md">
+                      Listeners monitor a social campaign (e.g. a Facebook group) for keywords you care about,
+                      then use AI to classify matching posts as buying signals, complaints, questions, and more.
+                    </p>
+                    <ul className="text-xs text-slate-500 mt-4 space-y-1 text-left">
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> Read-only — no automated posting or messaging.</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> Auto-creates tasks for high-confidence hits.</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> Digest reports summarise activity on a cadence you choose.</li>
+                    </ul>
+                    <Button className="mt-5 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setIsAddOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" /> Create a listener
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="h-64 flex items-center justify-center text-slate-400">
+                  <div className="text-center">
+                    <ChevronRight className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="text-sm">Select a listener to view details</p>
+                  </div>
+                </Card>
+              )
             ) : (
               <Card>
                 <CardHeader className="pb-3 border-b">

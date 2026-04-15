@@ -329,7 +329,7 @@ const LeadsPage = () => {
             <h1 className="text-2xl font-bold text-slate-900" data-testid="leads-title">Leads</h1>
             <p className="text-slate-600 mt-1">Manage and track your sales leads</p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             {/* AI Features */}
             <SmartSearch onSelectResult={(type, item) => {
               if (type === 'lead') {
@@ -529,8 +529,35 @@ const LeadsPage = () => {
                 <div className="w-8 h-8 border-2 border-[#0EA5A0] border-t-transparent rounded-full animate-spin mx-auto" />
               </div>
             ) : filteredLeads.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-slate-600">No leads found</p>
+              <div className="p-10 text-center text-slate-500">
+                <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                {leads.length === 0 ? (
+                  <>
+                    <p className="font-medium text-slate-700">No leads yet</p>
+                    <p className="text-sm mt-1 max-w-md mx-auto">
+                      Leads are prospects you haven't qualified yet. Import a CSV (LinkedIn Connections works)
+                      or add one manually to get started.
+                    </p>
+                    <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                      <Button onClick={() => setIsAddDialogOpen(true)} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="empty-add-lead">
+                        <Plus className="w-4 h-4 mr-2" /> Add your first lead
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} data-testid="empty-import-csv">
+                        <Upload className="w-4 h-4 mr-2" /> Import from CSV
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-slate-700">No leads match your filters</p>
+                    <p className="text-sm mt-1">Try clearing your search or selecting a different status.</p>
+                    <div className="mt-4">
+                      <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}>
+                        Clear filters
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
