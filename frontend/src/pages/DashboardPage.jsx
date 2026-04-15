@@ -50,7 +50,7 @@ const DashboardPage = () => {
       });
       
       if (response.data.payment_status === 'paid') {
-        toast.success('Payment successful! Your subscription has been activated.');
+        toast.success(t('dashboard.paymentSuccess'));
       }
     } catch (error) {
       console.error('Payment status check error:', error);
@@ -74,28 +74,28 @@ const DashboardPage = () => {
 
   const statCards = [
     {
-      title: 'Total Leads',
+      title: t('dashboard.totalLeads'),
       value: stats?.total_leads || 0,
       icon: <Users className="w-5 h-5" />,
       color: 'bg-teal-100 text-[#0EA5A0]',
       link: '/leads'
     },
     {
-      title: 'Active Deals',
+      title: t('dashboard.activeDeals'),
       value: stats?.total_deals || 0,
       icon: <Target className="w-5 h-5" />,
       color: 'bg-emerald-100 text-emerald-600',
       link: '/deals'
     },
     {
-      title: 'Open Tasks',
+      title: t('dashboard.openTasks'),
       value: stats?.total_tasks || 0,
       icon: <CheckSquare className="w-5 h-5" />,
       color: 'bg-amber-100 text-amber-600',
       link: '/tasks'
     },
     {
-      title: 'Pipeline Value',
+      title: t('dashboard.pipelineValue'),
       value: `€${(stats?.deal_value || 0).toLocaleString()}`,
       icon: <TrendingUp className="w-5 h-5" />,
       color: 'bg-rose-100 text-rose-600',
@@ -112,14 +112,14 @@ const DashboardPage = () => {
             <h1 className="text-2xl font-bold text-slate-900" data-testid="dashboard-title">
               {(() => {
                 const hasActivity = (stats?.total_leads || 0) + (stats?.total_deals || 0) + (stats?.total_tasks || 0) > 0;
-                const firstName = user?.name?.split(' ')[0] || 'there';
-                return hasActivity ? `Welcome back, ${firstName}!` : `Welcome, ${firstName}!`;
+                const firstName = user?.name?.split(' ')[0] || t('dashboard.fallbackFirstName');
+                return hasActivity ? `${t('dashboard.welcomeBack')}, ${firstName}!` : `${t('dashboard.welcomeNew')}, ${firstName}!`;
               })()}
             </h1>
             <p className="text-slate-600 mt-1">
               {(stats?.total_leads || 0) + (stats?.total_deals || 0) + (stats?.total_tasks || 0) > 0
-                ? "Here's what's happening with your sales today."
-                : "Let's get your CRM set up — follow the checklist below to launch fast."}
+                ? t('dashboard.subtitleActive')
+                : t('dashboard.subtitleNew')}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -132,13 +132,13 @@ const DashboardPage = () => {
             <Link to="/leads">
               <Button variant="outline" data-testid="add-lead-btn">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Lead
+                {t('dashboard.addLead')}
               </Button>
             </Link>
             <Link to="/deals">
               <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-deal-btn">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Deal
+                {t('dashboard.createDeal')}
               </Button>
             </Link>
           </div>
@@ -155,8 +155,8 @@ const DashboardPage = () => {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-slate-900">AI Assistant Ready</h3>
-                <p className="text-sm text-slate-600">Use Smart Search to find anything, or generate AI-powered emails in seconds.</p>
+                <h3 className="font-semibold text-slate-900">{t('dashboard.aiAssistantReady')}</h3>
+                <p className="text-sm text-slate-600">{t('dashboard.aiAssistantBlurb')}</p>
               </div>
               <div className="flex gap-2">
                 <SmartSearch />
@@ -198,7 +198,7 @@ const DashboardPage = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-semibold">{ t('dashboard.recentLeads') }</CardTitle>
               <Link to="/leads">
-                <Button variant="ghost" size="sm">View all</Button>
+                <Button variant="ghost" size="sm">{t('dashboard.viewAll')}</Button>
               </Link>
             </CardHeader>
             <CardContent>
@@ -227,7 +227,7 @@ const DashboardPage = () => {
                           <p className="font-medium text-slate-900">
                             {lead.first_name} {lead.last_name}
                           </p>
-                          <p className="text-sm text-slate-500">{lead.company || 'No company'}</p>
+                          <p className="text-sm text-slate-500">{lead.company || t('dashboard.noCompany')}</p>
                         </div>
                       </div>
                       {lead.ai_score && (
@@ -242,10 +242,10 @@ const DashboardPage = () => {
               ) : (
                 <div className="text-center py-8">
                   <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-600">No leads yet</p>
+                  <p className="text-slate-600">{t('dashboard.noLeadsYet')}</p>
                   <Link to="/leads">
                     <Button variant="outline" size="sm" className="mt-3">
-                      Add your first lead
+                      {t('dashboard.addFirstLead')}
                     </Button>
                   </Link>
                 </div>
@@ -258,7 +258,7 @@ const DashboardPage = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-semibold">{ t('dashboard.recentTasks') }</CardTitle>
               <Link to="/tasks">
-                <Button variant="ghost" size="sm">View all</Button>
+                <Button variant="ghost" size="sm">{t('dashboard.viewAll')}</Button>
               </Link>
             </CardHeader>
             <CardContent>
@@ -300,10 +300,10 @@ const DashboardPage = () => {
               ) : (
                 <div className="text-center py-8">
                   <CheckSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-600">No tasks yet</p>
+                  <p className="text-slate-600">{t('dashboard.noTasksYet')}</p>
                   <Link to="/tasks">
                     <Button variant="outline" size="sm" className="mt-3">
-                      Create your first task
+                      {t('dashboard.createFirstTask')}
                     </Button>
                   </Link>
                 </div>
@@ -321,14 +321,14 @@ const DashboardPage = () => {
                   <Zap className="w-6 h-6 text-[#0EA5A0]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900">Complete your setup</h3>
+                  <h3 className="font-semibold text-slate-900">{t('dashboard.completeSetup')}</h3>
                   <p className="text-sm text-slate-600 mt-1">
-                    Create an organization to start managing leads, deals, and collaborate with your team.
+                    {t('dashboard.completeSetupDesc')}
                   </p>
                 </div>
                 <Link to="/settings">
                   <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="setup-org-btn">
-                    Set Up Organization
+                    {t('dashboard.setupOrg')}
                   </Button>
                 </Link>
               </div>

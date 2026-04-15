@@ -18,8 +18,8 @@ import {
   MapPin, AlignLeft, User as UserIcon, RefreshCw, Calendar as CalendarIcon,
 } from 'lucide-react';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const MONTH_KEYS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 // How often to poll for remote changes while the tab is visible
@@ -41,6 +41,8 @@ const CalendarPage = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const { t } = useT();
+  const DAYS = DAY_KEYS.map(k => t(`calendar.dayShort.${k}`));
+  const MONTHS = MONTH_KEYS.map(k => t(`calendar.monthNames.${k}`));
 
   // Data
   const [events, setEvents] = useState([]);           // combined list (tako + google)
@@ -187,20 +189,20 @@ const CalendarPage = () => {
     try {
       await axios.post(`${API}/calendar/google/sync`, {}, getCfg());
       await loadAllEvents();
-      toast.success('Synced with Google');
+      toast.success(t('calendar.syncSuccess'));
     } catch (e) {
       console.error(e);
-      toast.error('Sync failed');
+      toast.error(t('calendar.syncFailed'));
     } finally {
       setSyncing(false);
     }
   };
 
   const handleCreateEvent = async () => {
-    if (!newEvent.title || !newEvent.date) { toast.error('Title and start time are required'); return; }
+    if (!newEvent.title || !newEvent.date) { toast.error(t('calendar.validationTitleStart')); return; }
     try {
       if (newEvent.destination === 'google') {
-        if (!googleConnected) { toast.error('Connect Google Calendar first'); return; }
+        if (!googleConnected) { toast.error(t('calendar.connectGoogleFirst')); return; }
         const payload = {
           summary: newEvent.title,
           description: newEvent.notes || '',
@@ -221,7 +223,7 @@ const CalendarPage = () => {
         const attendees = (newEvent.invitees || '').split(',').map(s => s.trim()).filter(s => s.includes('@'));
         if (attendees.length) payload.attendees = attendees;
         await axios.post(`${API}/calendar/google/events`, payload, getCfg());
-        toast.success('Event created in Google Calendar');
+        toast.success(t('calendar.eventCreatedGoogle'));
       } else {
         const params = new URLSearchParams({ title: newEvent.title, date: new Date(newEvent.date).toISOString() });
         if (newEvent.end_date) params.set('end_date', new Date(newEvent.end_date).toISOString());
@@ -234,14 +236,14 @@ const CalendarPage = () => {
           params.set('linked_id', newEvent.linked_id);
         }
         await axios.post(`${API}/calendar/events?${params}`, {}, getCfg());
-        toast.success('Event created');
+        toast.success(t('calendar.eventCreated'));
       }
       setShowCreate(false);
       setNewEvent({ title: '', date: '', end_date: '', notes: '', location: '', invitees: '', blocks_booking: true, linked_type: '', linked_id: '', destination: googleConnected ? newEvent.destination : 'tako', all_day: false });
       loadAllEvents();
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.detail || 'Failed to create event');
+      toast.error(err?.response?.data?.detail || t('calendar.eventCreateFailed'));
     }
   };
 
@@ -253,12 +255,12 @@ const CalendarPage = () => {
       } else {
         await axios.delete(`${API}/calendar/events/${evt.id}`, getCfg());
       }
-      toast.success('Deleted');
+      toast.success(t('calendar.deletedToast'));
       setSelectedEvent(null);
       loadAllEvents();
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.detail || 'Failed to delete');
+      toast.error(err?.response?.data?.detail || t('calendar.deleteFailed'));
     }
   };
 
@@ -285,19 +287,19 @@ const CalendarPage = () => {
         const attendees = (editEventData.invitees_input || '').split(',').map(s => s.trim()).filter(s => s.includes('@'));
         if (attendees.length) payload.attendees = attendees;
         const res = await axios.put(`${API}/calendar/google/events/${selectedEvent.google_id}`, payload, getCfg());
-        toast.success('Updated in Google Calendar');
+        toast.success(t('calendar.updatedGoogle'));
         setEditingEvent(false);
         setSelectedEvent(res.data);
       } else {
         const res = await axios.put(`${API}/calendar/events/${selectedEvent.id}`, editEventData, getCfg());
-        toast.success('Updated');
+        toast.success(t('calendar.updatedToast'));
         setEditingEvent(false);
         setSelectedEvent(res.data);
       }
       loadAllEvents();
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.detail || 'Failed to update');
+      toast.error(err?.response?.data?.detail || t('calendar.updateFailed'));
     }
   };
 
@@ -307,12 +309,12 @@ const CalendarPage = () => {
     if (!emails.length) return;
     try {
       await axios.post(`${API}/calendar/events/${selectedEvent.id}/invite`, emails, getCfg());
-      toast.success('Invitations sent');
+      toast.success(t('calendar.inviteSent'));
       setInviteEmails('');
       setSelectedEvent(prev => ({ ...prev, invitees: [...(prev.invitees || []), ...emails] }));
     } catch (err) {
       console.error(err);
-      toast.error('Failed');
+      toast.error(t('calendar.inviteFailed'));
     }
   };
 
@@ -335,7 +337,7 @@ const CalendarPage = () => {
       const r = await axios.get(`${API}/calendar/google/auth-url`, getCfg());
       window.location.href = r.data.auth_url;
     } catch (e) {
-      toast.error('Failed');
+      toast.error(t('calendar.connectFailed'));
     }
   };
 
@@ -514,7 +516,7 @@ const CalendarPage = () => {
   };
   const formatDuration = (mins) => {
     if (mins == null) return '';
-    if (mins < 60) return `${mins} min`;
+    if (mins < 60) return `${mins} ${t('calendar.minutesShort')}`;
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
@@ -610,7 +612,7 @@ const CalendarPage = () => {
     if (!hasAllDay) return null;
     return (
       <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-slate-50/60">
-        <div className="py-1 pr-2 text-right text-[9px] uppercase text-slate-400 border-r flex items-center justify-end">All day</div>
+        <div className="py-1 pr-2 text-right text-[9px] uppercase text-slate-400 border-r flex items-center justify-end">{t('calendar.allDay')}</div>
         {days.map((d, i) => {
           const evts = getEventsForDay(d).filter(e => e.all_day);
           return (
@@ -649,18 +651,18 @@ const CalendarPage = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 mr-2">
               <Users className="w-4 h-4 text-slate-400" />
-              <span className="text-xs text-slate-500">Team</span>
+              <span className="text-xs text-slate-500">{t('calendar.team')}</span>
               <Switch checked={showTeam} onCheckedChange={setShowTeam} data-testid="show-team-toggle" />
             </div>
             <select value={hourStart} onChange={e => setHourStart(parseInt(e.target.value))} className="text-xs border border-slate-200 rounded px-1.5 py-1">
               {Array.from({ length: 12 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>)}
             </select>
-            <span className="text-xs text-slate-400 self-center">to</span>
+            <span className="text-xs text-slate-400 self-center">{t('calendar.toSeparator')}</span>
             <select value={hourEnd} onChange={e => setHourEnd(parseInt(e.target.value))} className="text-xs border border-slate-200 rounded px-1.5 py-1">
               {Array.from({ length: 12 }, (_, i) => <option key={i + 12} value={i + 12}>{String(i + 12).padStart(2, '0')}:00</option>)}
             </select>
             <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-              <button onClick={() => setView('day')} className={`px-3 py-1.5 text-sm ${view === 'day' ? 'bg-[#0C1024] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>Day</button>
+              <button onClick={() => setView('day')} className={`px-3 py-1.5 text-sm ${view === 'day' ? 'bg-[#0C1024] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{t('calendar.day')}</button>
               <button onClick={() => setView('week')} className={`px-3 py-1.5 text-sm ${view === 'week' ? 'bg-[#0C1024] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{t('calendar.week')}</button>
               <button onClick={() => setView('month')} className={`px-3 py-1.5 text-sm ${view === 'month' ? 'bg-[#0C1024] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{t('calendar.month')}</button>
             </div>
@@ -672,7 +674,7 @@ const CalendarPage = () => {
             ) : (
               <div className="flex items-center gap-1">
                 <Badge className="bg-blue-100 text-blue-700 text-xs">Google</Badge>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={manualSync} title="Sync with Google now" disabled={syncing}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={manualSync} title={t('calendar.syncNowTitle')} disabled={syncing}>
                   <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
@@ -702,11 +704,11 @@ const CalendarPage = () => {
               : `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
           </h2>
           <div className="flex gap-3 text-xs text-slate-500 flex-wrap">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0EA5A0]" />Calls</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />Tasks</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0C1024]" />Events</span>
-            {showTeam && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-400" />Team</span>}
-            {googleConnected && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Google</span>}
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0EA5A0]" />{t('calendar.legendCalls')}</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />{t('calendar.legendTasks')}</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0C1024]" />{t('calendar.legendEvents')}</span>
+            {showTeam && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-400" />{t('calendar.legendTeam')}</span>}
+            {googleConnected && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{t('calendar.legendGoogle')}</span>}
           </div>
         </div>
 
@@ -732,7 +734,7 @@ const CalendarPage = () => {
                       <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday(dayDate) ? 'bg-[#0C1024] text-white' : 'text-slate-700'}`}>{day}</div>
                       <div className="space-y-0.5">
                         {dayEvents.slice(0, 3).map(renderEventChip)}
-                        {dayEvents.length > 3 && <div className="text-[10px] text-slate-400 pl-1">+{dayEvents.length - 3} more</div>}
+                        {dayEvents.length > 3 && <div className="text-[10px] text-slate-400 pl-1">{t('calendar.moreCount').replace('{count}', dayEvents.length - 3)}</div>}
                       </div>
                     </div>
                   );
@@ -757,7 +759,7 @@ const CalendarPage = () => {
                 if (!evts.length) return null;
                 return (
                   <div className="grid grid-cols-[60px_1fr] border-b bg-slate-50/60">
-                    <div className="py-1 pr-2 text-right text-[9px] uppercase text-slate-400 border-r flex items-center justify-end">All day</div>
+                    <div className="py-1 pr-2 text-right text-[9px] uppercase text-slate-400 border-r flex items-center justify-end">{t('calendar.allDay')}</div>
                     <div className="py-1 px-1 space-y-0.5 min-h-[26px]">
                       {evts.map(evt => {
                         const color = TYPE_COLORS[evt.type] || '#64748b';
@@ -858,7 +860,7 @@ const CalendarPage = () => {
           <div className="space-y-3 pt-2">
             {googleConnected && (
               <div>
-                <Label>Save to</Label>
+                <Label>{t('calendar.saveTo')}</Label>
                 <div className="flex gap-2 mt-1">
                   <button
                     type="button"
@@ -872,24 +874,24 @@ const CalendarPage = () => {
                     onClick={() => setNewEvent({ ...newEvent, destination: 'google' })}
                     className={`flex-1 text-xs py-2 rounded-lg border ${newEvent.destination === 'google' ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
                   >
-                    Google Calendar
+                    {t('calendar.googleCalendar')}
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
                   {newEvent.destination === 'google'
-                    ? 'Event will be created in Google Calendar and synced back to TAKO.'
-                    : 'Event lives in TAKO — can be linked to leads, contacts, deals.'}
+                    ? t('calendar.destGoogleHint')
+                    : t('calendar.destTakoHint')}
                 </p>
               </div>
             )}
-            <div><Label>Title *</Label><Input value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} placeholder="Meeting, deadline…" data-testid="event-title" /></div>
+            <div><Label>{t('calendar.titleRequired')}</Label><Input value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} placeholder={t('calendar.titlePlaceholder')} data-testid="event-title" /></div>
             <div className="flex items-center justify-between py-1">
-              <Label className="m-0">All day</Label>
+              <Label className="m-0">{t('calendar.allDay')}</Label>
               <Switch checked={!!newEvent.all_day} onCheckedChange={v => setNewEvent({ ...newEvent, all_day: v })} />
             </div>
             {newEvent.all_day ? (
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Start *</Label>
+                <div><Label>{t('calendar.startPart')} *</Label>
                   <Input
                     type="date"
                     value={toDatePart(newEvent.date)}
@@ -897,7 +899,7 @@ const CalendarPage = () => {
                     data-testid="event-date"
                   />
                 </div>
-                <div><Label>End</Label>
+                <div><Label>{t('calendar.endPart')}</Label>
                   <Input
                     type="date"
                     value={toDatePart(newEvent.end_date)}
@@ -908,7 +910,7 @@ const CalendarPage = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                <div><Label>Date *</Label>
+                <div><Label>{t('calendar.datePart')} *</Label>
                   <Input
                     type="date"
                     value={toDatePart(newEvent.date) || toDatePart(fmtLocal(new Date()))}
@@ -926,7 +928,7 @@ const CalendarPage = () => {
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Start *</Label>
+                  <div><Label>{t('calendar.startPart')} *</Label>
                     <Input
                       type="time"
                       step={300}
@@ -943,7 +945,7 @@ const CalendarPage = () => {
                       data-testid="event-start-time"
                     />
                   </div>
-                  <div><Label>End</Label>
+                  <div><Label>{t('calendar.endPart')}</Label>
                     <Input
                       type="time"
                       step={300}
@@ -958,7 +960,7 @@ const CalendarPage = () => {
                 </div>
                 {/* Duration quick-picks */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] text-slate-500 mr-0.5">Duration:</span>
+                  <span className="text-[11px] text-slate-500 mr-0.5">{t('calendar.duration')}:</span>
                   {DURATION_PRESETS.map((min) => {
                     const active = diffMinutes(newEvent.date, newEvent.end_date) === min;
                     return (
@@ -986,43 +988,43 @@ const CalendarPage = () => {
                   const mins = diffMinutes(newEvent.date, newEvent.end_date);
                   if (mins == null) return null;
                   if (mins <= 0) {
-                    return <p className="text-xs text-red-600">End time must be after start.</p>;
+                    return <p className="text-xs text-red-600">{t('calendar.endAfterStart')}</p>;
                   }
                   // Hide the readout when a preset chip is already showing it.
                   if (DURATION_PRESETS.includes(mins)) return null;
                   return (
-                    <p className="text-[11px] text-slate-500">Duration: {formatDuration(mins)}</p>
+                    <p className="text-[11px] text-slate-500">{t('calendar.duration')}: {formatDuration(mins)}</p>
                   );
                 })()}
               </div>
             )}
-            <div><Label>Location</Label><Input value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} placeholder="Office, Zoom link, address…" /></div>
-            <div><Label>Notes</Label><Input value={newEvent.notes} onChange={e => setNewEvent({ ...newEvent, notes: e.target.value })} placeholder="Optional details" /></div>
-            <div><Label>{newEvent.destination === 'google' ? 'Attendees (emails, comma separated)' : 'Invite (emails, comma separated)'}</Label><Input value={newEvent.invitees} onChange={e => setNewEvent({ ...newEvent, invitees: e.target.value })} placeholder="anna@company.com, bob@team.com" /></div>
+            <div><Label>{t('calendar.location')}</Label><Input value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} placeholder={t('calendar.locationPlaceholder')} /></div>
+            <div><Label>{t('calendar.notes')}</Label><Input value={newEvent.notes} onChange={e => setNewEvent({ ...newEvent, notes: e.target.value })} placeholder={t('calendar.notesPlaceholder')} /></div>
+            <div><Label>{newEvent.destination === 'google' ? t('calendar.attendeesLabel') : t('calendar.inviteLabel')}</Label><Input value={newEvent.invitees} onChange={e => setNewEvent({ ...newEvent, invitees: e.target.value })} placeholder={t('calendar.emailsPlaceholder')} /></div>
             {newEvent.destination !== 'google' && (
               <>
                 <div className="flex items-center justify-between py-1">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">Blocks bookings</p>
-                    <p className="text-[10px] text-slate-400">When on, this event prevents booking slots during this time</p>
+                    <p className="text-sm font-medium text-slate-700">{t('calendar.blocksBookings')}</p>
+                    <p className="text-[10px] text-slate-400">{t('calendar.blocksBookingsHint')}</p>
                   </div>
                   <Switch checked={newEvent.blocks_booking !== false} onCheckedChange={v => setNewEvent({ ...newEvent, blocks_booking: v })} />
                 </div>
-                <div><Label>Link to</Label>
+                <div><Label>{t('calendar.linkTo')}</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={newEvent.linked_type || 'none'} onValueChange={v => setNewEvent({ ...newEvent, linked_type: v === 'none' ? '' : v, linked_id: '' })}>
-                      <SelectTrigger className="text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                      <SelectTrigger className="text-xs"><SelectValue placeholder={t('calendar.typePlaceholder')} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="lead">Lead</SelectItem><SelectItem value="contact">Contact</SelectItem><SelectItem value="company">Company</SelectItem>
-                        <SelectItem value="deal">Deal</SelectItem><SelectItem value="project">Project</SelectItem><SelectItem value="campaign">Campaign</SelectItem>
+                        <SelectItem value="none">{t('common.none')}</SelectItem>
+                        <SelectItem value="lead">{t('calendar.linkTypeLead')}</SelectItem><SelectItem value="contact">{t('calendar.linkTypeContact')}</SelectItem><SelectItem value="company">{t('calendar.linkTypeCompany')}</SelectItem>
+                        <SelectItem value="deal">{t('calendar.linkTypeDeal')}</SelectItem><SelectItem value="project">{t('calendar.linkTypeProject')}</SelectItem><SelectItem value="campaign">{t('calendar.linkTypeCampaign')}</SelectItem>
                       </SelectContent>
                     </Select>
                     {newEvent.linked_type && newEvent.linked_type !== 'none' && (
                       <Select value={newEvent.linked_id || 'none'} onValueChange={v => setNewEvent({ ...newEvent, linked_id: v === 'none' ? '' : v })}>
-                        <SelectTrigger className="text-xs"><SelectValue placeholder="Select…" /></SelectTrigger>
+                        <SelectTrigger className="text-xs"><SelectValue placeholder={t('calendar.selectPlaceholder')} /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="none">{t('common.none')}</SelectItem>
                           {newEvent.linked_type === 'lead' && linkableEntities.leads.map(l => <SelectItem key={l.lead_id} value={l.lead_id}>{l.first_name} {l.last_name}</SelectItem>)}
                           {newEvent.linked_type === 'contact' && linkableEntities.contacts.map(c => <SelectItem key={c.contact_id} value={c.contact_id}>{c.first_name} {c.last_name}</SelectItem>)}
                           {newEvent.linked_type === 'company' && linkableEntities.companies.map(c => <SelectItem key={c.company_id} value={c.company_id}>{c.name}</SelectItem>)}
@@ -1037,7 +1039,7 @@ const CalendarPage = () => {
               </>
             )}
             <Button onClick={handleCreateEvent} className="w-full bg-[#0C1024] hover:bg-[#2e0550] text-white" data-testid="create-event-submit">
-              <Plus className="w-4 h-4 mr-2" /> Create Event
+              <Plus className="w-4 h-4 mr-2" /> {t('calendar.createEvent')}
             </Button>
           </div>
         </DialogContent>
@@ -1052,7 +1054,7 @@ const CalendarPage = () => {
                 <DialogTitle className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLORS[selectedEvent.type] || '#0C1024' }} />
-                    <span className="truncate">{editingEvent ? 'Edit Event' : selectedEvent.title}</span>
+                    <span className="truncate">{editingEvent ? t('calendar.editEvent') : selectedEvent.title}</span>
                     {selectedEvent.type === 'google' && !editingEvent && (
                       <Badge variant="outline" className="text-[10px] shrink-0">Google</Badge>
                     )}
@@ -1064,17 +1066,17 @@ const CalendarPage = () => {
               </DialogHeader>
               {editingEvent ? (
                 <div className="space-y-3 pt-2">
-                  <div><Label>Title</Label><Input value={editEventData.title || ''} onChange={e => setEditEventData({ ...editEventData, title: e.target.value })} /></div>
+                  <div><Label>{t('calendar.titleLabel')}</Label><Input value={editEventData.title || ''} onChange={e => setEditEventData({ ...editEventData, title: e.target.value })} /></div>
                   {selectedEvent.all_day ? (
                     <div className="grid grid-cols-2 gap-3">
-                      <div><Label>Start</Label>
+                      <div><Label>{t('calendar.startPart')}</Label>
                         <Input
                           type="date"
                           value={toDatePart(editEventData.date)}
                           onChange={e => setEditEventData({ ...editEventData, date: e.target.value })}
                         />
                       </div>
-                      <div><Label>End</Label>
+                      <div><Label>{t('calendar.endPart')}</Label>
                         <Input
                           type="date"
                           value={toDatePart(editEventData.end_date)}
@@ -1084,7 +1086,7 @@ const CalendarPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div><Label>Date</Label>
+                      <div><Label>{t('calendar.datePart')}</Label>
                         <Input
                           type="date"
                           value={toDatePart(editEventData.date)}
@@ -1101,7 +1103,7 @@ const CalendarPage = () => {
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <div><Label>Start</Label>
+                        <div><Label>{t('calendar.startPart')}</Label>
                           <Input
                             type="time"
                             step={300}
@@ -1117,7 +1119,7 @@ const CalendarPage = () => {
                             }}
                           />
                         </div>
-                        <div><Label>End</Label>
+                        <div><Label>{t('calendar.endPart')}</Label>
                           <Input
                             type="time"
                             step={300}
@@ -1130,7 +1132,7 @@ const CalendarPage = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[11px] text-slate-500 mr-0.5">Duration:</span>
+                        <span className="text-[11px] text-slate-500 mr-0.5">{t('calendar.duration')}:</span>
                         {DURATION_PRESETS.map((min) => {
                           const active = diffMinutes(editEventData.date, editEventData.end_date) === min;
                           return (
@@ -1155,21 +1157,21 @@ const CalendarPage = () => {
                       {(() => {
                         const mins = diffMinutes(editEventData.date, editEventData.end_date);
                         if (mins == null) return null;
-                        if (mins <= 0) return <p className="text-xs text-red-600">End time must be after start.</p>;
+                        if (mins <= 0) return <p className="text-xs text-red-600">{t('calendar.endAfterStart')}</p>;
                         if (DURATION_PRESETS.includes(mins)) return null;
-                        return <p className="text-[11px] text-slate-500">Duration: {formatDuration(mins)}</p>;
+                        return <p className="text-[11px] text-slate-500">{t('calendar.duration')}: {formatDuration(mins)}</p>;
                       })()}
                     </div>
                   )}
-                  <div><Label>Location</Label><Input value={editEventData.location || ''} onChange={e => setEditEventData({ ...editEventData, location: e.target.value })} /></div>
-                  <div><Label>Notes</Label><Input value={editEventData.notes || ''} onChange={e => setEditEventData({ ...editEventData, notes: e.target.value })} /></div>
+                  <div><Label>{t('calendar.location')}</Label><Input value={editEventData.location || ''} onChange={e => setEditEventData({ ...editEventData, location: e.target.value })} /></div>
+                  <div><Label>{t('calendar.notes')}</Label><Input value={editEventData.notes || ''} onChange={e => setEditEventData({ ...editEventData, notes: e.target.value })} /></div>
                   {selectedEvent.type === 'google' && (
                     <div>
-                      <Label>Attendees (comma separated emails)</Label>
+                      <Label>{t('calendar.attendeesLabelShort')}</Label>
                       <Input
                         value={editEventData.invitees_input || ''}
                         onChange={e => setEditEventData({ ...editEventData, invitees_input: e.target.value })}
-                        placeholder="anna@company.com, bob@team.com"
+                        placeholder={t('calendar.emailsPlaceholder')}
                       />
                     </div>
                   )}
@@ -1182,7 +1184,7 @@ const CalendarPage = () => {
                 <div className="space-y-3 pt-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" />Start</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" />{t('calendar.start')}</p>
                       <p className="text-sm font-medium">
                         {selectedEvent.date
                           ? (selectedEvent.all_day ? selectedEvent.date.slice(0, 10) : new Date(selectedEvent.date).toLocaleString())
@@ -1190,7 +1192,7 @@ const CalendarPage = () => {
                       </p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" />End</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" />{t('calendar.end')}</p>
                       <p className="text-sm font-medium">
                         {selectedEvent.end_date
                           ? (selectedEvent.all_day ? selectedEvent.end_date.slice(0, 10) : new Date(selectedEvent.end_date).toLocaleString())
@@ -1201,7 +1203,7 @@ const CalendarPage = () => {
 
                   {selectedEvent.location && (
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><MapPin className="w-3 h-3" />Location</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><MapPin className="w-3 h-3" />{t('calendar.location')}</p>
                       <p className="text-sm text-slate-700 break-words">{selectedEvent.location}</p>
                     </div>
                   )}
@@ -1209,28 +1211,28 @@ const CalendarPage = () => {
                   {selectedEvent.hangout_link && (
                     <a href={selectedEvent.hangout_link} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 rounded-lg p-3 transition-colors">
                       <Video className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-700">Join Google Meet</span>
+                      <span className="text-sm font-medium text-blue-700">{t('calendar.joinGoogleMeet')}</span>
                       <ExternalLink className="w-3 h-3 text-blue-400 ml-auto" />
                     </a>
                   )}
 
                   {selectedEvent.notes && (
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><AlignLeft className="w-3 h-3" />Notes</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><AlignLeft className="w-3 h-3" />{t('calendar.notes')}</p>
                       <p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedEvent.notes}</p>
                     </div>
                   )}
 
                   {selectedEvent.organizer?.email && !selectedEvent.organizer.self && (
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><UserIcon className="w-3 h-3" />Organizer</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><UserIcon className="w-3 h-3" />{t('calendar.organizer')}</p>
                       <p className="text-sm text-slate-700">{selectedEvent.organizer.displayName || selectedEvent.organizer.email}</p>
                     </div>
                   )}
 
                   {selectedEvent.attendees?.length > 0 && (
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Attendees ({selectedEvent.attendees.length})</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('calendar.attendeesCount').replace('{count}', selectedEvent.attendees.length)}</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {selectedEvent.attendees.map((a, i) => (
                           <div key={i} className="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1">
@@ -1243,7 +1245,7 @@ const CalendarPage = () => {
                                 a.responseStatus === 'tentative' ? 'border-amber-300 text-amber-700' : ''
                               }`}
                             >
-                              {a.responseStatus === 'needsAction' ? 'pending' : a.responseStatus}
+                              {a.responseStatus === 'needsAction' ? t('calendar.responsePending') : a.responseStatus}
                             </Badge>
                           </div>
                         ))}
@@ -1255,7 +1257,7 @@ const CalendarPage = () => {
 
                   {selectedEvent.invitees?.length > 0 && (
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Invitees</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('calendar.invitees')}</p>
                       <div className="flex flex-wrap gap-1">
                         {selectedEvent.invitees.map((e, i) => <Badge key={i} variant="outline" className="text-xs">{e}</Badge>)}
                       </div>
@@ -1265,10 +1267,10 @@ const CalendarPage = () => {
                   {/* TAKO events: invite a new person by email */}
                   {selectedEvent.type === 'event' && (
                     <div className="border-t pt-3 space-y-2">
-                      <p className="text-xs font-medium text-slate-700">Invite people</p>
+                      <p className="text-xs font-medium text-slate-700">{t('calendar.invitePeople')}</p>
                       <div className="flex gap-2">
-                        <Input value={inviteEmails} onChange={e => setInviteEmails(e.target.value)} placeholder="email@example.com" className="text-xs h-8" />
-                        <Button size="sm" className="h-8 bg-[#0C1024] text-white" onClick={handleInvite}>Send</Button>
+                        <Input value={inviteEmails} onChange={e => setInviteEmails(e.target.value)} placeholder={t('calendar.emailPlaceholder')} className="text-xs h-8" />
+                        <Button size="sm" className="h-8 bg-[#0C1024] text-white" onClick={handleInvite}>{t('calendar.send')}</Button>
                       </div>
                     </div>
                   )}
@@ -1276,7 +1278,7 @@ const CalendarPage = () => {
                   <div className="flex items-center justify-between border-t pt-3">
                     {selectedEvent.html_link && (
                       <a href={selectedEvent.html_link} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                        Open in Google <ExternalLink className="w-3 h-3" />
+                        {t('calendar.openInGoogle')} <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
                     <div className="ml-auto">

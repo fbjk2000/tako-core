@@ -51,7 +51,7 @@ const CampaignsPage = () => {
       const response = await axios.get(`${API}/campaigns`, { headers, withCredentials: true });
       setCampaigns(response.data);
     } catch {
-      toast.error('Failed to fetch campaigns');
+      toast.error(t('campaigns.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -81,22 +81,22 @@ const CampaignsPage = () => {
     e.preventDefault();
     try {
       await axios.post(`${API}/campaigns`, newCampaign, { headers, withCredentials: true });
-      toast.success('Campaign created');
+      toast.success(t('campaigns.createSuccess'));
       setIsAddDialogOpen(false);
       setNewCampaign({ name: '', subject: '', content: '', channel_type: 'email' });
       fetchCampaigns();
     } catch {
-      toast.error('Failed to create campaign');
+      toast.error(t('campaigns.createFailed'));
     }
   };
 
   const handleSendCampaign = async (campaignId) => {
     try {
       const res = await axios.post(`${API}/campaigns/${campaignId}/send`, {}, { headers, withCredentials: true });
-      toast.success(res.data.message || 'Campaign sent!');
+      toast.success(res.data.message || t('campaigns.sentSuccess'));
       fetchCampaigns();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to send campaign');
+      toast.error(error.response?.data?.detail || t('campaigns.sendFailed'));
     }
   };
 
@@ -106,9 +106,9 @@ const CampaignsPage = () => {
       const response = await axios.post(`${API}/ai/draft-email`, { purpose: 'introduction' }, { headers, withCredentials: true });
       setNewCampaign({ ...newCampaign, subject: response.data.subject, content: response.data.content });
       setIsAIDraftOpen(false);
-      toast.success('AI draft generated');
+      toast.success(t('campaigns.aiDraftSuccess'));
     } catch {
-      toast.error('Failed to generate AI draft');
+      toast.error(t('campaigns.aiDraftFailed'));
     } finally {
       setAiLoading(false);
     }
@@ -132,26 +132,26 @@ const CampaignsPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2" data-testid="campaigns-title">
-              <Megaphone className="w-6 h-6 text-[#0EA5A0]" /> Campaigns
+              <Megaphone className="w-6 h-6 text-[#0EA5A0]" /> {t('campaigns.headerTitle')}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Reach your audience across email and social channels</p>
+            <p className="text-slate-500 text-sm mt-1">{t('campaigns.headerSubtitle')}</p>
           </div>
           <div className="flex gap-3">
             {/* AI Draft — email only, shown when dialog is open on email channel */}
             <Dialog open={isAIDraftOpen} onOpenChange={setIsAIDraftOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" data-testid="ai-draft-btn">
-                  <Zap className="w-4 h-4 mr-2" /> AI Draft
+                  <Zap className="w-4 h-4 mr-2" /> {t('campaigns.aiDraft')}
                 </Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>Generate Email with AI</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t('campaigns.aiDraftDialogTitle')}</DialogTitle></DialogHeader>
                 <div className="space-y-4 pt-4">
-                  <p className="text-sm text-slate-600">Let AI draft a professional introduction email for your campaign.</p>
+                  <p className="text-sm text-slate-600">{t('campaigns.aiDraftDesc')}</p>
                   <Button onClick={handleAIDraft} disabled={aiLoading} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="generate-ai-btn">
                     {aiLoading
                       ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <><Zap className="w-4 h-4 mr-2" />Generate Introduction Email</>}
+                      : <><Zap className="w-4 h-4 mr-2" />{t('campaigns.generateIntroEmail')}</>}
                   </Button>
                 </div>
               </DialogContent>
@@ -160,25 +160,25 @@ const CampaignsPage = () => {
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-campaign-btn">
-                  <Plus className="w-4 h-4 mr-2" /> New Campaign
+                  <Plus className="w-4 h-4 mr-2" /> {t('campaigns.newCampaign')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>Create Campaign</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t('campaigns.createCampaign')}</DialogTitle></DialogHeader>
                 <form onSubmit={handleAddCampaign} className="space-y-4 pt-4">
                   <div className="space-y-2">
-                    <Label>Campaign Name *</Label>
-                    <Input value={newCampaign.name} onChange={e => setNewCampaign({ ...newCampaign, name: e.target.value })} placeholder="e.g., Q2 Outreach" required data-testid="campaign-name" />
+                    <Label>{t('campaigns.campaignNameRequired')}</Label>
+                    <Input value={newCampaign.name} onChange={e => setNewCampaign({ ...newCampaign, name: e.target.value })} placeholder={t('campaigns.campaignNamePlaceholder')} required data-testid="campaign-name" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Channel</Label>
+                    <Label>{t('campaigns.channel')}</Label>
                     <Select value={newCampaign.channel_type} onValueChange={v => setNewCampaign({ ...newCampaign, channel_type: v })}>
                       <SelectTrigger data-testid="campaign-channel"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="email"><span className="flex items-center gap-2"><Mail className="w-3.5 h-3.5" />Email</span></SelectItem>
-                        <SelectItem value="facebook"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />Facebook</span></SelectItem>
-                        <SelectItem value="instagram"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />Instagram</span></SelectItem>
-                        <SelectItem value="linkedin"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />LinkedIn</span></SelectItem>
+                        <SelectItem value="email"><span className="flex items-center gap-2"><Mail className="w-3.5 h-3.5" />{t('campaigns.channelEmail')}</span></SelectItem>
+                        <SelectItem value="facebook"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />{t('campaigns.channelFacebook')}</span></SelectItem>
+                        <SelectItem value="instagram"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />{t('campaigns.channelInstagram')}</span></SelectItem>
+                        <SelectItem value="linkedin"><span className="flex items-center gap-2"><Radio className="w-3.5 h-3.5" />{t('campaigns.channelLinkedin')}</span></SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -186,28 +186,25 @@ const CampaignsPage = () => {
                   {newCampaign.channel_type === 'email' ? (
                     <>
                       <div className="space-y-2">
-                        <Label>Subject Line *</Label>
-                        <Input value={newCampaign.subject} onChange={e => setNewCampaign({ ...newCampaign, subject: e.target.value })} placeholder="Your email subject" required data-testid="campaign-subject" />
+                        <Label>{t('campaigns.subjectLineRequired')}</Label>
+                        <Input value={newCampaign.subject} onChange={e => setNewCampaign({ ...newCampaign, subject: e.target.value })} placeholder={t('campaigns.subjectPlaceholder')} required data-testid="campaign-subject" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Email Content *</Label>
-                        <Textarea value={newCampaign.content} onChange={e => setNewCampaign({ ...newCampaign, content: e.target.value })} placeholder="Write your email content..." rows={6} required data-testid="campaign-content" />
+                        <Label>{t('campaigns.emailContentRequired')}</Label>
+                        <Textarea value={newCampaign.content} onChange={e => setNewCampaign({ ...newCampaign, content: e.target.value })} placeholder={t('campaigns.contentPlaceholder')} rows={6} required data-testid="campaign-content" />
                       </div>
                     </>
                   ) : (
                     <div className="rounded-lg bg-[#0EA5A0]/5 border border-[#0EA5A0]/20 p-4 space-y-2">
                       <div className="flex items-center gap-2 text-[#0EA5A0] font-medium text-sm">
-                        <Radio className="w-4 h-4" /> Social Listener Campaign
+                        <Radio className="w-4 h-4" /> {t('campaigns.socialListenerTitle')}
                       </div>
-                      <p className="text-xs text-slate-600">
-                        This campaign uses a <strong>Listener</strong> to monitor social channels.
-                        After creating, go to <strong>Listeners</strong> in the sidebar to configure keywords, sources, and polling cadence.
-                      </p>
+                      <p className="text-xs text-slate-600" dangerouslySetInnerHTML={{ __html: t('campaigns.socialListenerDesc') }} />
                     </div>
                   )}
 
                   <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-campaign-btn">
-                    Create Campaign
+                    {t('campaigns.createCampaign')}
                   </Button>
                 </form>
               </DialogContent>
@@ -218,8 +215,8 @@ const CampaignsPage = () => {
         {/* Tabs */}
         <Tabs defaultValue="campaigns" className="space-y-6">
           <TabsList data-testid="campaigns-tabs">
-            <TabsTrigger value="campaigns">All Campaigns</TabsTrigger>
-            {kitAccount && <TabsTrigger value="kit">Kit.com</TabsTrigger>}
+            <TabsTrigger value="campaigns">{t('campaigns.allCampaigns')}</TabsTrigger>
+            {kitAccount && <TabsTrigger value="kit">{t('campaigns.kitTab')}</TabsTrigger>}
           </TabsList>
 
           {/* Campaigns Tab */}
@@ -232,10 +229,10 @@ const CampaignsPage = () => {
               <Card>
                 <CardContent className="py-12 text-center">
                   <Megaphone className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-600 mb-1">No campaigns yet</p>
-                  <p className="text-sm text-slate-400 mb-4">Create an email campaign or connect a social channel via Listeners</p>
+                  <p className="text-slate-600 mb-1">{t('campaigns.noCampaigns')}</p>
+                  <p className="text-sm text-slate-400 mb-4">{t('campaigns.noCampaignsDesc')}</p>
                   <Button onClick={() => setIsAddDialogOpen(true)} className="bg-[#0EA5A0] hover:bg-teal-700">
-                    Create your first campaign
+                    {t('campaigns.createFirstCampaign')}
                   </Button>
                 </CardContent>
               </Card>
@@ -259,7 +256,7 @@ const CampaignsPage = () => {
                             </div>
                             {isEmail(campaign)
                               ? <p className="text-sm text-slate-500 truncate">{campaign.subject}</p>
-                              : <p className="text-sm text-slate-400">Social listener campaign — configure in Listeners</p>
+                              : <p className="text-sm text-slate-400">{t('campaigns.socialListenerDescShort')}</p>
                             }
                           </div>
                         </div>
@@ -272,27 +269,27 @@ const CampaignsPage = () => {
                                   <Send className="w-3.5 h-3.5" />
                                   <span className="font-semibold text-slate-700">{campaign.sent_count || 0}</span>
                                 </div>
-                                <span className="text-xs">Sent</span>
+                                <span className="text-xs">{t('campaigns.sentLabel')}</span>
                               </div>
                               <div className="text-center">
                                 <div className="flex items-center gap-1 justify-center">
                                   <Eye className="w-3.5 h-3.5" />
                                   <span className="font-semibold text-slate-700">{campaign.open_count || 0}</span>
                                 </div>
-                                <span className="text-xs">Opens</span>
+                                <span className="text-xs">{t('campaigns.opensLabel')}</span>
                               </div>
                               <div className="text-center">
                                 <div className="flex items-center gap-1 justify-center">
                                   <MousePointer className="w-3.5 h-3.5" />
                                   <span className="font-semibold text-slate-700">{campaign.click_count || 0}</span>
                                 </div>
-                                <span className="text-xs">Clicks</span>
+                                <span className="text-xs">{t('campaigns.clicksLabel')}</span>
                               </div>
                             </div>
                           )}
                           {campaign.status === 'draft' && isEmail(campaign) && (
                             <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={() => handleSendCampaign(campaign.campaign_id)} data-testid={`send-campaign-${index}`}>
-                              <Send className="w-3.5 h-3.5 mr-1.5" /> Send
+                              <Send className="w-3.5 h-3.5 mr-1.5" /> {t('campaigns.sendBtn')}
                             </Button>
                           )}
                         </div>
@@ -307,38 +304,38 @@ const CampaignsPage = () => {
           {/* Kit.com Tab */}
           <TabsContent value="kit" className="space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">Kit.com is used for email list management and automation.</p>
+              <p className="text-sm text-slate-500">{t('campaigns.kitDesc')}</p>
               <Button variant="outline" size="sm" onClick={fetchKitData} disabled={kitLoading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${kitLoading ? 'animate-spin' : ''}`} /> Sync
+                <RefreshCw className={`w-4 h-4 mr-2 ${kitLoading ? 'animate-spin' : ''}`} /> {t('campaigns.sync')}
               </Button>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card data-testid="kit-account-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Account</CardTitle>
-                  <CardDescription>Your Kit.com account</CardDescription>
+                  <CardTitle className="text-base">{t('campaigns.account')}</CardTitle>
+                  <CardDescription>{t('campaigns.accountDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {kitLoading ? (
                     <div className="animate-pulse space-y-2"><div className="h-4 bg-slate-200 rounded w-3/4" /><div className="h-4 bg-slate-200 rounded w-1/2" /></div>
                   ) : kitAccount ? (
                     <div className="space-y-2">
-                      <p className="text-sm"><span className="text-slate-500">Name:</span> {kitAccount.name}</p>
-                      <p className="text-sm"><span className="text-slate-500">Plan:</span> {kitAccount.plan_type || 'Active'}</p>
+                      <p className="text-sm"><span className="text-slate-500">{t('campaigns.nameLabel')}</span> {kitAccount.name}</p>
+                      <p className="text-sm"><span className="text-slate-500">{t('campaigns.planLabel')}</span> {kitAccount.plan_type || t('campaigns.planActive')}</p>
                       <a href="https://app.kit.com" target="_blank" rel="noopener noreferrer" className="text-sm text-[#0EA5A0] hover:text-teal-700 flex items-center gap-1 mt-4">
-                        Open Kit.com <ExternalLink className="w-3 h-3" />
+                        {t('campaigns.openKit')} <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-400">No Kit.com account connected. Add your API key in Settings → Integrations.</p>
+                    <p className="text-sm text-slate-400">{t('campaigns.noKitAccount')}</p>
                   )}
                 </CardContent>
               </Card>
 
               <Card data-testid="kit-subscribers-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Subscribers</CardTitle>
-                  <CardDescription>Total Kit.com subscribers</CardDescription>
+                  <CardTitle className="text-base">{t('campaigns.subscribers')}</CardTitle>
+                  <CardDescription>{t('campaigns.subscribersDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-3">
@@ -347,7 +344,7 @@ const CampaignsPage = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-slate-900">{kitSubscribers?.total_subscribers || '—'}</p>
-                      <p className="text-sm text-slate-500">total subscribers</p>
+                      <p className="text-sm text-slate-500">{t('campaigns.totalSubscribers')}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -355,8 +352,8 @@ const CampaignsPage = () => {
 
               <Card data-testid="kit-forms-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Forms</CardTitle>
-                  <CardDescription>{kitForms.length} forms</CardDescription>
+                  <CardTitle className="text-base">{t('campaigns.forms')}</CardTitle>
+                  <CardDescription>{t('campaigns.formsCount').replace('{count}', kitForms.length)}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {kitForms.length > 0 ? (
@@ -369,7 +366,7 @@ const CampaignsPage = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-400">No forms found</p>
+                    <p className="text-sm text-slate-400">{t('campaigns.noForms')}</p>
                   )}
                 </CardContent>
               </Card>
@@ -377,15 +374,15 @@ const CampaignsPage = () => {
               {kitTags.length > 0 && (
                 <Card data-testid="kit-tags-card">
                   <CardHeader>
-                    <CardTitle className="text-base">Tags</CardTitle>
-                    <CardDescription>{kitTags.length} tags</CardDescription>
+                    <CardTitle className="text-base">{t('campaigns.tags')}</CardTitle>
+                    <CardDescription>{t('campaigns.tagsCount').replace('{count}', kitTags.length)}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {kitTags.slice(0, 12).map(tag => (
                         <span key={tag.id} className="text-xs px-2 py-1 bg-teal-50 text-teal-700 rounded-full">{tag.name}</span>
                       ))}
-                      {kitTags.length > 12 && <span className="text-xs text-slate-400">+{kitTags.length - 12} more</span>}
+                      {kitTags.length > 12 && <span className="text-xs text-slate-400">{t('campaigns.moreTags').replace('{count}', kitTags.length - 12)}</span>}
                     </div>
                   </CardContent>
                 </Card>

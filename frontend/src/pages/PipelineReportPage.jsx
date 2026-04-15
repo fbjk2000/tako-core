@@ -46,7 +46,7 @@ const PipelineReportPage = () => {
       });
       setPipelineData(response.data);
     } catch (error) {
-      toast.error('Failed to fetch pipeline report');
+      toast.error(t('pipeline.toastFetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -94,12 +94,12 @@ const PipelineReportPage = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2" data-testid="pipeline-title">
               <BarChart3 className="w-6 h-6" />
-              Pipeline Report
+              {t('pipeline.title')}
             </h1>
             <p className="text-slate-600 mt-1">
-              {pipelineData?.is_admin_view 
-                ? 'View and manage all deals in your organization' 
-                : 'View your personal pipeline summary'}
+              {pipelineData?.is_admin_view
+                ? t('pipeline.adminViewDesc')
+                : t('pipeline.personalViewDesc')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -112,18 +112,18 @@ const PipelineReportPage = () => {
               return pipelineData?.is_admin_view ? (
                 <Badge className="bg-[#0EA5A0]">
                   <Users className="w-3 h-3 mr-1" />
-                  Admin View
+                  {t('pipeline.adminView')}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-slate-500">
                   <Lock className="w-3 h-3 mr-1" />
-                  Personal View
+                  {t('pipeline.personalView')}
                 </Badge>
               );
             })()}
             <Button variant="outline" onClick={() => { fetchPipelineReport(); if(isAdmin) fetchTeamSummary(); }} data-testid="refresh-btn">
               <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              {t('pipeline.refresh')}
             </Button>
           </div>
         </div>
@@ -137,7 +137,7 @@ const PipelineReportPage = () => {
                   <Euro className="w-6 h-6 text-[#0EA5A0]" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Total Pipeline Value</p>
+                  <p className="text-sm text-slate-500">{t('pipeline.totalPipelineValue')}</p>
                   <p className="text-2xl font-bold text-slate-900">
                     €{(pipelineData?.total_value || 0).toLocaleString()}
                   </p>
@@ -153,7 +153,7 @@ const PipelineReportPage = () => {
                   <TrendingUp className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Weighted Value</p>
+                  <p className="text-sm text-slate-500">{t('pipeline.weightedValue')}</p>
                   <p className="text-2xl font-bold text-slate-900">
                     €{(pipelineData?.weighted_value || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}
                   </p>
@@ -169,7 +169,7 @@ const PipelineReportPage = () => {
                   <Target className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Total Deals</p>
+                  <p className="text-sm text-slate-500">{t('pipeline.totalDeals')}</p>
                   <p className="text-2xl font-bold text-slate-900">
                     {pipelineData?.deals?.length || 0}
                   </p>
@@ -181,10 +181,10 @@ const PipelineReportPage = () => {
 
         <Tabs defaultValue="stages" className="space-y-6">
           <TabsList data-testid="report-tabs">
-            <TabsTrigger value="stages">By Stage</TabsTrigger>
-            <TabsTrigger value="deals">All Deals</TabsTrigger>
+            <TabsTrigger value="stages">{t('pipeline.tabByStage')}</TabsTrigger>
+            <TabsTrigger value="deals">{t('pipeline.tabAllDeals')}</TabsTrigger>
             {isAdmin && (teamData?.members?.length || 0) > 1 && (
-              <TabsTrigger value="team">Team Summary</TabsTrigger>
+              <TabsTrigger value="team">{t('pipeline.tabTeamSummary')}</TabsTrigger>
             )}
           </TabsList>
 
@@ -196,19 +196,19 @@ const PipelineReportPage = () => {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <Badge className={getStageColor(stage.id)}>{stage.name}</Badge>
-                      <span className="text-sm text-slate-500">{stage.count} deals</span>
+                      <span className="text-sm text-slate-500">{t('pipeline.dealsCount').replace('{count}', stage.count)}</span>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-500">Total Value</span>
+                        <span className="text-sm text-slate-500">{t('pipeline.totalValue')}</span>
                         <span className="font-bold text-slate-900">
                           €{stage.value.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-500">Weighted Value</span>
+                        <span className="text-sm text-slate-500">{t('pipeline.weightedValue')}</span>
                         <span className="font-semibold text-emerald-600">
                           €{stage.weighted_value.toLocaleString(undefined, {maximumFractionDigits: 0})}
                         </span>
@@ -226,9 +226,9 @@ const PipelineReportPage = () => {
                           />
                         </div>
                         <p className="text-xs text-slate-400 mt-1 text-right">
-                          {pipelineData.total_value > 0 
-                            ? (stage.value / pipelineData.total_value * 100).toFixed(1) 
-                            : 0}% of pipeline
+                          {t('pipeline.percentOfPipeline').replace('{pct}', pipelineData.total_value > 0
+                            ? (stage.value / pipelineData.total_value * 100).toFixed(1)
+                            : 0)}
                         </p>
                       </div>
                     </div>
@@ -242,27 +242,27 @@ const PipelineReportPage = () => {
           <TabsContent value="deals">
             <Card>
               <CardHeader>
-                <CardTitle>All Deals</CardTitle>
+                <CardTitle>{t('pipeline.allDealsTitle')}</CardTitle>
                 <CardDescription>
-                  {pipelineData?.is_admin_view 
-                    ? 'All deals in your organization' 
-                    : 'Your personal deals'}
+                  {pipelineData?.is_admin_view
+                    ? t('pipeline.allDealsDescAdmin')
+                    : t('pipeline.allDealsDescPersonal')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {pipelineData?.deals?.length === 0 ? (
-                  <p className="text-center text-slate-500 py-8">No deals found</p>
+                  <p className="text-center text-slate-500 py-8">{t('pipeline.noDealsFound')}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full" data-testid="deals-table">
                       <thead>
                         <tr className="border-b border-slate-200">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Deal</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Stage</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Value</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Probability</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Weighted</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Close Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colDeal')}</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colStage')}</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colValue')}</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colProbability')}</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colWeighted')}</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colCloseDate')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -332,23 +332,23 @@ const PipelineReportPage = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Team Pipeline Summary
+                    {t('pipeline.teamSummaryTitle')}
                   </CardTitle>
-                  <CardDescription>Pipeline performance by team member</CardDescription>
+                  <CardDescription>{t('pipeline.teamSummaryDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {!teamData?.members?.length ? (
-                    <p className="text-center text-slate-500 py-8">No team data available</p>
+                    <p className="text-center text-slate-500 py-8">{t('pipeline.noTeamData')}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full" data-testid="team-table">
                         <thead>
                           <tr className="border-b border-slate-200">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Team Member</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Deals</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Total Value</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Weighted Value</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Won Value</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colTeamMember')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colDeals')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.totalValue')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.weightedValue')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('pipeline.colWonValue')}</th>
                           </tr>
                         </thead>
                         <tbody>

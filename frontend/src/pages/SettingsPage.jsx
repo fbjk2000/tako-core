@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useT } from '../useT';
 import { useAuth, API } from '../App';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -45,6 +46,7 @@ import {
 } from 'lucide-react';
 
 const SettingsPage = () => {
+  const { t } = useT();
   const { user, token, checkAuth } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -172,10 +174,10 @@ const SettingsPage = () => {
     setSavingLlm(true);
     try {
       await axios.put(`${API}/settings/integrations`, llmKeys, { headers });
-      toast.success('AI keys saved successfully');
+      toast.success(t('settings.aiKeysSaved'));
       fetchAiStatus();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save AI keys');
+      toast.error(error.response?.data?.detail || t('settings.aiKeysSaveFailed'));
     } finally {
       setSavingLlm(false);
     }
@@ -248,12 +250,12 @@ const SettingsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Organization created successfully');
+      toast.success(t('settings.orgCreateSuccess'));
       await checkAuth();
       fetchOrganization();
       setNewOrgName('');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create organization');
+      toast.error(error.response?.data?.detail || t('settings.orgCreateFailed'));
     } finally {
       setCreatingOrg(false);
     }
@@ -265,11 +267,11 @@ const SettingsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Deal stages saved');
+      toast.success(t('settings.dealStagesSaved'));
       setEditingStages(false);
       fetchOrgSettings();
     } catch (error) {
-      toast.error('Failed to save deal stages');
+      toast.error(t('settings.dealStagesSaveFailed'));
     }
   };
 
@@ -286,10 +288,10 @@ const SettingsPage = () => {
           fetchAffiliateStatus();
         } catch (err) { console.error(err); }
       }
-      toast.success(enabled ? 'Affiliate program enabled' : 'Affiliate program disabled');
+      toast.success(enabled ? t('settings.affiliateEnabled') : t('settings.affiliateDisabled'));
       fetchOrgSettings();
     } catch (error) {
-      toast.error('Failed to update affiliate settings');
+      toast.error(t('settings.affiliateSettingsFailed'));
     }
   };
 
@@ -299,10 +301,10 @@ const SettingsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Successfully enrolled as affiliate!');
+      toast.success(t('settings.enrollSuccess'));
       fetchAffiliateStatus();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to enroll');
+      toast.error(error.response?.data?.detail || t('settings.enrollFailed'));
     }
   };
 
@@ -315,10 +317,10 @@ const SettingsPage = () => {
         withCredentials: true
       });
       setInviteLink(response.data);
-      toast.success('Invite link generated!');
+      toast.success(t('settings.inviteLinkGenerated'));
       fetchPendingInvites();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to generate invite link');
+      toast.error(error.response?.data?.detail || t('settings.inviteLinkFailed'));
     } finally {
       setGeneratingLink(false);
     }
@@ -327,7 +329,7 @@ const SettingsPage = () => {
   const handleSendEmailInvites = async () => {
     const emails = inviteEmails.split(/[,\n]/).map(e => e.trim()).filter(e => e && e.includes('@'));
     if (emails.length === 0) {
-      toast.error('Please enter valid email addresses');
+      toast.error(t('settings.invalidEmails'));
       return;
     }
 
@@ -343,15 +345,23 @@ const SettingsPage = () => {
       
       const { total_sent, total_failed } = response.data;
       if (total_sent > 0) {
-        toast.success(`${total_sent} invitation${total_sent > 1 ? 's' : ''} sent`);
+        toast.success(
+          total_sent === 1
+            ? t('settings.inviteSentSingle')
+            : t('settings.invitesSent').replace('{count}', total_sent)
+        );
       }
       if (total_failed > 0) {
-        toast.warning(`${total_failed} invitation${total_failed > 1 ? 's' : ''} could not be sent`);
+        toast.warning(
+          total_failed === 1
+            ? t('settings.inviteFailedSingle')
+            : t('settings.invitesFailed').replace('{count}', total_failed)
+        );
       }
       setInviteEmails('');
       fetchPendingInvites();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to send invitations');
+      toast.error(error.response?.data?.detail || t('settings.inviteSendFailed'));
     } finally {
       setSendingInvites(false);
     }
@@ -374,10 +384,14 @@ const SettingsPage = () => {
       });
       
       const { total_sent, total_failed } = response.data;
-      toast.success(`Processed ${total_sent + total_failed} emails. ${total_sent} invitations sent.`);
+      toast.success(
+        t('settings.csvProcessed')
+          .replace('{total}', total_sent + total_failed)
+          .replace('{sent}', total_sent)
+      );
       fetchPendingInvites();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to process CSV');
+      toast.error(error.response?.data?.detail || t('settings.csvFailed'));
     }
     
     // Reset file input
@@ -390,29 +404,29 @@ const SettingsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Invitation revoked');
+      toast.success(t('settings.inviteRevoked'));
       fetchPendingInvites();
     } catch (error) {
-      toast.error('Failed to revoke invitation');
+      toast.error(t('settings.inviteRevokeFailed'));
     }
   };
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+    toast.success(t('settings.copiedClipboard'));
   };
 
   const handleUnenrollAffiliate = async () => {
-    if (!confirm('Are you sure you want to leave the affiliate program?')) return;
+    if (!confirm(t('settings.unenrollConfirm'))) return;
     try {
       await axios.post(`${API}/affiliate/unenroll`, {}, {
         headers,
         withCredentials: true
       });
-      toast.success('Successfully unenrolled from affiliate program');
+      toast.success(t('settings.unenrollSuccess'));
       fetchAffiliateStatus();
     } catch (error) {
-      toast.error('Failed to unenroll');
+      toast.error(t('settings.unenrollFailed'));
     }
   };
 
@@ -422,20 +436,20 @@ const SettingsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Member role updated');
+      toast.success(t('settings.memberRoleUpdated'));
       fetchMembers();
       if (newRole === 'owner') {
         await checkAuth(); // Refresh current user's role
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to update role');
+      toast.error(error.response?.data?.detail || t('settings.memberRoleUpdateFailed'));
     }
   };
 
   const addDealStage = () => {
     const newStage = {
       id: `stage_${Date.now()}`,
-      name: 'New Stage',
+      name: t('settings.newStage'),
       order: dealStages.length + 1
     };
     setDealStages([...dealStages, newStage]);
@@ -457,18 +471,18 @@ const SettingsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Task steps saved');
+      toast.success(t('settings.taskStepsSaved'));
       setEditingTaskStages(false);
       fetchOrgSettings();
     } catch (error) {
-      toast.error('Failed to save task steps');
+      toast.error(t('settings.taskStepsSaveFailed'));
     }
   };
 
   const addTaskStage = () => {
     const newStage = {
       id: `stage_${Date.now()}`,
-      name: 'New Step'
+      name: t('settings.newStep')
     };
     setTaskStages([...taskStages, newStage]);
   };
@@ -524,7 +538,7 @@ const SettingsPage = () => {
   };
 
   const saveProfile = async () => {
-    if (!profileForm.name.trim()) { toast.error('Name cannot be empty'); return; }
+    if (!profileForm.name.trim()) { toast.error(t('settings.profileNameEmpty')); return; }
     setSavingProfile(true);
     try {
       await axios.put(`${API}/auth/me`, profileForm, { headers, withCredentials: true });
@@ -533,9 +547,9 @@ const SettingsPage = () => {
       // the useEffect on `user` will also reconcile once the auth round-trip
       // returns the canonical server copy.
       setProfileBaseline(profileForm);
-      toast.success('Profile updated');
+      toast.success(t('settings.profileUpdated'));
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not update profile');
+      toast.error(err?.response?.data?.detail || t('settings.profileUpdateFailed'));
     } finally {
       setSavingProfile(false);
     }
@@ -545,34 +559,37 @@ const SettingsPage = () => {
     // Inline validation is handled by disabled button state + helper text;
     // this guard is defense-in-depth.
     if (!pwForm.current_password || !pwForm.new_password) {
-      toast.error('Please fill in both password fields');
+      toast.error(t('settings.pwFillBoth'));
       return;
     }
     if (pwForm.new_password.length < 8) {
-      toast.error('New password must be at least 8 characters');
+      toast.error(t('settings.pwTooShort'));
       return;
     }
     if (pwForm.new_password !== pwForm.confirm_password) {
-      toast.error('New passwords do not match');
+      toast.error(t('settings.pwMismatch'));
       return;
     }
     if (pwForm.new_password === pwForm.current_password) {
-      toast.error('New password must be different from current password');
+      toast.error(t('settings.pwSameAsCurrent'));
       return;
     }
     setSavingPassword(true);
     try {
-      await axios.post(`${API}/auth/change-password`, {
+      // Pass current UI language so the backend sends the security-notice
+      // email in the same language the user is using the app in.
+      const lang = localStorage.getItem('tako_lang') || 'en';
+      await axios.post(`${API}/auth/change-password?lang=${encodeURIComponent(lang)}`, {
         current_password: pwForm.current_password,
         new_password: pwForm.new_password,
       }, { headers, withCredentials: true });
-      toast.success('Password updated');
+      toast.success(t('settings.pwUpdatedToast'));
       setPwForm({ current_password: '', new_password: '', confirm_password: '' });
       setPwShow({ current: false, next: false, confirm: false });
       setPwJustChanged(true);
       setTimeout(() => setPwJustChanged(false), 5000);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not update password');
+      toast.error(err?.response?.data?.detail || t('settings.passwordUpdateFailed'));
     } finally {
       setSavingPassword(false);
     }
@@ -590,11 +607,11 @@ const SettingsPage = () => {
       const rawHtml = typeof response.data === 'string' ? response.data : '';
       // Sanitize: strip script tags to prevent XSS
       const sanitized = rawHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-      const html = `<html><head><title>Invoice</title><style>body{font-family:Arial,sans-serif;padding:20px}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="margin-bottom:20px;padding:10px 20px;cursor:pointer">Print Invoice</button><div id="invoice">${sanitized}</div></body></html>`;
+      const html = `<html><head><title>${t('settings.invoiceTitle')}</title><style>body{font-family:Arial,sans-serif;padding:20px}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="margin-bottom:20px;padding:10px 20px;cursor:pointer">${t('settings.printInvoice')}</button><div id="invoice">${sanitized}</div></body></html>`;
       doc.write(html);
       doc.close();
     } catch (error) {
-      toast.error('Failed to load invoice');
+      toast.error(t('settings.invoiceLoadFailed'));
     }
   };
 
@@ -602,19 +619,19 @@ const SettingsPage = () => {
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl" data-testid="settings-page">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900" data-testid="settings-title">Settings</h1>
-          <p className="text-slate-600 mt-1">Manage your account, organization, and billing</p>
+          <h1 className="text-2xl font-bold text-slate-900" data-testid="settings-title">{t('settings.title')}</h1>
+          <p className="text-slate-600 mt-1">{t('settings.pageSubtitle')}</p>
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
           <TabsList className="flex flex-wrap h-auto gap-1 p-1">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="organization">Organization</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="api" data-testid="settings-api-tab">API</TabsTrigger>
-            <TabsTrigger value="app" data-testid="settings-app-tab">Mobile App</TabsTrigger>
+            <TabsTrigger value="profile">{t('settings.tabProfile')}</TabsTrigger>
+            <TabsTrigger value="organization">{t('settings.tabOrganization')}</TabsTrigger>
+            <TabsTrigger value="team">{t('settings.tabTeam')}</TabsTrigger>
+            <TabsTrigger value="billing">{t('settings.tabBilling')}</TabsTrigger>
+            <TabsTrigger value="integrations">{t('settings.tabIntegrations')}</TabsTrigger>
+            <TabsTrigger value="api" data-testid="settings-api-tab">{t('settings.tabApi')}</TabsTrigger>
+            <TabsTrigger value="app" data-testid="settings-app-tab">{t('settings.tabMobileApp')}</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
@@ -623,16 +640,16 @@ const SettingsPage = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <User className="w-5 h-5" />
-                  Profile
+                  {t('settings.profileCardTitle')}
                 </CardTitle>
-                <CardDescription>Your personal account information</CardDescription>
+                <CardDescription>{t('settings.profileCardDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="flex items-center gap-4">
                   {profileForm.picture ? (
                     <img
                       src={profileForm.picture}
-                      alt={profileForm.name || user?.name || 'User'}
+                      alt={profileForm.name || user?.name || t('settings.defaultUser')}
                       className="w-16 h-16 rounded-full object-cover"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
@@ -649,24 +666,24 @@ const SettingsPage = () => {
                       <span className="truncate" data-testid="user-email">{user?.email}</span>
                     </p>
                     <Badge variant="outline" className="mt-2 capitalize">
-                      {user?.role || 'member'}
+                      {user?.role || t('settings.roleFallback')}
                     </Badge>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="profile-name">Full name</Label>
+                    <Label htmlFor="profile-name">{t('settings.fullName')}</Label>
                     <Input
                       id="profile-name"
                       value={profileForm.name}
                       onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                      placeholder="Your name"
+                      placeholder={t('settings.yourName')}
                       data-testid="profile-name-input"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="profile-timezone">Timezone</Label>
+                    <Label htmlFor="profile-timezone">{t('settings.timezone')}</Label>
                     {(() => {
                       // Prefer the native IANA list from the browser; fall back to a curated set.
                       let zones = [];
@@ -695,7 +712,7 @@ const SettingsPage = () => {
                             list="profile-timezone-list"
                             value={profileForm.timezone}
                             onChange={(e) => setProfileForm({ ...profileForm, timezone: e.target.value })}
-                            placeholder="Start typing a city or region…"
+                            placeholder={t('settings.timezonePlaceholder')}
                             data-testid="profile-timezone-input"
                             className={profileForm.timezone && !valid ? 'border-amber-400' : ''}
                           />
@@ -705,8 +722,8 @@ const SettingsPage = () => {
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <p className="text-xs text-slate-500">
                               {profileForm.timezone && !valid
-                                ? <span className="text-amber-600">Not a recognized IANA zone — pick from the list.</span>
-                                : <>IANA format, e.g. <code>Europe/London</code>, <code>America/New_York</code>.</>}
+                                ? <span className="text-amber-600">{t('settings.timezoneNotRecognized')}</span>
+                                : <>{t('settings.timezoneIanaHint')} <code>Europe/London</code>, <code>America/New_York</code>.</>}
                             </p>
                             {browserTz && profileForm.timezone !== browserTz && (
                               <button
@@ -714,7 +731,7 @@ const SettingsPage = () => {
                                 className="text-xs text-teal-700 hover:underline"
                                 onClick={() => setProfileForm({ ...profileForm, timezone: browserTz })}
                               >
-                                Use my current timezone ({browserTz})
+                                {t('settings.useCurrentTimezone')} ({browserTz})
                               </button>
                             )}
                           </div>
@@ -723,7 +740,7 @@ const SettingsPage = () => {
                     })()}
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="profile-picture">Avatar URL</Label>
+                    <Label htmlFor="profile-picture">{t('settings.avatarUrl')}</Label>
                     <Input
                       id="profile-picture"
                       value={profileForm.picture}
@@ -731,7 +748,7 @@ const SettingsPage = () => {
                       placeholder="https://..."
                       data-testid="profile-picture-input"
                     />
-                    <p className="text-xs text-slate-500">Paste a public image URL. Leave blank to use your initials.</p>
+                    <p className="text-xs text-slate-500">{t('settings.avatarHint')}</p>
                   </div>
                 </div>
 
@@ -740,10 +757,10 @@ const SettingsPage = () => {
                     {profileDirty ? (
                       <span className="inline-flex items-center gap-1.5 text-amber-700">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        Unsaved changes
+                        {t('common.unsavedChanges')}
                       </span>
                     ) : (
-                      <span className="text-slate-400">All changes saved</span>
+                      <span className="text-slate-400">{t('common.allChangesSaved')}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -756,7 +773,7 @@ const SettingsPage = () => {
                         data-testid="profile-discard-btn"
                         className="text-slate-500 hover:text-slate-700"
                       >
-                        Discard
+                        {t('common.discard')}
                       </Button>
                     )}
                     <Button
@@ -766,7 +783,7 @@ const SettingsPage = () => {
                       data-testid="profile-save-btn"
                     >
                       <Save className="w-4 h-4 mr-2" />
-                      {savingProfile ? 'Saving…' : 'Save changes'}
+                      {savingProfile ? t('common.saving') : t('common.saveChanges')}
                     </Button>
                   </div>
                 </div>
@@ -777,10 +794,10 @@ const SettingsPage = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Key className="w-5 h-5" />
-                  Change password
+                  {t('settings.changePassword')}
                 </CardTitle>
                 <CardDescription>
-                  If you sign in with Google, you can skip this section.
+                  {t('settings.changePasswordDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -802,12 +819,12 @@ const SettingsPage = () => {
                   const strengthLabel = !newPw
                     ? ''
                     : score <= 1
-                      ? 'Weak'
+                      ? t('settings.pwStrengthWeak')
                       : score === 2
-                        ? 'Fair'
+                        ? t('settings.pwStrengthFair')
                         : score === 3
-                          ? 'Good'
-                          : 'Strong';
+                          ? t('settings.pwStrengthGood')
+                          : t('settings.pwStrengthStrong');
                   const strengthColor = score <= 1
                     ? 'bg-red-500'
                     : score === 2
@@ -830,7 +847,7 @@ const SettingsPage = () => {
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
-                          <Label htmlFor="pw-current">Current password</Label>
+                          <Label htmlFor="pw-current">{t('settings.currentPassword')}</Label>
                           <div className="relative">
                             <Input
                               id="pw-current"
@@ -846,14 +863,14 @@ const SettingsPage = () => {
                               tabIndex={-1}
                               onClick={() => setPwShow({ ...pwShow, current: !pwShow.current })}
                               className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                              aria-label={pwShow.current ? 'Hide password' : 'Show password'}
+                              aria-label={pwShow.current ? t('settings.hidePassword') : t('settings.showPassword')}
                             >
                               {pwShow.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="pw-new">New password</Label>
+                          <Label htmlFor="pw-new">{t('settings.newPassword')}</Label>
                           <div className="relative">
                             <Input
                               id="pw-new"
@@ -869,14 +886,14 @@ const SettingsPage = () => {
                               tabIndex={-1}
                               onClick={() => setPwShow({ ...pwShow, next: !pwShow.next })}
                               className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                              aria-label={pwShow.next ? 'Hide password' : 'Show password'}
+                              aria-label={pwShow.next ? t('settings.hidePassword') : t('settings.showPassword')}
                             >
                               {pwShow.next ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="pw-confirm">Confirm new password</Label>
+                          <Label htmlFor="pw-confirm">{t('settings.confirmNewPassword')}</Label>
                           <div className="relative">
                             <Input
                               id="pw-confirm"
@@ -893,7 +910,7 @@ const SettingsPage = () => {
                               tabIndex={-1}
                               onClick={() => setPwShow({ ...pwShow, confirm: !pwShow.confirm })}
                               className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
-                              aria-label={pwShow.confirm ? 'Hide password' : 'Show password'}
+                              aria-label={pwShow.confirm ? t('settings.hidePassword') : t('settings.showPassword')}
                             >
                               {pwShow.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -918,7 +935,7 @@ const SettingsPage = () => {
                             </span>
                           </div>
                           <p className="text-xs text-slate-500">
-                            Use 12+ characters with a mix of upper/lowercase, numbers, and symbols for best security.
+                            {t('settings.pwStrengthHint')}
                           </p>
                         </div>
                       )}
@@ -926,18 +943,18 @@ const SettingsPage = () => {
                       {/* Inline validation messages */}
                       <div className="space-y-1">
                         {tooShort && (
-                          <p className="text-xs text-red-600">New password must be at least 8 characters.</p>
+                          <p className="text-xs text-red-600">{t('settings.pwTooShort')}</p>
                         )}
                         {mismatch && (
-                          <p className="text-xs text-red-600">Passwords don't match.</p>
+                          <p className="text-xs text-red-600">{t('settings.pwMismatch')}</p>
                         )}
                         {sameAsCurrent && (
-                          <p className="text-xs text-red-600">New password must be different from your current password.</p>
+                          <p className="text-xs text-red-600">{t('settings.pwSameAsCurrent')}</p>
                         )}
                         {pwJustChanged && (
                           <p className="text-xs text-emerald-700 flex items-center gap-1.5">
                             <CheckCircle className="w-3.5 h-3.5" />
-                            Password updated. You'll stay signed in on this device.
+                            {t('settings.pwUpdatedDetail')}
                           </p>
                         )}
                       </div>
@@ -949,7 +966,7 @@ const SettingsPage = () => {
                           variant="outline"
                           data-testid="pw-save-btn"
                         >
-                          {savingPassword ? 'Updating…' : 'Update password'}
+                          {savingPassword ? t('settings.pwUpdating') : t('settings.pwUpdate')}
                         </Button>
                       </div>
                     </>
@@ -964,9 +981,9 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Gift className="w-5 h-5" />
-                    Affiliate Program
+                    {t('settings.affiliateProgram')}
                   </CardTitle>
-                  <CardDescription>Earn commissions by referring new customers</CardDescription>
+                  <CardDescription>{t('settings.affiliateProgramDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {affiliateStatus?.enrolled ? (
@@ -975,17 +992,17 @@ const SettingsPage = () => {
                       <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-[#0EA5A0] text-white">{affiliateStatus.level_label || `Level ${affiliateStatus.level}`}</Badge>
-                            <span className="text-sm font-medium text-teal-900">Level {affiliateStatus.level}</span>
+                            <Badge className="bg-[#0EA5A0] text-white">{affiliateStatus.level_label || t('settings.affiliateLevel').replace('{level}', affiliateStatus.level)}</Badge>
+                            <span className="text-sm font-medium text-teal-900">{t('settings.affiliateLevel').replace('{level}', affiliateStatus.level)}</span>
                           </div>
-                          <span className="text-sm font-bold text-teal-900">{affiliateStatus.affiliate?.commission_rate}% commission</span>
+                          <span className="text-sm font-bold text-teal-900">{affiliateStatus.affiliate?.commission_rate}{t('settings.affiliateCommissionSuffix')}</span>
                         </div>
                         <p className="text-xs text-teal-700">{affiliateStatus.commission_summary}</p>
-                        <p className="text-xs text-teal-600 mt-1">Your link gives new customers <strong>{affiliateStatus.customer_discount} off</strong></p>
+                        <p className="text-xs text-teal-600 mt-1">{t('settings.affiliateLinkGivesDiscountPrefix')} <strong>{affiliateStatus.customer_discount} {t('settings.affiliateLinkGivesDiscountSuffix')}</strong></p>
                       </div>
 
                       <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <p className="text-sm font-medium text-emerald-800 mb-2">Your Referral Link</p>
+                        <p className="text-sm font-medium text-emerald-800 mb-2">{t('settings.affiliateReferralLink')}</p>
                         <div className="flex items-center gap-2">
                           <Input 
                             value={affiliateStatus.referral_link} 
@@ -1005,22 +1022,22 @@ const SettingsPage = () => {
                       <div className="grid grid-cols-3 gap-4">
                         <div className="p-3 bg-slate-50 rounded-lg text-center">
                           <p className="text-2xl font-bold text-slate-900">{affiliateStatus.affiliate?.total_referrals || 0}</p>
-                          <p className="text-xs text-slate-500">Total Referrals</p>
+                          <p className="text-xs text-slate-500">{t('settings.affiliateTotalReferrals')}</p>
                         </div>
                         <div className="p-3 bg-slate-50 rounded-lg text-center">
                           <p className="text-2xl font-bold text-emerald-600">€{(affiliateStatus.affiliate?.total_earnings || 0).toFixed(2)}</p>
-                          <p className="text-xs text-slate-500">Total Earnings</p>
+                          <p className="text-xs text-slate-500">{t('settings.affiliateTotalEarnings')}</p>
                         </div>
                         <div className="p-3 bg-slate-50 rounded-lg text-center">
                           <p className="text-2xl font-bold text-amber-600">€{(affiliateStatus.affiliate?.pending_earnings || 0).toFixed(2)}</p>
-                          <p className="text-xs text-slate-500">Pending</p>
+                          <p className="text-xs text-slate-500">{t('settings.affiliatePending')}</p>
                         </div>
                       </div>
 
                       {/* Embed HTML Code */}
                       <div className="border border-slate-200 rounded-lg p-4 space-y-2">
-                        <p className="text-sm font-medium text-slate-800">Embed Code for Your Website / CMS</p>
-                        <p className="text-xs text-slate-500">Copy and paste this HTML into your website to promote TAKO and earn commissions.</p>
+                        <p className="text-sm font-medium text-slate-800">{t('settings.affiliateEmbedTitle')}</p>
+                        <p className="text-xs text-slate-500">{t('settings.affiliateEmbedDesc')}</p>
                         <div className="relative">
                           <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto max-h-40" data-testid="affiliate-embed-code">{`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
   <div style="background:linear-gradient(135deg,#0EA5A0,#0B8C88);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;">
@@ -1036,20 +1053,20 @@ const SettingsPage = () => {
                             data-testid="copy-embed-btn"
                             onClick={() => copyToClipboard(`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#0EA5A0,#0B8C88);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;"><p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p><p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p><span style="background:#fff;color:#0EA5A0;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span></div></a>`)}
                           >
-                            <Copy className="w-3 h-3 mr-1" /> Copy
+                            <Copy className="w-3 h-3 mr-1" /> {t('settings.copy')}
                           </Button>
                         </div>
                       </div>
 
                       {/* Social Media Assets */}
                       <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-                        <p className="text-sm font-medium text-slate-800">Social Media Assets</p>
-                        <p className="text-xs text-slate-500">Download these images to promote TAKO on your social channels. Pair them with your referral link!</p>
+                        <p className="text-sm font-medium text-slate-800">{t('settings.affiliateSocialTitle')}</p>
+                        <p className="text-xs text-slate-500">{t('settings.affiliateSocialDesc')}</p>
                         <div className="grid grid-cols-3 gap-3">
                           {[
-                            { label: 'Banner (1536×1024)', desc: 'Facebook, LinkedIn, X', url: '/assets/social-banner.png' },
-                            { label: 'Story (1024×1536)', desc: 'Instagram, TikTok', url: '/assets/social-story.png' },
-                            { label: 'Square (1024×1024)', desc: 'Instagram, LinkedIn', url: '/assets/social-square.png' },
+                            { label: t('settings.affiliateBannerLabel'), desc: t('settings.affiliateBannerDesc'), url: '/assets/social-banner.png' },
+                            { label: t('settings.affiliateStoryLabel'), desc: t('settings.affiliateStoryDesc'), url: '/assets/social-story.png' },
+                            { label: t('settings.affiliateSquareLabel'), desc: t('settings.affiliateSquareDesc'), url: '/assets/social-square.png' },
                           ].map((asset, i) => (
                             <div key={i} className="border border-slate-100 rounded-lg overflow-hidden">
                               <img src={asset.url} alt={asset.label} className="w-full h-28 object-cover bg-slate-100" />
@@ -1064,7 +1081,7 @@ const SettingsPage = () => {
                                   className="mt-1.5 flex items-center justify-center gap-1 text-xs text-[#0EA5A0] font-medium hover:underline"
                                   data-testid={`download-asset-${i}`}
                                 >
-                                  <Download className="w-3 h-3" /> Download
+                                  <Download className="w-3 h-3" /> {t('settings.download')}
                                 </a>
                               </div>
                             </div>
@@ -1074,7 +1091,7 @@ const SettingsPage = () => {
 
                       {affiliateStatus.referrals?.length > 0 && (
                         <div>
-                          <p className="text-sm font-medium text-slate-700 mb-2">Recent Referrals</p>
+                          <p className="text-sm font-medium text-slate-700 mb-2">{t('settings.recentReferrals')}</p>
                           <div className="space-y-2">
                             {affiliateStatus.referrals.slice(0, 5).map((ref, idx) => (
                               <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
@@ -1093,16 +1110,16 @@ const SettingsPage = () => {
                         className="text-rose-600 border-rose-200"
                         onClick={handleUnenrollAffiliate}
                       >
-                        Leave Affiliate Program
+                        {t('settings.leaveAffiliate')}
                       </Button>
                     </div>
                   ) : (
                     <div className="text-center py-6">
                       <Gift className="w-12 h-12 mx-auto text-indigo-400 mb-3" />
-                      <p className="text-slate-600 mb-4">Join our affiliate program and earn 20% commission on referrals!</p>
+                      <p className="text-slate-600 mb-4">{t('settings.joinAffiliateCopy')}</p>
                       <Button onClick={handleEnrollAffiliate} className="bg-[#0EA5A0] hover:bg-teal-700">
                         <Link className="w-4 h-4 mr-2" />
-                        Become an Affiliate
+                        {t('settings.becomeAffiliate')}
                       </Button>
                     </div>
                   )}
@@ -1117,9 +1134,9 @@ const SettingsPage = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Building className="w-5 h-5" />
-                  Organization
+                  {t('settings.orgCardTitle')}
                 </CardTitle>
-                <CardDescription>Your team and workspace settings</CardDescription>
+                <CardDescription>{t('settings.orgCardDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -1131,29 +1148,29 @@ const SettingsPage = () => {
                     <div className="p-4 bg-slate-50 rounded-lg">
                       <p className="font-semibold text-slate-900" data-testid="org-name">{organization.name}</p>
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                        <span>Plan: <span className="capitalize font-medium">{organization.subscription_plan || organization.plan || 'free'}</span></span>
+                        <span>{t('settings.orgPlan')} <span className="capitalize font-medium">{organization.subscription_plan || organization.plan || t('settings.orgFreePlan')}</span></span>
                         <span>•</span>
-                        <span>Users: {organization.user_count}/{organization.max_users || organization.max_free_users || 3}</span>
+                        <span>{t('settings.orgUsers')} {organization.user_count}/{organization.max_users || organization.max_free_users || 3}</span>
                       </div>
                       {organization.subscription_status === 'active' && (
                         <Badge className="mt-2 bg-emerald-100 text-emerald-700">
                           <CheckCircle className="w-3 h-3 mr-1" />
-                          Active Subscription
+                          {t('settings.orgActiveSubscription')}
                         </Badge>
                       )}
                     </div>
                     {(!organization.subscription_status || organization.subscription_status !== 'active') && (
                       <div className="p-4 bg-teal-50 border border-indigo-200 rounded-lg">
                         <p className="text-sm text-teal-800 mb-3">
-                          Upgrade to Pro to add unlimited team members and unlock all features.
+                          {t('settings.orgUpgradePrompt')}
                         </p>
-                        <Button 
-                          className="bg-[#0EA5A0] hover:bg-teal-700" 
+                        <Button
+                          className="bg-[#0EA5A0] hover:bg-teal-700"
                           size="sm"
                           onClick={() => navigate('/pricing')}
                         >
                           <Zap className="w-4 h-4 mr-2" />
-                          Upgrade Plan
+                          {t('settings.orgUpgrade')}
                         </Button>
                       </div>
                     )}
@@ -1161,11 +1178,11 @@ const SettingsPage = () => {
                 ) : (
                   <div className="space-y-4">
                     <p className="text-sm text-slate-600">
-                      Create an organization to invite team members and collaborate on leads, deals, and tasks.
+                      {t('settings.orgCreatePrompt')}
                     </p>
                     <form onSubmit={handleCreateOrganization} className="flex gap-3">
                       <Input
-                        placeholder="Organization name"
+                        placeholder={t('settings.orgNamePlaceholder')}
                         value={newOrgName}
                         onChange={(e) => setNewOrgName(e.target.value)}
                         className="flex-1"
@@ -1182,7 +1199,7 @@ const SettingsPage = () => {
                         ) : (
                           <>
                             <Plus className="w-4 h-4 mr-2" />
-                            Create
+                            {t('settings.orgCreate')}
                           </>
                         )}
                       </Button>
@@ -1198,9 +1215,9 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Team Members
+                    {t('settings.teamMembersTitle')}
                   </CardTitle>
-                  <CardDescription>Manage your team and transfer ownership</CardDescription>
+                  <CardDescription>{t('settings.teamMembersDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -1218,7 +1235,7 @@ const SettingsPage = () => {
                             <p className="font-medium text-slate-900 flex items-center gap-2">
                               {member.name}
                               {member.role === 'owner' && <Crown className="w-4 h-4 text-amber-500" />}
-                              {member.user_id === user?.user_id && <Badge variant="outline" className="text-xs">You</Badge>}
+                              {member.user_id === user?.user_id && <Badge variant="outline" className="text-xs">{t('settings.youBadge')}</Badge>}
                             </p>
                             <p className="text-sm text-slate-500">{member.email}</p>
                           </div>
@@ -1233,9 +1250,9 @@ const SettingsPage = () => {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="member">Member</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="owner">Owner</SelectItem>
+                                <SelectItem value="member">{t('settings.roleMember')}</SelectItem>
+                                <SelectItem value="admin">{t('settings.roleAdmin')}</SelectItem>
+                                <SelectItem value="owner">{t('settings.roleOwner')}</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
@@ -1245,7 +1262,7 @@ const SettingsPage = () => {
                       </div>
                     ))}
                     {members.length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-4">No team members yet</p>
+                      <p className="text-sm text-slate-500 text-center py-4">{t('settings.noTeamMembers')}</p>
                     )}
                   </div>
                 </CardContent>
@@ -1259,23 +1276,23 @@ const SettingsPage = () => {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Layers className="w-5 h-5" />
-                      Pipeline Stages
+                      {t('settings.pipelineStagesTitle')}
                     </CardTitle>
-                    <CardDescription>Customize your deal pipeline stages</CardDescription>
+                    <CardDescription>{t('settings.pipelineStagesDesc')}</CardDescription>
                   </div>
                   {!editingStages ? (
                     <Button variant="outline" size="sm" onClick={() => setEditingStages(true)}>
                       <Edit className="w-4 h-4 mr-2" />
-                      Edit Stages
+                      {t('settings.editStages')}
                     </Button>
                   ) : (
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => { setEditingStages(false); setDealStages(orgSettings?.deal_stages || []); }}>
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                       <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={handleSaveDealStages}>
                         <Save className="w-4 h-4 mr-2" />
-                        Save
+                        {t('common.save')}
                       </Button>
                     </div>
                   )}
@@ -1311,7 +1328,7 @@ const SettingsPage = () => {
                     {editingStages && (
                       <Button variant="outline" size="sm" onClick={addDealStage} className="mt-2">
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Stage
+                        {t('settings.addStage')}
                       </Button>
                     )}
                   </div>
@@ -1326,23 +1343,23 @@ const SettingsPage = () => {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <CheckSquare className="w-5 h-5" />
-                      Task Steps
+                      {t('settings.taskStepsTitle')}
                     </CardTitle>
-                    <CardDescription>Customize your task workflow steps</CardDescription>
+                    <CardDescription>{t('settings.taskStepsDesc')}</CardDescription>
                   </div>
                   {!editingTaskStages ? (
                     <Button variant="outline" size="sm" onClick={() => setEditingTaskStages(true)}>
                       <Edit className="w-4 h-4 mr-2" />
-                      Edit Steps
+                      {t('settings.editSteps')}
                     </Button>
                   ) : (
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => { setEditingTaskStages(false); fetchOrgSettings(); }}>
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                       <Button size="sm" className="bg-[#0EA5A0] hover:bg-teal-700" onClick={handleSaveTaskStages}>
                         <Save className="w-4 h-4 mr-2" />
-                        Save
+                        {t('common.save')}
                       </Button>
                     </div>
                   )}
@@ -1379,7 +1396,7 @@ const SettingsPage = () => {
                     {editingTaskStages && (
                       <Button variant="outline" size="sm" onClick={addTaskStage} className="mt-2">
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Step
+                        {t('settings.addStep')}
                       </Button>
                     )}
                   </div>
@@ -1393,15 +1410,15 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Gift className="w-5 h-5" />
-                    Affiliate Program Settings
+                    {t('settings.affiliateSettingsTitle')}
                   </CardTitle>
-                  <CardDescription>Enable affiliates for your organization</CardDescription>
+                  <CardDescription>{t('settings.affiliateSettingsDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-slate-900">Enable Affiliate Program</p>
-                      <p className="text-sm text-slate-500">Allow members to earn commissions by referring new customers</p>
+                      <p className="font-medium text-slate-900">{t('settings.enableAffiliate')}</p>
+                      <p className="text-sm text-slate-500">{t('settings.enableAffiliateDesc')}</p>
                     </div>
                     <Switch 
                       checked={orgSettings?.affiliate_enabled || false}
@@ -1421,23 +1438,23 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <UserPlus className="w-5 h-5 text-[#0EA5A0]" />
-                    Invite Team Members
+                    {t('settings.inviteTeamTitle')}
                   </CardTitle>
                   <CardDescription>
-                    Invite colleagues to join your organization
+                    {t('settings.inviteTeamDesc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Role Selection */}
                   <div className="space-y-2">
-                    <Label>Invite as</Label>
+                    <Label>{t('settings.inviteAs')}</Label>
                     <Select value={inviteRole} onValueChange={setInviteRole}>
                       <SelectTrigger className="w-[200px]" data-testid="invite-role-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">{t('settings.roleMember')}</SelectItem>
+                        <SelectItem value="admin">{t('settings.roleAdmin')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1446,9 +1463,9 @@ const SettingsPage = () => {
                   <div className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center gap-2">
                       <Link className="w-4 h-4 text-[#0EA5A0]" />
-                      <h4 className="font-medium">Share Invite Link</h4>
+                      <h4 className="font-medium">{t('settings.shareInviteLink')}</h4>
                     </div>
-                    <p className="text-sm text-slate-600">Generate a link that anyone can use to join your organization</p>
+                    <p className="text-sm text-slate-600">{t('settings.shareInviteLinkDesc')}</p>
                     
                     {inviteLink ? (
                       <div className="flex gap-2">
@@ -1473,12 +1490,12 @@ const SettingsPage = () => {
                         className="bg-[#0EA5A0] hover:bg-teal-700"
                         data-testid="generate-invite-link"
                       >
-                        {generatingLink ? 'Generating...' : 'Generate Invite Link'}
+                        {generatingLink ? t('settings.generating') : t('settings.generateInviteLink')}
                       </Button>
                     )}
                     {inviteLink && (
                       <p className="text-xs text-slate-500">
-                        Expires: {new Date(inviteLink.expires_at).toLocaleDateString()}
+                        {t('settings.expires')} {new Date(inviteLink.expires_at).toLocaleDateString()}
                       </p>
                     )}
                   </div>
@@ -1487,12 +1504,12 @@ const SettingsPage = () => {
                   <div className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-[#0EA5A0]" />
-                      <h4 className="font-medium">Send Email Invitations</h4>
+                      <h4 className="font-medium">{t('settings.sendEmailInvites')}</h4>
                     </div>
-                    <p className="text-sm text-slate-600">Enter email addresses (one per line or comma-separated)</p>
+                    <p className="text-sm text-slate-600">{t('settings.sendEmailInvitesDesc')}</p>
                     <textarea
                       className="w-full min-h-[100px] p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-[#0EA5A0] focus:border-transparent"
-                      placeholder="email1@example.com&#10;email2@example.com"
+                      placeholder={t('settings.emailInvitesPlaceholder')}
                       value={inviteEmails}
                       onChange={(e) => setInviteEmails(e.target.value)}
                       data-testid="invite-emails-input"
@@ -1504,7 +1521,7 @@ const SettingsPage = () => {
                       data-testid="send-email-invites"
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      {sendingInvites ? 'Sending...' : 'Send Invitations'}
+                      {sendingInvites ? t('settings.sending') : t('settings.sendInvitations')}
                     </Button>
                   </div>
 
@@ -1512,9 +1529,9 @@ const SettingsPage = () => {
                   <div className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center gap-2">
                       <Upload className="w-4 h-4 text-[#0EA5A0]" />
-                      <h4 className="font-medium">Import from CSV</h4>
+                      <h4 className="font-medium">{t('settings.importFromCsv')}</h4>
                     </div>
-                    <p className="text-sm text-slate-600">Upload a CSV file with an "email" column</p>
+                    <p className="text-sm text-slate-600">{t('settings.importFromCsvDesc')}</p>
                     <div className="flex items-center gap-3">
                       <input
                         type="file"
@@ -1530,9 +1547,9 @@ const SettingsPage = () => {
                         data-testid="csv-upload-btn"
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Choose CSV File
+                        {t('settings.chooseCsvFile')}
                       </Button>
-                      <span className="text-xs text-slate-500">CSV should have "email" column header</span>
+                      <span className="text-xs text-slate-500">{t('settings.csvHint')}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -1543,7 +1560,7 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Team Members ({members.length})
+                    {t('settings.teamMembersCount').replace('{count}', members.length)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1579,7 +1596,7 @@ const SettingsPage = () => {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Clock className="w-5 h-5" />
-                      Pending Invitations ({pendingInvites.length})
+                      {t('settings.pendingInvitations').replace('{count}', pendingInvites.length)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1588,16 +1605,16 @@ const SettingsPage = () => {
                         <div key={invite.invite_id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <p className="font-medium">
-                              {invite.type === 'email' ? invite.email : 'Invite Link'}
+                              {invite.type === 'email' ? invite.email : t('settings.inviteLinkLabel')}
                             </p>
                             <p className="text-sm text-slate-500">
-                              Role: {invite.role} • 
+                              {t('settings.roleLabel')} {invite.role} •
                               {invite.status === 'expired' ? (
-                                <span className="text-red-500 ml-1">Expired</span>
+                                <span className="text-red-500 ml-1">{t('settings.statusExpired')}</span>
                               ) : invite.status === 'used' ? (
-                                <span className="text-emerald-500 ml-1">Used</span>
+                                <span className="text-emerald-500 ml-1">{t('settings.statusUsed')}</span>
                               ) : (
-                                <span className="text-amber-500 ml-1">Pending</span>
+                                <span className="text-amber-500 ml-1">{t('settings.statusPending')}</span>
                               )}
                             </p>
                           </div>
@@ -1639,31 +1656,31 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <CreditCard className="w-5 h-5" />
-                    Subscription
+                    {t('settings.subscription')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {organization?.subscription_status === 'active' ? (
                     <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg">
                       <div>
-                        <p className="font-semibold text-emerald-900">Pro Plan Active</p>
+                        <p className="font-semibold text-emerald-900">{t('settings.proPlanActive')}</p>
                         <p className="text-sm text-emerald-700">
-                          {organization.subscription_plan === 'annual' ? 'Annual billing' : 'Monthly billing'}
+                          {organization.subscription_plan === 'annual' ? t('settings.annualBilling') : t('settings.monthlyBilling')}
                         </p>
                       </div>
-                      <Badge className="bg-emerald-600">Active</Badge>
+                      <Badge className="bg-emerald-600">{t('settings.active')}</Badge>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                       <div>
-                        <p className="font-semibold text-slate-900">Free Plan</p>
-                        <p className="text-sm text-slate-500">Up to 3 users included</p>
+                        <p className="font-semibold text-slate-900">{t('settings.freePlan')}</p>
+                        <p className="text-sm text-slate-500">{t('settings.freePlanUsers')}</p>
                       </div>
-                      <Button 
+                      <Button
                         className="bg-[#0EA5A0] hover:bg-teal-700"
                         onClick={() => navigate('/pricing')}
                       >
-                        Upgrade
+                        {t('settings.upgrade')}
                       </Button>
                     </div>
                   )}
@@ -1675,13 +1692,13 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    Invoices
+                    {t('settings.invoices')}
                   </CardTitle>
-                  <CardDescription>View and download your billing history</CardDescription>
+                  <CardDescription>{t('settings.invoicesDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {invoices.length === 0 ? (
-                    <p className="text-center text-slate-500 py-8">No invoices yet</p>
+                    <p className="text-center text-slate-500 py-8">{t('settings.noInvoices')}</p>
                   ) : (
                     <div className="divide-y">
                       {invoices.map((invoice) => (
@@ -1698,18 +1715,18 @@ const SettingsPage = () => {
                             </span>
                             <Badge className={invoice.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
                               {invoice.status === 'paid' ? (
-                                <><CheckCircle className="w-3 h-3 mr-1" />Paid</>
+                                <><CheckCircle className="w-3 h-3 mr-1" />{t('settings.paid')}</>
                               ) : (
-                                <><Clock className="w-3 h-3 mr-1" />Pending</>
+                                <><Clock className="w-3 h-3 mr-1" />{t('settings.pending')}</>
                               )}
                             </Badge>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => viewInvoice(invoice.invoice_id)}
                             >
                               <ExternalLink className="w-4 h-4 mr-1" />
-                              View
+                              {t('settings.view')}
                             </Button>
                           </div>
                         </div>
@@ -1728,10 +1745,10 @@ const SettingsPage = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Zap className="w-5 h-5 text-teal-600" />
-                  AI / LLM
+                  {t('settings.aiLlmTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Configure your AI provider to enable smart features like lead scoring, enrichment, chat assistant, and card capture.
+                  {t('settings.aiLlmDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1739,15 +1756,15 @@ const SettingsPage = () => {
                 {(() => {
                   const trial = aiStatus?.trial || {};
                   const source = aiStatus?.source;
-                  const provider = aiStatus?.provider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI';
+                  const provider = aiStatus?.provider === 'anthropic' ? t('settings.providerAnthropic') : t('settings.providerOpenai');
                   const trialExpired = !!trial.ends_at && !trial.active && source !== 'organization' && source !== 'platform';
                   const onTrial = source === 'trial' && trial.active;
                   const sourceLabel = source === 'organization'
-                    ? 'your key'
+                    ? t('settings.sourceYourKey')
                     : source === 'platform'
-                      ? 'platform key'
+                      ? t('settings.sourcePlatformKey')
                       : source === 'trial'
-                        ? `free trial — ${trial.days_remaining} day${trial.days_remaining === 1 ? '' : 's'} left`
+                        ? `${t('settings.sourceTrialPrefix')} ${trial.days_remaining} ${trial.days_remaining === 1 ? t('settings.daysLeftSingular') : t('settings.daysLeftPlural')}`
                         : '';
                   const toneClass = aiStatus?.ai_available
                     ? (onTrial ? 'border-teal-200 bg-teal-50/50' : 'border-emerald-200 bg-emerald-50/50')
@@ -1762,7 +1779,7 @@ const SettingsPage = () => {
                           <>
                             <CheckCircle className={`w-4 h-4 ${onTrial ? 'text-teal-600' : 'text-emerald-600'}`} />
                             <span className={`text-sm font-medium ${textClass}`}>
-                              AI active — using {provider} ({sourceLabel})
+                              {t('settings.aiActiveUsing')} {provider} ({sourceLabel})
                             </span>
                           </>
                         ) : (
@@ -1770,27 +1787,26 @@ const SettingsPage = () => {
                             <Clock className="w-4 h-4 text-amber-600" />
                             <span className="text-sm font-medium text-amber-700">
                               {trialExpired
-                                ? 'Your 30-day AI trial has ended.'
-                                : 'AI features disabled — add an API key below to enable.'}
+                                ? t('settings.trialExpired')
+                                : t('settings.aiDisabled')}
                             </span>
                           </>
                         )}
                       </div>
                       {onTrial && (
                         <p className="text-xs text-teal-700/80 mt-1.5">
-                          We're covering AI costs during your trial.
-                          {trial.ends_at ? ` Trial ends ${new Date(trial.ends_at).toLocaleDateString()}.` : ''}
-                          {' '}Add your own Anthropic key any time to continue without interruption.
+                          {t('settings.trialCovering')}
+                          {trial.ends_at ? ` ${t('settings.trialEnds')} ${new Date(trial.ends_at).toLocaleDateString()}.` : ''}
+                          {' '}{t('settings.trialAddKeyAnytime')}
                         </p>
                       )}
                       {trialExpired && (
                         <div className="text-xs text-amber-700/90 mt-2 space-y-2">
                           <p>
-                            Add your own Anthropic API key below to keep AI features on —
-                            keys start free at <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer" className="underline">console.anthropic.com</a>.
+                            {t('settings.trialExpiredKeyBody')} <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer" className="underline">console.anthropic.com</a>.
                           </p>
                           <p>
-                            Not sure where to start? <a href="/support" className="underline font-medium">Talk to support</a> — we'll walk you through it.
+                            {t('settings.trialExpiredSupportHead')} <a href="/support" className="underline font-medium">{t('settings.trialExpiredSupportLink')}</a> {t('settings.trialExpiredSupportTail')}
                           </p>
                         </div>
                       )}
@@ -1801,8 +1817,8 @@ const SettingsPage = () => {
                 {/* Anthropic key */}
                 <div className="space-y-2">
                   <Label htmlFor="anthropic-key" className="flex items-center gap-2">
-                    Anthropic API Key
-                    <Badge variant="outline" className="text-xs">Recommended</Badge>
+                    {t('settings.anthropicApiKey')}
+                    <Badge variant="outline" className="text-xs">{t('settings.recommended')}</Badge>
                   </Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -1818,12 +1834,12 @@ const SettingsPage = () => {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
                         onClick={() => setShowAnthropicKey(!showAnthropicKey)}
                       >
-                        {showAnthropicKey ? 'Hide' : 'Show'}
+                        {showAnthropicKey ? t('settings.hide') : t('settings.show')}
                       </button>
                     </div>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Get your key at{' '}
+                    {t('settings.getKeyAt')}{' '}
                     <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
                       console.anthropic.com <ExternalLink className="w-3 h-3 inline" />
                     </a>
@@ -1833,8 +1849,8 @@ const SettingsPage = () => {
                 {/* OpenAI key (future) */}
                 <div className="space-y-2">
                   <Label htmlFor="openai-key" className="flex items-center gap-2 text-slate-400">
-                    OpenAI API Key
-                    <Badge variant="outline" className="text-xs text-slate-400">Coming soon</Badge>
+                    {t('settings.openaiApiKey')}
+                    <Badge variant="outline" className="text-xs text-slate-400">{t('settings.comingSoon')}</Badge>
                   </Label>
                   <Input
                     id="openai-key"
@@ -1848,15 +1864,15 @@ const SettingsPage = () => {
 
                 <Button onClick={saveLlmKeys} disabled={savingLlm} className="bg-teal-600 hover:bg-teal-700">
                   <Save className="w-4 h-4 mr-2" />
-                  {savingLlm ? 'Saving...' : 'Save AI Keys'}
+                  {savingLlm ? t('settings.savingDots') : t('settings.saveAiKeys')}
                 </Button>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Integrations</CardTitle>
-                <CardDescription>Connect external services</CardDescription>
+                <CardTitle className="text-lg">{t('settings.integrationsTitle')}</CardTitle>
+                <CardDescription>{t('settings.integrationsDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 border border-emerald-200 bg-emerald-50/50 rounded-lg flex items-center justify-between">
@@ -1865,11 +1881,11 @@ const SettingsPage = () => {
                       <span className="text-white font-bold text-sm">R</span>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">Resend</p>
-                      <p className="text-sm text-slate-500">Transactional & campaign emails (tako.software)</p>
+                      <p className="font-medium text-slate-900">{t('settings.resendName')}</p>
+                      <p className="text-sm text-slate-500">{t('settings.resendDesc')}</p>
                     </div>
                   </div>
-                  <Badge className="bg-emerald-100 text-emerald-700">Verified</Badge>
+                  <Badge className="bg-emerald-100 text-emerald-700">{t('settings.verified')}</Badge>
                 </div>
                 <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1877,11 +1893,11 @@ const SettingsPage = () => {
                       <span className="text-white font-bold text-sm">Kit</span>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">Kit.com (ConvertKit)</p>
-                      <p className="text-sm text-slate-500">Email marketing automation</p>
+                      <p className="font-medium text-slate-900">{t('settings.kitName')}</p>
+                      <p className="text-sm text-slate-500">{t('settings.kitDesc')}</p>
                     </div>
                   </div>
-                  <Badge className="bg-slate-100 text-slate-600">Optional</Badge>
+                  <Badge className="bg-slate-100 text-slate-600">{t('settings.optional')}</Badge>
                 </div>
                 <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1889,11 +1905,11 @@ const SettingsPage = () => {
                       <span className="text-white font-bold text-sm">in</span>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">LinkedIn</p>
-                      <p className="text-sm text-slate-500">Lead generation & scraping</p>
+                      <p className="font-medium text-slate-900">{t('settings.linkedinName')}</p>
+                      <p className="text-sm text-slate-500">{t('settings.linkedinDesc')}</p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" data-testid="connect-linkedin-btn">Connect</Button>
+                  <Button variant="outline" size="sm" data-testid="connect-linkedin-btn">{t('settings.connect')}</Button>
                 </div>
                 <div className="p-4 border border-slate-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1901,16 +1917,16 @@ const SettingsPage = () => {
                       <svg className="w-7 h-7" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">Google Calendar</p>
-                      <p className="text-sm text-slate-500">Sync calendar events two-way</p>
+                      <p className="font-medium text-slate-900">{t('settings.googleCalName')}</p>
+                      <p className="text-sm text-slate-500">{t('settings.googleCalDesc')}</p>
                     </div>
                   </div>
                   <Button variant="outline" size="sm" onClick={async () => {
                     try {
                       const r = await axios.get(`${API}/calendar/google/auth-url`, { headers: { Authorization: `Bearer ${token}` } });
                       window.location.href = r.data.auth_url;
-                    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
-                  }} data-testid="connect-google-cal-btn">Connect</Button>
+                    } catch (e) { toast.error(e.response?.data?.detail || t('settings.googleConnectFailed')); }
+                  }} data-testid="connect-google-cal-btn">{t('settings.connect')}</Button>
                 </div>
                 {(() => {
                   // Stripe is only relevant for TAKO's own internal/affiliated accounts
@@ -1939,11 +1955,11 @@ const SettingsPage = () => {
                           <span className="text-white font-bold text-sm">S</span>
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">Stripe</p>
-                          <p className="text-sm text-slate-500">Payment processing (internal)</p>
+                          <p className="font-medium text-slate-900">{t('settings.stripeName')}</p>
+                          <p className="text-sm text-slate-500">{t('settings.stripeDesc')}</p>
                         </div>
                       </div>
-                      <Badge className="bg-emerald-100 text-emerald-700">Connected</Badge>
+                      <Badge className="bg-emerald-100 text-emerald-700">{t('settings.connected')}</Badge>
                     </div>
                   );
                 })()}
@@ -1957,28 +1973,28 @@ const SettingsPage = () => {
               {/* API Keys */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2"><Key className="w-5 h-5" /> API Keys</CardTitle>
-                  <CardDescription>Generate API keys for n8n, Notion, or custom integrations</CardDescription>
+                  <CardTitle className="text-lg flex items-center gap-2"><Key className="w-5 h-5" /> {t('settings.apiKeysTitle')}</CardTitle>
+                  <CardDescription>{t('settings.apiKeysDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex gap-2">
-                    <Input placeholder="Key name (e.g., n8n Production)" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} className="max-w-xs" data-testid="api-key-name" />
+                    <Input placeholder={t('settings.apiKeyNamePlaceholder')} value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} className="max-w-xs" data-testid="api-key-name" />
                     <Button className="bg-[#0EA5A0] hover:bg-teal-700" onClick={async () => {
                       try {
-                        const res = await axios.post(`${API}/api-keys?name=${encodeURIComponent(newKeyName || 'Default')}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                        const res = await axios.post(`${API}/api-keys?name=${encodeURIComponent(newKeyName || t('settings.defaultKeyName'))}`, {}, { headers: { Authorization: `Bearer ${token}` } });
                         setGeneratedKey(res.data.key);
                         setNewKeyName('');
                         const keysRes = await axios.get(`${API}/api-keys`, { headers: { Authorization: `Bearer ${token}` } });
                         setApiKeys(keysRes.data);
-                        toast.success('API key created');
-                      } catch { toast.error('Failed to create key'); }
-                    }} data-testid="create-api-key">Generate Key</Button>
+                        toast.success(t('settings.apiKeyCreated'));
+                      } catch { toast.error(t('settings.apiKeyCreateFailed')); }
+                    }} data-testid="create-api-key">{t('settings.generateKey')}</Button>
                   </div>
                   {generatedKey && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                      <p className="text-xs text-emerald-700 font-medium mb-1">Your new API key (copy now — won't be shown again):</p>
+                      <p className="text-xs text-emerald-700 font-medium mb-1">{t('settings.newApiKeyTitle')}</p>
                       <code className="text-sm bg-white p-2 rounded block break-all border" data-testid="generated-key">{generatedKey}</code>
-                      <Button size="sm" variant="outline" className="mt-2" onClick={() => { navigator.clipboard.writeText(generatedKey); toast.success('Copied!'); }}>Copy</Button>
+                      <Button size="sm" variant="outline" className="mt-2" onClick={() => { navigator.clipboard.writeText(generatedKey); toast.success(t('settings.copiedShort')); }}>{t('settings.copy')}</Button>
                     </div>
                   )}
                   {apiKeys.length > 0 && (
@@ -1987,12 +2003,12 @@ const SettingsPage = () => {
                         <div key={k.key_id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <p className="font-medium text-sm">{k.name}</p>
-                            <p className="text-xs text-slate-500">{k.key_prefix} | Last used: {k.last_used ? new Date(k.last_used).toLocaleDateString() : 'Never'}</p>
+                            <p className="text-xs text-slate-500">{k.key_prefix} | {t('settings.keyLastUsed')} {k.last_used ? new Date(k.last_used).toLocaleDateString() : t('settings.keyNeverUsed')}</p>
                           </div>
                           <Button size="sm" variant="ghost" className="text-red-500" onClick={async () => {
                             await axios.delete(`${API}/api-keys/${k.key_id}`, { headers: { Authorization: `Bearer ${token}` } });
                             setApiKeys(prev => prev.filter(x => x.key_id !== k.key_id));
-                            toast.success('Key revoked');
+                            toast.success(t('settings.keyRevoked'));
                           }}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       ))}
@@ -2004,25 +2020,25 @@ const SettingsPage = () => {
               {/* Webhooks */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">Webhooks</CardTitle>
-                  <CardDescription>Receive real-time notifications when events happen (for n8n, Zapier, etc.)</CardDescription>
+                  <CardTitle className="text-lg flex items-center gap-2">{t('settings.webhooksTitle')}</CardTitle>
+                  <CardDescription>{t('settings.webhooksDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex gap-2">
-                    <Input placeholder="Webhook URL" value={newWebhookUrl} onChange={(e) => setNewWebhookUrl(e.target.value)} className="flex-1" data-testid="webhook-url" />
-                    <Input placeholder="Name" value={newWebhookName} onChange={(e) => setNewWebhookName(e.target.value)} className="w-32" />
+                    <Input placeholder={t('settings.webhookUrlPlaceholder')} value={newWebhookUrl} onChange={(e) => setNewWebhookUrl(e.target.value)} className="flex-1" data-testid="webhook-url" />
+                    <Input placeholder={t('settings.webhookNamePlaceholder')} value={newWebhookName} onChange={(e) => setNewWebhookName(e.target.value)} className="w-32" />
                     <Button variant="outline" onClick={async () => {
                       if (!newWebhookUrl) return;
                       try {
-                        await axios.post(`${API}/webhooks?url=${encodeURIComponent(newWebhookUrl)}&name=${encodeURIComponent(newWebhookName || 'Default')}&events=lead.created&events=deal.stage_changed&events=contact.created`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                        await axios.post(`${API}/webhooks?url=${encodeURIComponent(newWebhookUrl)}&name=${encodeURIComponent(newWebhookName || t('settings.defaultKeyName'))}&events=lead.created&events=deal.stage_changed&events=contact.created`, {}, { headers: { Authorization: `Bearer ${token}` } });
                         setNewWebhookUrl(''); setNewWebhookName('');
                         const res = await axios.get(`${API}/webhooks`, { headers: { Authorization: `Bearer ${token}` } });
                         setWebhooks(res.data);
-                        toast.success('Webhook registered');
-                      } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
-                    }} data-testid="add-webhook">Add</Button>
+                        toast.success(t('settings.webhookRegistered'));
+                      } catch (err) { toast.error(err.response?.data?.detail || t('settings.webhookFailed')); }
+                    }} data-testid="add-webhook">{t('settings.addWebhook')}</Button>
                   </div>
-                  <p className="text-xs text-slate-500">Events: lead.created, lead.updated, deal.created, deal.stage_changed, contact.created, task.created</p>
+                  <p className="text-xs text-slate-500">{t('settings.webhookEventsHint')}</p>
                   {webhooks.map(wh => (
                     <div key={wh.webhook_id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
@@ -2033,7 +2049,7 @@ const SettingsPage = () => {
                       <Button size="sm" variant="ghost" className="text-red-500" onClick={async () => {
                         await axios.delete(`${API}/webhooks/${wh.webhook_id}`, { headers: { Authorization: `Bearer ${token}` } });
                         setWebhooks(prev => prev.filter(x => x.webhook_id !== wh.webhook_id));
-                        toast.success('Webhook deleted');
+                        toast.success(t('settings.webhookDeleted'));
                       }}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
@@ -2043,7 +2059,7 @@ const SettingsPage = () => {
               {/* API Docs */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Quick Start Guide</CardTitle>
+                  <CardTitle className="text-lg">{t('settings.quickStartGuide')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs font-mono space-y-2">
@@ -2067,15 +2083,15 @@ const SettingsPage = () => {
           <TabsContent value="app">
             <Card>
               <CardHeader>
-                <CardTitle>Install TAKO on your device</CardTitle>
-                <CardDescription>Get the full CRM experience as an app on your phone, tablet, or desktop</CardDescription>
+                <CardTitle>{t('settings.installTakoTitle')}</CardTitle>
+                <CardDescription>{t('settings.installTakoDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4 p-4 bg-teal-50 rounded-lg border border-teal-100">
                   <img src="/icon-192.png" alt="TAKO" className="w-16 h-16 rounded-2xl shadow-md" />
                   <div>
-                    <h3 className="font-bold text-slate-900">TAKO PWA</h3>
-                    <p className="text-sm text-slate-500">Works on iOS, Android & Desktop</p>
+                    <h3 className="font-bold text-slate-900">{t('settings.pwaAppName')}</h3>
+                    <p className="text-sm text-slate-500">{t('settings.pwaAppDesc')}</p>
                   </div>
                   <Button
                     className="ml-auto bg-[#0EA5A0] hover:bg-teal-700"
@@ -2084,33 +2100,33 @@ const SettingsPage = () => {
                       if (window.deferredPWAPrompt) {
                         window.deferredPWAPrompt.prompt();
                       } else {
-                        toast.success('Use your browser menu to install: Menu → Install App (or Add to Home Screen)');
+                        toast.success(t('settings.pwaManualHint'));
                       }
                     }}
                   >
-                    Install App
+                    {t('settings.installApp')}
                   </Button>
                 </div>
                 <div className="space-y-3">
-                  <h4 className="font-medium text-slate-800">How to install</h4>
+                  <h4 className="font-medium text-slate-800">{t('settings.howToInstall')}</h4>
                   <div className="grid gap-3 text-sm">
                     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <span className="font-semibold text-[#0EA5A0] shrink-0">Chrome / Edge</span>
-                      <span className="text-slate-600">Click the install icon in the address bar, or go to Menu → Install app</span>
+                      <span className="font-semibold text-[#0EA5A0] shrink-0">{t('settings.installChrome')}</span>
+                      <span className="text-slate-600">{t('settings.installChromeDesc')}</span>
                     </div>
                     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <span className="font-semibold text-[#0EA5A0] shrink-0">Safari (iOS)</span>
-                      <span className="text-slate-600">Tap the Share button → Add to Home Screen</span>
+                      <span className="font-semibold text-[#0EA5A0] shrink-0">{t('settings.installSafari')}</span>
+                      <span className="text-slate-600">{t('settings.installSafariDesc')}</span>
                     </div>
                     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <span className="font-semibold text-[#0EA5A0] shrink-0">Android</span>
-                      <span className="text-slate-600">Tap the "Add to Home Screen" banner, or Menu → Install app</span>
+                      <span className="font-semibold text-[#0EA5A0] shrink-0">{t('settings.installAndroid')}</span>
+                      <span className="text-slate-600">{t('settings.installAndroidDesc')}</span>
                     </div>
                   </div>
                 </div>
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
                   <p className="text-sm text-emerald-800">
-                    <strong>Already installed?</strong> The app will automatically update when new features are available. You can manage your installed app in your device settings.
+                    <strong>{t('settings.alreadyInstalledTitle')}</strong> {t('settings.alreadyInstalledDesc')}
                   </p>
                 </div>
               </CardContent>

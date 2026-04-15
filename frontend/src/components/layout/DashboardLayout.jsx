@@ -45,8 +45,8 @@ const DashboardLayout = ({ children }) => {
   const isAdmin = user?.role === 'super_admin' || user?.role === 'deputy_admin' || user?.email === 'florian@unyted.world';
 
   const labels = {
-    en: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Contacts', deals: 'Deals', tasks: 'Tasks', projects: 'Projects', pipeline: 'Pipeline', companies: 'Companies', campaigns: 'Campaigns', listeners: 'Listeners', teamChat: 'Team Chat', calls: 'Calls', calendar: 'Calendar', bookings: 'Bookings', admin: 'Admin', settings: 'Settings', support: 'Support', signOut: 'Sign Out' },
-    de: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Kontakte', deals: 'Deals', tasks: 'Aufgaben', projects: 'Projekte', pipeline: 'Pipeline', companies: 'Unternehmen', campaigns: 'Kampagnen', listeners: 'Listener', teamChat: 'Team-Chat', calls: 'Anrufe', calendar: 'Kalender', bookings: 'Buchungen', admin: 'Admin', settings: 'Einstellungen', support: 'Support', signOut: 'Abmelden' }
+    en: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Contacts', deals: 'Deals', tasks: 'Tasks', projects: 'Projects', pipeline: 'Pipeline', companies: 'Companies', campaigns: 'Campaigns', listeners: 'Listeners', teamChat: 'Team Chat', calls: 'Calls', calendar: 'Calendar', bookings: 'Bookings', admin: 'Admin', settings: 'Settings', support: 'Support', signOut: 'Sign Out', capture: 'Capture', files: 'Files', user: 'User' },
+    de: { dashboard: 'Dashboard', leads: 'Leads', contacts: 'Kontakte', deals: 'Deals', tasks: 'Aufgaben', projects: 'Projekte', pipeline: 'Pipeline', companies: 'Unternehmen', campaigns: 'Kampagnen', listeners: 'Listener', teamChat: 'Team-Chat', calls: 'Anrufe', calendar: 'Kalender', bookings: 'Buchungen', admin: 'Admin', settings: 'Einstellungen', support: 'Support', signOut: 'Abmelden', capture: 'Erfassen', files: 'Dateien', user: 'Benutzer' }
   };
   const l = labels[lang] || labels.en;
 
@@ -90,7 +90,7 @@ const DashboardLayout = ({ children }) => {
             { path: '/pipeline', label: l.pipeline, iconKey: 'BarChart3' },
           ],
         },
-        { path: '/capture', label: 'Capture', iconKey: 'Camera' },
+        { path: '/capture', label: l.capture, iconKey: 'Camera' },
       ],
     },
     {
@@ -109,7 +109,7 @@ const DashboardLayout = ({ children }) => {
         { path: '/projects', label: l.projects, iconKey: 'FolderKanban' },
         { path: '/calendar', label: l.calendar, iconKey: 'CalendarDays' },
         { path: '/bookings', label: l.bookings, iconKey: 'CalendarClock' },
-        { path: '/files', label: 'Files', iconKey: 'FileText' },
+        { path: '/files', label: l.files, iconKey: 'FileText' },
       ],
     },
     {
@@ -239,7 +239,7 @@ const DashboardLayout = ({ children }) => {
             )}
             <div className="flex-1 min-w-0">
               <p className="font-medium text-slate-900 truncate" data-testid="sidebar-user-name">
-                {user?.name || 'User'}
+                {user?.name || l.user}
               </p>
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>

@@ -55,7 +55,7 @@ const ContactsPage = () => {
     try {
       const res = await axios.get(`${API}/contacts`, axiosConfig);
       setContacts(res.data);
-    } catch { toast.error('Failed to fetch contacts'); }
+    } catch { toast.error(t('contacts.fetchFailed')); }
     finally { setLoading(false); }
   };
 
@@ -63,11 +63,11 @@ const ContactsPage = () => {
     e.preventDefault();
     try {
       await axios.post(`${API}/contacts`, { ...newContact, source: 'manual' }, axiosConfig);
-      toast.success('Contact created');
+      toast.success(t('contacts.createSuccess'));
       setShowAddDialog(false);
       setNewContact({ first_name: '', last_name: '', email: '', phone: '', company: '', job_title: '' });
       fetchContacts();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to create contact'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('contacts.createFailed')); }
   };
 
   const handleImportCSV = async (e) => {
@@ -77,20 +77,20 @@ const ContactsPage = () => {
     formData.append('file', file);
     try {
       const res = await axios.post(`${API}/contacts/import-csv`, formData, { headers: { ...headers, 'Content-Type': 'multipart/form-data' }, withCredentials: true });
-      toast.success(`Imported ${res.data.count} contacts`);
+      toast.success(t('contacts.importSuccess').replace('{count}', res.data.count));
       setShowImportDialog(false);
       fetchContacts();
-    } catch { toast.error('Failed to import CSV'); }
+    } catch { toast.error(t('contacts.importFailed')); }
   };
 
   const handleBulkDelete = async () => {
     if (!selectedIds.length) return;
     try {
       await axios.post(`${API}/bulk/delete`, { entity_type: 'contact', entity_ids: selectedIds }, axiosConfig);
-      toast.success(`Deleted ${selectedIds.length} contacts`);
+      toast.success(t('contacts.bulkDeleteSuccess').replace('{count}', selectedIds.length));
       setSelectedIds([]);
       fetchContacts();
-    } catch { toast.error('Failed to delete'); }
+    } catch { toast.error(t('contacts.bulkDeleteFailed')); }
   };
 
   const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -104,12 +104,12 @@ const ContactsPage = () => {
     try {
       const { contact_id, organization_id, created_by, created_at, _id, ...updates } = editData;
       const res = await axios.put(`${API}/contacts/${selectedContact.contact_id}`, updates, axiosConfig);
-      toast.success('Contact updated');
+      toast.success(t('contacts.updateSuccess'));
       setSelectedContact(res.data);
       setEditData(res.data);
       setEditMode(false);
       fetchContacts();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to update'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('contacts.updateFailed')); }
     finally { setSaving(false); }
   };
 
@@ -120,28 +120,28 @@ const ContactsPage = () => {
   });
 
   const fields = [
-    { key: 'first_name', label: 'First Name' }, { key: 'last_name', label: 'Last Name' },
-    { key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' },
-    { key: 'company', label: 'Company' }, { key: 'job_title', label: 'Job Title' },
-    { key: 'linkedin_url', label: 'LinkedIn' }, { key: 'website', label: 'Website' },
-    { key: 'location', label: 'Location' }, { key: 'industry', label: 'Industry' },
-    { key: 'company_size', label: 'Company Size' }, { key: 'budget', label: 'Budget' },
-    { key: 'timeline', label: 'Timeline' }, { key: 'preferred_contact_method', label: 'Preferred Contact' },
+    { key: 'first_name', label: t('forms.firstName') }, { key: 'last_name', label: t('forms.lastName') },
+    { key: 'email', label: t('forms.email') }, { key: 'phone', label: t('forms.phone') },
+    { key: 'company', label: t('forms.company') }, { key: 'job_title', label: t('forms.jobTitle') },
+    { key: 'linkedin_url', label: t('contacts.colLinkedin') }, { key: 'website', label: t('forms.website') },
+    { key: 'location', label: t('forms.location') }, { key: 'industry', label: t('forms.industry') },
+    { key: 'company_size', label: t('forms.companySize') }, { key: 'budget', label: t('contacts.colBudget') },
+    { key: 'timeline', label: t('contacts.colTimeline') }, { key: 'preferred_contact_method', label: t('contacts.preferredContact') },
   ];
 
   const viewFields = [
-    { label: 'Email', key: 'email', icon: <Mail className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Phone', key: 'phone', icon: <Phone className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Company', key: 'company', icon: <Building className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Job Title', key: 'job_title', icon: <Briefcase className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Website', key: 'website', icon: <Globe className="w-3.5 h-3.5 text-slate-400" />, link: true },
-    { label: 'LinkedIn', key: 'linkedin_url', icon: <Linkedin className="w-3.5 h-3.5 text-slate-400" />, link: true },
-    { label: 'Location', key: 'location', icon: <MapPin className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Industry', key: 'industry', icon: <Tag className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Budget', key: 'budget', icon: <DollarSign className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Timeline', key: 'timeline', icon: <Clock className="w-3.5 h-3.5 text-slate-400" /> },
-    { label: 'Decision Maker', key: 'decision_maker', icon: <Target className="w-3.5 h-3.5 text-slate-400" />, badge: true },
-    { label: 'AI Score', key: 'ai_score', icon: null },
+    { label: t('forms.email'), key: 'email', icon: <Mail className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('forms.phone'), key: 'phone', icon: <Phone className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('forms.company'), key: 'company', icon: <Building className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('forms.jobTitle'), key: 'job_title', icon: <Briefcase className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('forms.website'), key: 'website', icon: <Globe className="w-3.5 h-3.5 text-slate-400" />, link: true },
+    { label: t('contacts.colLinkedin'), key: 'linkedin_url', icon: <Linkedin className="w-3.5 h-3.5 text-slate-400" />, link: true },
+    { label: t('forms.location'), key: 'location', icon: <MapPin className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('forms.industry'), key: 'industry', icon: <Tag className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('contacts.colBudget'), key: 'budget', icon: <DollarSign className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('contacts.colTimeline'), key: 'timeline', icon: <Clock className="w-3.5 h-3.5 text-slate-400" /> },
+    { label: t('contacts.decisionMaker'), key: 'decision_maker', icon: <Target className="w-3.5 h-3.5 text-slate-400" />, badge: true },
+    { label: t('contacts.colAiScore'), key: 'ai_score', icon: null },
   ];
 
   return (
@@ -149,15 +149,15 @@ const ContactsPage = () => {
       <div className="p-6 space-y-6" data-testid="contacts-page">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900" data-testid="contacts-title">Contacts</h1>
-            <p className="text-slate-500 text-sm mt-1">Converted leads and customer profiles</p>
+            <h1 className="text-2xl font-bold text-slate-900" data-testid="contacts-title">{t('contacts.title')}</h1>
+            <p className="text-slate-500 text-sm mt-1">{t('contacts.subtitle')}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowImportDialog(true)} data-testid="import-contacts-btn">
-              <Upload className="w-4 h-4 mr-2" /> Import CSV
+              <Upload className="w-4 h-4 mr-2" /> {t('contacts.importCsv')}
             </Button>
             <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88]" onClick={() => setShowAddDialog(true)} data-testid="add-contact-btn">
-              <Plus className="w-4 h-4 mr-2" /> Add Contact
+              <Plus className="w-4 h-4 mr-2" /> {t('contacts.addContact')}
             </Button>
           </div>
         </div>
@@ -165,11 +165,11 @@ const ContactsPage = () => {
         {/* Bulk actions bar */}
         {selectedIds.length > 0 && (
           <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3">
-            <span className="text-sm font-medium text-teal-800">{selectedIds.length} selected</span>
+            <span className="text-sm font-medium text-teal-800">{t('contacts.selectedCount').replace('{count}', selectedIds.length)}</span>
             <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={handleBulkDelete}>
-              <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> {t('common.delete')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>{t('common.clear')}</Button>
           </div>
         )}
 
@@ -178,13 +178,13 @@ const ContactsPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input placeholder={t('contacts.searchContacts')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" data-testid="contacts-search" />
           </div>
-          <Button size="sm" variant="ghost" onClick={() => setShowColSettings(!showColSettings)} data-testid="contact-col-settings"><Filter className="w-3.5 h-3.5 mr-1" /> Columns</Button>
+          <Button size="sm" variant="ghost" onClick={() => setShowColSettings(!showColSettings)} data-testid="contact-col-settings"><Filter className="w-3.5 h-3.5 mr-1" /> {t('contacts.columns')}</Button>
         </div>
 
         {showColSettings && (
           <Card className="p-3">
             <div className="flex flex-wrap gap-4">
-              {[{key:'company',label:'Company'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'job_title',label:'Job Title'},{key:'decision_maker',label:'Decision Maker'}].map(col => (
+              {[{key:'company',label:t('contacts.colCompany')},{key:'email',label:t('contacts.colEmail')},{key:'phone',label:t('contacts.colPhone')},{key:'job_title',label:t('contacts.colJobTitle')},{key:'decision_maker',label:t('contacts.decisionMaker')}].map(col => (
                 <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={visibleCols[col.key]} onChange={() => setVisibleCols(prev => ({...prev, [col.key]: !prev[col.key]}))} className="accent-[#0EA5A0]" />
                   {col.label}
@@ -199,7 +199,7 @@ const ContactsPage = () => {
             {!loading && filtered.length > 0 && (
               <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-3 bg-slate-50 rounded-t-lg">
                 <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#0EA5A0]" data-testid="select-all-contacts" />
-                <span className="text-xs text-slate-500">Select all {filtered.length} contacts{searchQuery ? ' (filtered)' : ''}</span>
+                <span className="text-xs text-slate-500">{(searchQuery ? t('contacts.selectAllContactsFiltered') : t('contacts.selectAllContacts')).replace('{count}', filtered.length)}</span>
               </div>
             )}
             {loading ? (
@@ -207,17 +207,16 @@ const ContactsPage = () => {
             ) : filtered.length === 0 ? (
               <div className="p-10 text-center text-slate-500">
                 <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                <p className="font-medium text-slate-700">No contacts yet</p>
+                <p className="font-medium text-slate-700">{t('contacts.noContacts')}</p>
                 <p className="text-sm mt-1 max-w-md mx-auto">
-                  Contacts are people you've already qualified — someone you've spoken to or done business with.
-                  Add one directly, or convert a qualified lead.
+                  {t('contacts.noContactsBody')}
                 </p>
                 <div className="mt-4 flex items-center justify-center gap-2">
                   <Button onClick={() => setShowAddDialog(true)} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="empty-add-contact">
-                    <Plus className="w-4 h-4 mr-2" /> Add Contact
+                    <Plus className="w-4 h-4 mr-2" /> {t('contacts.addContact')}
                   </Button>
                   <Button variant="outline" asChild>
-                    <a href="/leads">Go to Leads</a>
+                    <a href="/leads">{t('contacts.goToLeads')}</a>
                   </Button>
                 </div>
               </div>
@@ -267,11 +266,11 @@ const ContactsPage = () => {
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
                       <span className="text-emerald-700 font-medium text-sm">{selectedContact.first_name?.[0]}{selectedContact.last_name?.[0]}</span>
                     </div>
-                    {editMode ? 'Edit Contact' : `${selectedContact.first_name} ${selectedContact.last_name}`}
+                    {editMode ? t('contacts.editContact') : `${selectedContact.first_name} ${selectedContact.last_name}`}
                   </span>
                   {!editMode && (
                     <Button size="sm" variant="outline" onClick={() => setEditMode(true)} data-testid="edit-contact-btn">
-                      <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                      <Edit2 className="w-3.5 h-3.5 mr-1" /> {t('common.edit')}
                     </Button>
                   )}
                 </DialogTitle>
@@ -286,23 +285,23 @@ const ContactsPage = () => {
                     </div>
                   ))}
                   <div className="flex items-center gap-3">
-                    <Label className="text-xs text-slate-500">Decision Maker</Label>
+                    <Label className="text-xs text-slate-500">{t('contacts.decisionMaker')}</Label>
                     <Switch checked={!!editData.decision_maker} onCheckedChange={(v) => setEditData(prev => ({ ...prev, decision_maker: v }))} data-testid="edit-decision-maker" />
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-xs text-slate-500 mb-1 block">Pain Points</Label>
+                    <Label className="text-xs text-slate-500 mb-1 block">{t('contacts.painPoints')}</Label>
                     <Textarea value={editData.pain_points || ''} onChange={(e) => setEditData(prev => ({ ...prev, pain_points: e.target.value }))} rows={2} data-testid="edit-pain-points" />
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-xs text-slate-500 mb-1 block">Notes</Label>
+                    <Label className="text-xs text-slate-500 mb-1 block">{t('forms.notes')}</Label>
                     <Textarea value={editData.notes || ''} onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))} rows={2} />
                   </div>
                   <div className="col-span-2 flex gap-2 pt-2">
                     <Button onClick={handleSave} disabled={saving} className="bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="save-contact-btn">
                       {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                      Save Changes
+                      {t('common.saveChanges')}
                     </Button>
-                    <Button variant="outline" onClick={() => { setEditMode(false); setEditData({ ...selectedContact }); }}>Cancel</Button>
+                    <Button variant="outline" onClick={() => { setEditMode(false); setEditData({ ...selectedContact }); }}>{t('common.cancel')}</Button>
                   </div>
                 </div>
               ) : (
@@ -312,7 +311,7 @@ const ContactsPage = () => {
                       <div key={f.label} className="bg-slate-50 rounded-lg p-3">
                         <p className="text-xs text-slate-500 flex items-center gap-1">{f.icon}{f.label}</p>
                         {f.badge ? (
-                          <Badge className={selectedContact[f.key] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}>{selectedContact[f.key] ? 'Yes' : 'No'}</Badge>
+                          <Badge className={selectedContact[f.key] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}>{selectedContact[f.key] ? t('common.yes') : t('common.no')}</Badge>
                         ) : f.link ? (
                           <a href={String(selectedContact[f.key]).startsWith('http') ? selectedContact[f.key] : `https://${selectedContact[f.key]}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#0EA5A0] hover:underline truncate block">{selectedContact[f.key]}</a>
                         ) : (
@@ -322,40 +321,40 @@ const ContactsPage = () => {
                     ))}
                   </div>
                   {selectedContact.pain_points && (
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">Pain Points</p><p className="text-sm text-slate-700">{selectedContact.pain_points}</p></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">{t('contacts.painPoints')}</p><p className="text-sm text-slate-700">{selectedContact.pain_points}</p></div>
                   )}
                   {selectedContact.notes && (
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-700">{selectedContact.notes}</p></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">{t('forms.notes')}</p><p className="text-sm text-slate-700">{selectedContact.notes}</p></div>
                   )}
                   {selectedContact.enrichment && (
                     <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-2">
-                      <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> AI Enrichment</p>
+                      <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> {t('contacts.aiEnrichment')}</p>
                       {selectedContact.enrichment.recommended_approach && <p className="text-sm text-slate-700">{selectedContact.enrichment.recommended_approach}</p>}
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                     <Button size="sm" variant="outline" onClick={() => { setSelectedContact(null); navigate(`/deals?create=true&contact_id=${selectedContact.contact_id}`); }}>
-                      <Target className="w-3.5 h-3.5 mr-1" /> Add Deal
+                      <Target className="w-3.5 h-3.5 mr-1" /> {t('contacts.addDeal')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedContact(null); navigate(`/tasks?create=true`); }}>
-                      <Clock className="w-3.5 h-3.5 mr-1" /> Add Task
+                      <Clock className="w-3.5 h-3.5 mr-1" /> {t('contacts.addTask')}
                     </Button>
                     {selectedContact.email && (
                       <Button size="sm" variant="outline" onClick={() => { setSelectedContact(null); navigate(`/campaigns`); }}>
-                        <Mail className="w-3.5 h-3.5 mr-1" /> Add to Campaign
+                        <Mail className="w-3.5 h-3.5 mr-1" /> {t('contacts.addToCampaign')}
                       </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => navigate(`/chat?type=lead&id=${selectedContact.lead_id || selectedContact.contact_id}`)}>
-                      <MessageSquare className="w-3.5 h-3.5 mr-1" /> Discuss
+                      <MessageSquare className="w-3.5 h-3.5 mr-1" /> {t('contacts.discuss')}
                     </Button>
                     {selectedContact.phone && (
                       <Button size="sm" variant="outline" onClick={() => navigate('/calls')}>
-                        <Phone className="w-3.5 h-3.5 mr-1" /> Call
+                        <Phone className="w-3.5 h-3.5 mr-1" /> {t('contacts.call')}
                       </Button>
                     )}
                     {selectedContact.deal_id && (
                       <Button size="sm" variant="outline" onClick={() => navigate(`/deals?detail=${selectedContact.deal_id}`)}>
-                        <Target className="w-3.5 h-3.5 mr-1" /> View Deal
+                        <Target className="w-3.5 h-3.5 mr-1" /> {t('contacts.viewDeal')}
                       </Button>
                     )}
                   </div>
@@ -372,14 +371,14 @@ const ContactsPage = () => {
           <DialogHeader><DialogTitle>{ t('contacts.addContact') }</DialogTitle></DialogHeader>
           <form onSubmit={handleAddContact} className="space-y-3 pt-2">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">First Name *</Label><Input value={newContact.first_name} onChange={(e) => setNewContact({ ...newContact, first_name: e.target.value })} required data-testid="new-contact-first" /></div>
-              <div><Label className="text-xs">Last Name</Label><Input value={newContact.last_name} onChange={(e) => setNewContact({ ...newContact, last_name: e.target.value })} data-testid="new-contact-last" /></div>
-              <div><Label className="text-xs">Email</Label><Input value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} data-testid="new-contact-email" /></div>
-              <div><Label className="text-xs">Phone</Label><Input value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} data-testid="new-contact-phone" /></div>
-              <div><Label className="text-xs">Company</Label><Input value={newContact.company} onChange={(e) => setNewContact({ ...newContact, company: e.target.value })} /></div>
-              <div><Label className="text-xs">Job Title</Label><Input value={newContact.job_title} onChange={(e) => setNewContact({ ...newContact, job_title: e.target.value })} /></div>
+              <div><Label className="text-xs">{t('contacts.firstNameRequired')}</Label><Input value={newContact.first_name} onChange={(e) => setNewContact({ ...newContact, first_name: e.target.value })} required data-testid="new-contact-first" /></div>
+              <div><Label className="text-xs">{t('contacts.lastNameLabel')}</Label><Input value={newContact.last_name} onChange={(e) => setNewContact({ ...newContact, last_name: e.target.value })} data-testid="new-contact-last" /></div>
+              <div><Label className="text-xs">{t('contacts.emailLabel')}</Label><Input value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} data-testid="new-contact-email" /></div>
+              <div><Label className="text-xs">{t('contacts.phoneLabel')}</Label><Input value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} data-testid="new-contact-phone" /></div>
+              <div><Label className="text-xs">{t('contacts.companyLabel')}</Label><Input value={newContact.company} onChange={(e) => setNewContact({ ...newContact, company: e.target.value })} /></div>
+              <div><Label className="text-xs">{t('contacts.jobTitleLabel')}</Label><Input value={newContact.job_title} onChange={(e) => setNewContact({ ...newContact, job_title: e.target.value })} /></div>
             </div>
-            <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="save-new-contact"><Plus className="w-4 h-4 mr-2" /> Create Contact</Button>
+            <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="save-new-contact"><Plus className="w-4 h-4 mr-2" /> {t('contacts.createContact')}</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -387,12 +386,12 @@ const ContactsPage = () => {
       {/* Import CSV Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Import Contacts</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('contacts.importTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
               <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-              <p className="text-sm text-slate-600 mb-2">Upload a CSV file with contact data</p>
-              <p className="text-xs text-slate-400 mb-3">Columns: first_name, last_name, email, phone, company, job_title, linkedin_url, website, location</p>
+              <p className="text-sm text-slate-600 mb-2">{t('contacts.importDesc')}</p>
+              <p className="text-xs text-slate-400 mb-3">{t('contacts.importColumns')}</p>
               <input type="file" accept=".csv" onChange={handleImportCSV} className="text-sm" data-testid="import-csv-input" />
             </div>
           </div>

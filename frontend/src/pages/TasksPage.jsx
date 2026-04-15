@@ -68,9 +68,9 @@ const TasksPage = () => {
     : defaultStatuses;
 
   const priorities = [
-    { value: 'low', label: 'Low', color: 'bg-slate-400' },
-    { value: 'medium', label: 'Medium', color: 'bg-amber-400' },
-    { value: 'high', label: 'High', color: 'bg-rose-500' }
+    { value: 'low', label: t('tasks.priorities.low'), color: 'bg-slate-400' },
+    { value: 'medium', label: t('tasks.priorities.medium'), color: 'bg-amber-400' },
+    { value: 'high', label: t('tasks.priorities.high'), color: 'bg-rose-500' }
   ];
 
   useEffect(() => { if (!token) return; fetchTasks(); fetchMembers(); fetchProjects(); fetchTaskStages(); }, [token, filterStatus, filterOwner, filterProject, filterPriority, filterDue, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,7 +85,7 @@ const TasksPage = () => {
       if (params.length) url += `?${params.join('&')}`;
       const res = await axios.get(url, getAx());
       setTasks(res.data);
-    } catch { toast.error('Failed to load tasks'); }
+    } catch { toast.error(t('tasks.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -120,28 +120,28 @@ const TasksPage = () => {
       if (!data.due_date) delete data.due_date;
       if (!data.assigned_to) data.assigned_to = user?.user_id;
       await axios.post(`${API}/tasks`, data, getAx());
-      toast.success('Task created');
+      toast.success(t('tasks.createdToast'));
       setIsAddDialogOpen(false);
       setNewTask({ title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '' });
       fetchTasks();
-    } catch { toast.error('Failed to create task'); }
+    } catch { toast.error(t('tasks.createFailed')); }
   };
 
   const handleStatusChange = async (taskId, status) => {
     try {
-      setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status } : t));
+      setTasks(prev => prev.map(tk => tk.task_id === taskId ? { ...tk, status } : tk));
       await axios.put(`${API}/tasks/${taskId}`, { status }, getAx());
       fetchTasks();
-    } catch { toast.error('Failed'); }
+    } catch { toast.error(t('common.failed')); }
   };
 
   const handleDeleteTask = async (taskId) => {
     try {
       await axios.delete(`${API}/tasks/${taskId}`, getAx());
-      toast.success('Task deleted');
+      toast.success(t('tasks.deletedToast'));
       setSelectedTask(null);
       fetchTasks();
-    } catch { toast.error('Failed'); }
+    } catch { toast.error(t('common.failed')); }
   };
 
   const handleSaveTask = async () => {
@@ -151,13 +151,13 @@ const TasksPage = () => {
       const updates = { title, description, status, priority, assigned_to, related_lead_id, related_deal_id, project_id };
       if (due_date) updates.due_date = due_date;
       await axios.put(`${API}/tasks/${selectedTask.task_id}`, updates, getAx());
-      toast.success('Task updated');
+      toast.success(t('tasks.updatedToast'));
       setEditMode(false);
       fetchTasks();
       const updated = await axios.get(`${API}/tasks`, getAx());
-      const fresh = updated.data.find(t => t.task_id === selectedTask.task_id);
+      const fresh = updated.data.find(tk => tk.task_id === selectedTask.task_id);
       if (fresh) { setSelectedTask(fresh); setEditData(fresh); }
-    } catch (err) { console.error(err); toast.error('Failed to update'); }
+    } catch (err) { console.error(err); toast.error(t('tasks.updateFailed')); }
   };
 
   const openTaskDetail = (task) => {
@@ -174,7 +174,7 @@ const TasksPage = () => {
   const refreshTask = async (taskId) => {
     try {
       const res = await axios.get(`${API}/tasks`, getAx());
-      const fresh = res.data.find(t => t.task_id === taskId);
+      const fresh = res.data.find(tk => tk.task_id === taskId);
       if (fresh) { setSelectedTask(fresh); setEditData({ ...fresh }); }
     } catch (err) { console.error(err); }
   };
@@ -186,7 +186,7 @@ const TasksPage = () => {
       setNewComment('');
       refreshTask(selectedTask.task_id);
       fetchTasks();
-    } catch { toast.error('Failed to add comment'); }
+    } catch { toast.error(t('tasks.commentAddFailed')); }
   };
 
   const handleAddSubtask = async () => {
@@ -196,7 +196,7 @@ const TasksPage = () => {
       setNewSubtask('');
       refreshTask(selectedTask.task_id);
       fetchTasks();
-    } catch { toast.error('Failed to add subtask'); }
+    } catch { toast.error(t('tasks.subtaskAddFailed')); }
   };
 
   const handleToggleSubtask = async (subtaskId, done) => {
@@ -212,10 +212,10 @@ const TasksPage = () => {
     if (!selectedTask) return;
     try {
       await axios.post(`${API}/tasks/${selectedTask.task_id}/reopen`, {}, getAx());
-      toast.success('Task reopened');
+      toast.success(t('tasks.reopenedToast'));
       refreshTask(selectedTask.task_id);
       fetchTasks();
-    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+    } catch (e) { toast.error(e.response?.data?.detail || t('common.failed')); }
   };
 
   const onDragEnd = (result) => {
@@ -230,13 +230,13 @@ const TasksPage = () => {
     if (filterPriority && task.priority !== filterPriority) return false;
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterDue === 'overdue') return task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done';
-    if (filterDue === 'today') { const d = new Date(task.due_date); const t = new Date(); return task.due_date && d.toDateString() === t.toDateString(); }
+    if (filterDue === 'today') { const d = new Date(task.due_date); const now = new Date(); return task.due_date && d.toDateString() === now.toDateString(); }
     if (filterDue === 'this_week') { const d = new Date(task.due_date); const now = new Date(); const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7); return task.due_date && d >= now && d <= weekEnd; }
     return true;
   });
 
-  const getStatusTasks = (statusId) => filteredTasks.filter(t => t.status === statusId);
-  const getOwnerName = (uid) => members.find(m => m.user_id === uid)?.name || 'Unknown';
+  const getStatusTasks = (statusId) => filteredTasks.filter(tk => tk.status === statusId);
+  const getOwnerName = (uid) => members.find(m => m.user_id === uid)?.name || t('tasks.unknownOwner');
   const hasFilters = filterStatus || filterOwner || filterProject || filterPriority || filterDue || searchQuery;
 
   return (
@@ -250,7 +250,7 @@ const TasksPage = () => {
           <div className="flex items-center gap-2">
             <div className="flex border border-slate-200 rounded-lg overflow-hidden">
               <button onClick={() => setViewMode('kanban')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'kanban' ? 'bg-[#0EA5A0] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="kanban-view-btn">
-                <LayoutGrid className="w-3.5 h-3.5" /> Kanban
+                <LayoutGrid className="w-3.5 h-3.5" /> {t('tasks.kanban')}
               </button>
               <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'list' ? 'bg-[#0EA5A0] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="list-view-btn">
                 <List className="w-3.5 h-3.5" /> {t('deals.list')}
@@ -263,26 +263,26 @@ const TasksPage = () => {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t('tasks.createTask')}</DialogTitle></DialogHeader>
               <form onSubmit={handleAddTask} className="space-y-3 pt-2">
-                <div><Label>{ t('common.create') }</Label><Input value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} required data-testid="task-title" /></div>
-                <div><Label>Description</Label><Textarea value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} rows={2} /></div>
+                <div><Label>{ t('forms.title') }</Label><Input value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} required data-testid="task-title" /></div>
+                <div><Label>{t('forms.description')}</Label><Textarea value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} rows={2} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Priority</Label>
+                  <div><Label>{t('forms.priority')}</Label>
                     <Select value={newTask.priority} onValueChange={(v) => setNewTask({...newTask, priority: v})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{priorities.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Assign To</Label>
+                  <div><Label>{t('forms.assignTo')}</Label>
                     <Select value={newTask.assigned_to || 'self'} onValueChange={(v) => setNewTask({...newTask, assigned_to: v === 'self' ? '' : v})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent><SelectItem value="self">Myself</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
+                      <SelectContent><SelectItem value="self">{t('forms.myself')}</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
-                <div><Label>Due Date</Label><Input type="date" value={newTask.due_date} onChange={(e) => setNewTask({...newTask, due_date: e.target.value})} /></div>
-                <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="submit-task">{ t('common.create') }</Button>
+                <div><Label>{t('forms.dueDate')}</Label><Input type="date" value={newTask.due_date} onChange={(e) => setNewTask({...newTask, due_date: e.target.value})} /></div>
+                <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="submit-task">{ t('tasks.createTask') }</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -301,47 +301,47 @@ const TasksPage = () => {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search tasks…"
+                  placeholder={t('tasks.searchTasks')}
                   data-testid="filter-search"
                   className="h-9 w-full pl-8 pr-3 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/30 focus:border-[#0EA5A0]"
                 />
               </div>
               <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-status"><SelectValue placeholder="All Stages" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All Stages</SelectItem>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-status"><SelectValue placeholder={t('tasks.allStages')} /></SelectTrigger>
+                <SelectContent><SelectItem value="all">{t('tasks.allStages')}</SelectItem>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={filterPriority || 'all'} onValueChange={(v) => setFilterPriority(v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-priority"><SelectValue placeholder="All Priorities" /></SelectTrigger>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-priority"><SelectValue placeholder={t('tasks.allPriorities')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Priorities</SelectItem>
-                  <SelectItem value="low"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />Low</span></SelectItem>
-                  <SelectItem value="medium"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Medium</span></SelectItem>
-                  <SelectItem value="high"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />High</span></SelectItem>
+                  <SelectItem value="all">{t('tasks.allPriorities')}</SelectItem>
+                  <SelectItem value="low"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />{t('tasks.priorities.low')}</span></SelectItem>
+                  <SelectItem value="medium"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />{t('tasks.priorities.medium')}</span></SelectItem>
+                  <SelectItem value="high"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />{t('tasks.priorities.high')}</span></SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterProject || 'all'} onValueChange={(v) => setFilterProject(v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-project"><SelectValue placeholder="All Projects" /></SelectTrigger>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-project"><SelectValue placeholder={t('tasks.allProjects')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
+                  <SelectItem value="all">{t('tasks.allProjects')}</SelectItem>
                   {projects.map(p => <SelectItem key={p.project_id} value={p.project_id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterDue || 'all'} onValueChange={(v) => setFilterDue(v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-due"><SelectValue placeholder="Any Due Date" /></SelectTrigger>
+                <SelectTrigger className="w-36 h-9 flex-shrink-0" data-testid="filter-due"><SelectValue placeholder={t('tasks.anyDueDate')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Any Due Date</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="today">Due Today</SelectItem>
-                  <SelectItem value="this_week">Due This Week</SelectItem>
+                  <SelectItem value="all">{t('tasks.anyDueDate')}</SelectItem>
+                  <SelectItem value="overdue">{t('tasks.overdue')}</SelectItem>
+                  <SelectItem value="today">{t('tasks.dueToday')}</SelectItem>
+                  <SelectItem value="this_week">{t('tasks.dueThisWeek')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterOwner || 'all'} onValueChange={(v) => setFilterOwner(v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-owner"><SelectValue placeholder="All Owners" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All Owners</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
+                <SelectTrigger className="w-32 h-9 flex-shrink-0" data-testid="filter-owner"><SelectValue placeholder={t('deals.allOwners')} /></SelectTrigger>
+                <SelectContent><SelectItem value="all">{t('deals.allOwners')}</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
               </Select>
               {hasFilters && (
                 <Button variant="ghost" size="sm" className="h-9 flex-shrink-0 text-slate-500" onClick={() => { setFilterStatus(''); setFilterOwner(''); setFilterProject(''); setFilterPriority(''); setFilterDue(''); setSearchQuery(''); }}>
-                  <X className="w-3 h-3 mr-1" />Clear
+                  <X className="w-3 h-3 mr-1" />{t('common.clear')}
                 </Button>
               )}
             </div>
@@ -383,7 +383,7 @@ const TasksPage = () => {
                         </Select>
                       </td>
                       <td className="py-3 px-4 w-24 shrink-0">
-                        <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'high' ? 'bg-rose-100 text-rose-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{task.priority}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'high' ? 'bg-rose-100 text-rose-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{task.priority ? t(`tasks.priorities.${task.priority}`) : ''}</span>
                       </td>
                       <td className="py-3 px-4 w-32 shrink-0 text-xs text-slate-600 truncate">{task.assigned_to ? getOwnerName(task.assigned_to) : '-'}</td>
                       <td className="py-3 px-4 w-28 shrink-0 text-xs text-slate-500">{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
@@ -435,7 +435,7 @@ const TasksPage = () => {
                                         {task.due_date && <div className="flex items-center gap-1 mt-1 text-xs text-slate-400"><Calendar className="w-3 h-3" />{new Date(task.due_date).toLocaleDateString()}</div>}
                                         {task.subtask_count > 0 && <div className="flex items-center gap-1 mt-1 text-xs text-slate-400"><CheckSquare className="w-3 h-3" />{task.subtasks_done}/{task.subtask_count}</div>}
                                         {task.comments?.length > 0 && <div className="flex items-center gap-1 mt-1 text-xs text-slate-400"><MessageSquare className="w-3 h-3" />{task.comments.length}</div>}
-                                        {task.updated_at && Math.floor((Date.now() - new Date(task.updated_at).getTime()) / 86400000) > 7 && <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-300 mt-1">stale</Badge>}
+                                        {task.updated_at && Math.floor((Date.now() - new Date(task.updated_at).getTime()) / 86400000) > 7 && <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-300 mt-1">{t('tasks.stale')}</Badge>}
                                       </div>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
@@ -473,23 +473,23 @@ const TasksPage = () => {
                 <DialogTitle className="flex items-center justify-between">
                   <span>{ editMode ? t('common.edit') : selectedTask.title }</span>
                   <div className="flex gap-1">
-                    {!editMode && selectedTask.status === 'done' && <Button size="sm" variant="outline" onClick={handleReopenTask} data-testid="reopen-task-btn"><RotateCcw className="w-3.5 h-3.5 mr-1" /> Reopen</Button>}
-                    {!editMode && <Button size="sm" variant="outline" onClick={() => setEditMode(true)} data-testid="edit-task-btn"><Edit2 className="w-3.5 h-3.5 mr-1" /> Edit</Button>}
+                    {!editMode && selectedTask.status === 'done' && <Button size="sm" variant="outline" onClick={handleReopenTask} data-testid="reopen-task-btn"><RotateCcw className="w-3.5 h-3.5 mr-1" /> {t('tasks.reopen')}</Button>}
+                    {!editMode && <Button size="sm" variant="outline" onClick={() => setEditMode(true)} data-testid="edit-task-btn"><Edit2 className="w-3.5 h-3.5 mr-1" /> {t('common.edit')}</Button>}
                   </div>
                 </DialogTitle>
               </DialogHeader>
               {editMode ? (
                 <div className="space-y-3 pt-2">
-                  <div><Label>Title</Label><Input value={editData.title || ''} onChange={e => setEditData({...editData, title: e.target.value})} data-testid="edit-task-title" /></div>
-                  <div><Label>Description</Label><Textarea value={editData.description || ''} onChange={e => setEditData({...editData, description: e.target.value})} rows={3} data-testid="edit-task-desc" /></div>
+                  <div><Label>{t('forms.title')}</Label><Input value={editData.title || ''} onChange={e => setEditData({...editData, title: e.target.value})} data-testid="edit-task-title" /></div>
+                  <div><Label>{t('forms.description')}</Label><Textarea value={editData.description || ''} onChange={e => setEditData({...editData, description: e.target.value})} rows={3} data-testid="edit-task-desc" /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Status</Label>
+                    <div><Label>{t('forms.status')}</Label>
                       <Select value={editData.status} onValueChange={v => setEditData({...editData, status: v})}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>{statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Priority</Label>
+                    <div><Label>{t('forms.priority')}</Label>
                       <Select value={editData.priority} onValueChange={v => setEditData({...editData, priority: v})}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>{priorities.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
@@ -497,13 +497,13 @@ const TasksPage = () => {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Assign To</Label>
+                    <div><Label>{t('forms.assignTo')}</Label>
                       <Select value={editData.assigned_to || 'none'} onValueChange={v => setEditData({...editData, assigned_to: v === 'none' ? null : v})}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="none">Unassigned</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
+                        <SelectContent><SelectItem value="none">{t('forms.unassigned')}</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Due Date</Label><Input type="date" value={editData.due_date ? editData.due_date.split('T')[0] : ''} onChange={e => setEditData({...editData, due_date: e.target.value || null})} /></div>
+                    <div><Label>{t('forms.dueDate')}</Label><Input type="date" value={editData.due_date ? editData.due_date.split('T')[0] : ''} onChange={e => setEditData({...editData, due_date: e.target.value || null})} /></div>
                   </div>
                   <div className="flex gap-2 pt-2">
                     <Button onClick={handleSaveTask} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="save-task-btn"><Save className="w-4 h-4 mr-2" />{ t('common.save') }</Button>
@@ -514,17 +514,17 @@ const TasksPage = () => {
                 <div className="space-y-4 pt-2">
                   {/* Description (stable) */}
                   {selectedTask.description && (
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">{ t('common.description') || 'Description' }</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedTask.description}</p></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">{ t('forms.description') }</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedTask.description}</p></div>
                   )}
-                  
+
                   {/* Info row */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{ t('tasks.statuses.todo') ? 'Status' : 'Status' }</p><p className="text-sm font-medium capitalize">{selectedTask.status?.replace('_', ' ')}</p></div>
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{ 'Prioritaet' }</p>
-                      <div className="flex items-center gap-1.5"><div className={`w-2 h-2 rounded-full ${priorities.find(p => p.value === selectedTask.priority)?.color}`} /><span className="text-sm font-medium capitalize">{selectedTask.priority}</span></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.status')}</p><p className="text-sm font-medium">{selectedTask.status ? (statuses.find(s => s.id === selectedTask.status)?.name || selectedTask.status.replace('_', ' ')) : ''}</p></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.priority')}</p>
+                      <div className="flex items-center gap-1.5"><div className={`w-2 h-2 rounded-full ${priorities.find(p => p.value === selectedTask.priority)?.color}`} /><span className="text-sm font-medium">{selectedTask.priority ? t(`tasks.priorities.${selectedTask.priority}`) : ''}</span></div>
                     </div>
-                    {selectedTask.assigned_to && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Owner</p><p className="text-sm font-medium">{getOwnerName(selectedTask.assigned_to)}</p></div>}
-                    {selectedTask.due_date && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Due</p><p className="text-sm font-medium">{new Date(selectedTask.due_date).toLocaleDateString()}</p></div>}
+                    {selectedTask.assigned_to && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('tasks.owner')}</p><p className="text-sm font-medium">{getOwnerName(selectedTask.assigned_to)}</p></div>}
+                    {selectedTask.due_date && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('tasks.due')}</p><p className="text-sm font-medium">{new Date(selectedTask.due_date).toLocaleDateString()}</p></div>}
                   </div>
 
                   {/* Tabs: Subtasks | Comments | Activity */}
@@ -588,15 +588,15 @@ const TasksPage = () => {
                             <div key={i} className="flex items-start gap-2 py-1.5 text-xs">
                               <Clock className="w-3 h-3 text-slate-300 mt-0.5 shrink-0" />
                               <div>
-                                <span className="font-medium text-slate-700">{a.by_name || 'System'}</span>
+                                <span className="font-medium text-slate-700">{a.by_name || t('tasks.system')}</span>
                                 {' '}
                                 {a.action === 'created' && <span className="text-slate-500">{ t('tasks.activity.created') }</span>}
                                 {a.action === 'comment_added' && <span className="text-slate-500">{ t('tasks.activity.commentAdded') }</span>}
-                                {a.action === 'subtask_added' && <span className="text-slate-500">added subtask: {a.detail}</span>}
-                                {a.action === 'subtask_completed' && <span className="text-emerald-600">completed: {a.detail}</span>}
-                                {a.action === 'subtask_reopened' && <span className="text-amber-600">unchecked: {a.detail}</span>}
+                                {a.action === 'subtask_added' && <span className="text-slate-500">{t('tasks.activitySubtaskAddedPrefix')} {a.detail}</span>}
+                                {a.action === 'subtask_completed' && <span className="text-emerald-600">{t('tasks.activitySubtaskCompletedPrefix')} {a.detail}</span>}
+                                {a.action === 'subtask_reopened' && <span className="text-amber-600">{t('tasks.activitySubtaskReopenedPrefix')} {a.detail}</span>}
                                 {a.action === 'reopened' && <span className="text-blue-600">{ t('tasks.activity.reopened') }</span>}
-                                {a.action?.endsWith('_changed') && <span className="text-slate-500">changed {a.action.replace('_changed', '')} from <span className="text-slate-400">{a.from || 'none'}</span> to <span className="font-medium">{a.to}</span></span>}
+                                {a.action?.endsWith('_changed') && <span className="text-slate-500">{t('tasks.activityChangedFromTo').replace('{field}', a.action.replace('_changed', ''))} <span className="text-slate-400">{a.from || t('tasks.activityNone')}</span> {t('tasks.activityChangedTo')} <span className="font-medium">{a.to}</span></span>}
                                 <span className="text-slate-300 ml-2">{new Date(a.at).toLocaleString()}</span>
                               </div>
                             </div>

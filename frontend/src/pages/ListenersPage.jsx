@@ -1,3 +1,4 @@
+import { useT } from '../useT';
 import React, { useState, useEffect } from 'react';
 import { useAuth, API } from '../App';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -38,6 +39,7 @@ const confidenceBadge = (c) => {
 
 export default function ListenersPage() {
   const { token } = useAuth();
+  const { t } = useT();
   const [listeners, setListeners] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [selectedListener, setSelectedListener] = useState(null);
@@ -70,7 +72,7 @@ export default function ListenersPage() {
     try {
       const res = await axios.get(`${API}/listeners`, ax());
       setListeners(res.data || []);
-    } catch { toast.error('Failed to load listeners'); }
+    } catch { toast.error(t('listeners.toastLoadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -115,32 +117,32 @@ export default function ListenersPage() {
         min_confidence: parseFloat(newListener.config.min_confidence),
       };
       await axios.post(`${API}/listeners`, { ...newListener, config: cfg }, ax());
-      toast.success('Listener created');
+      toast.success(t('listeners.toastCreated'));
       setIsAddOpen(false);
       setNewListener({ campaign_id: '', channel: 'facebook', config: { keywords: '', negative_keywords: '', personas: '', cadence: 'hourly', digest_cadence: 'daily', min_confidence: 0.7 } });
       fetchListeners();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to create listener'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('listeners.toastCreateFailed')); }
   };
 
   const handleToggle = async (listener) => {
     const newStatus = listener.status === 'active' ? 'paused' : 'active';
     try {
       await axios.patch(`${API}/listeners/${listener.listener_id}`, { status: newStatus }, ax());
-      toast.success(`Listener ${newStatus}`);
+      toast.success(t('listeners.toastStatus').replace('{status}', newStatus === 'active' ? t('listeners.statusActive') : t('listeners.statusPaused')));
       fetchListeners();
       if (selectedListener?.listener_id === listener.listener_id)
         setSelectedListener({ ...listener, status: newStatus });
-    } catch { toast.error('Failed to update listener'); }
+    } catch { toast.error(t('listeners.toastUpdateFailed')); }
   };
 
   const handleDelete = async (listener) => {
-    if (!window.confirm('Delete this listener?')) return;
+    if (!window.confirm(t('listeners.confirmDelete'))) return;
     try {
       await axios.delete(`${API}/listeners/${listener.listener_id}`, ax());
-      toast.success('Listener deleted');
+      toast.success(t('listeners.toastDeleted'));
       if (selectedListener?.listener_id === listener.listener_id) setSelectedListener(null);
       fetchListeners();
-    } catch { toast.error('Failed'); }
+    } catch { toast.error(t('listeners.toastFailed')); }
   };
 
   const handleDiscover = async () => {
@@ -148,9 +150,9 @@ export default function ListenersPage() {
     setDiscovering(true);
     try {
       const res = await axios.post(`${API}/listeners/${selectedListener.listener_id}/discover`, {}, ax());
-      toast.success(res.data?.message || 'Discovery started — tasks created for review');
+      toast.success(res.data?.message || t('listeners.toastDiscoveryStarted'));
       fetchSources();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Discovery failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('listeners.toastDiscoveryFailed')); }
     finally { setDiscovering(false); }
   };
 
@@ -159,9 +161,9 @@ export default function ListenersPage() {
     setGeneratingReport(true);
     try {
       await axios.post(`${API}/listeners/${selectedListener.listener_id}/reports/generate-now`, {}, ax());
-      toast.success('Report generated');
+      toast.success(t('listeners.toastReportGenerated'));
       fetchReports();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Report failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('listeners.toastReportFailed')); }
     finally { setGeneratingReport(false); }
   };
 
@@ -169,20 +171,20 @@ export default function ListenersPage() {
     try {
       await axios.patch(`${API}/listeners/${selectedListener.listener_id}/sources/${source.source_id}`, { status }, ax());
       fetchSources();
-    } catch { toast.error('Failed'); }
+    } catch { toast.error(t('listeners.toastFailed')); }
   };
 
   const handleCreateTask = async (hit) => {
     try {
       await axios.post(`${API}/listeners/${selectedListener.listener_id}/hits/${hit.hit_id}/create-task`, {}, ax());
-      toast.success('Task created');
+      toast.success(t('listeners.toastTaskCreated'));
       fetchHits();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('listeners.toastFailed')); }
   };
 
   const statusBadge = (status) => {
-    if (status === 'active') return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border text-xs">Active</Badge>;
-    if (status === 'paused') return <Badge className="bg-amber-100 text-amber-700 border-amber-200 border text-xs">Paused</Badge>;
+    if (status === 'active') return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border text-xs">{t('listeners.statusActive')}</Badge>;
+    if (status === 'paused') return <Badge className="bg-amber-100 text-amber-700 border-amber-200 border text-xs">{t('listeners.statusPaused')}</Badge>;
     return <Badge className="bg-slate-100 text-slate-500 border text-xs">{status}</Badge>;
   };
 
@@ -193,87 +195,87 @@ export default function ListenersPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Radio className="w-6 h-6 text-[#0EA5A0]" /> Listeners
+              <Radio className="w-6 h-6 text-[#0EA5A0]" /> {t('listeners.title')}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Monitor social channels for buying signals and mentions</p>
+            <p className="text-slate-500 text-sm mt-1">{t('listeners.subtitle')}</p>
           </div>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">
-                <Plus className="w-4 h-4 mr-2" /> New Listener
+                <Plus className="w-4 h-4 mr-2" /> {t('listeners.newListener')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Create Listener</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t('listeners.createListener')}</DialogTitle></DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4 pt-2">
                 <div>
-                  <Label>Campaign</Label>
+                  <Label>{t('listeners.campaign')}</Label>
                   <Select value={newListener.campaign_id} onValueChange={v => setNewListener({ ...newListener, campaign_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select a Facebook/social campaign" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t('listeners.selectCampaign')} /></SelectTrigger>
                     <SelectContent>
                       {campaigns.length === 0
-                        ? <SelectItem value="_none" disabled>No social campaigns — create one first</SelectItem>
+                        ? <SelectItem value="_none" disabled>{t('listeners.noSocialCampaigns')}</SelectItem>
                         : campaigns.map(c => <SelectItem key={c.campaign_id} value={c.campaign_id}>{c.name}</SelectItem>)
                       }
                     </SelectContent>
                   </Select>
                   {campaigns.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">Create a campaign with channel type "Facebook" first.</p>
+                    <p className="text-xs text-amber-600 mt-1">{t('listeners.createCampaignFirst')}</p>
                   )}
                 </div>
                 <div>
-                  <Label>Channel</Label>
+                  <Label>{t('listeners.channel')}</Label>
                   <Select value={newListener.channel} onValueChange={v => setNewListener({ ...newListener, channel: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="instagram" disabled>Instagram (coming soon)</SelectItem>
-                      <SelectItem value="linkedin" disabled>LinkedIn (coming soon)</SelectItem>
+                      <SelectItem value="facebook">{t('listeners.channelFacebook')}</SelectItem>
+                      <SelectItem value="instagram" disabled>{t('listeners.channelInstagram')}</SelectItem>
+                      <SelectItem value="linkedin" disabled>{t('listeners.channelLinkedIn')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Keywords <span className="text-slate-400 font-normal">(comma-separated)</span></Label>
-                  <Input value={newListener.config.keywords} onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, keywords: e.target.value } })} placeholder="CRM, sales software, lead management" required />
+                  <Label>{t('listeners.keywords')} <span className="text-slate-400 font-normal">{t('listeners.keywordsHint')}</span></Label>
+                  <Input value={newListener.config.keywords} onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, keywords: e.target.value } })} placeholder={t('listeners.keywordsPlaceholder')} required />
                 </div>
                 <div>
-                  <Label>Negative Keywords <span className="text-slate-400 font-normal">(optional)</span></Label>
-                  <Input value={newListener.config.negative_keywords} onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, negative_keywords: e.target.value } })} placeholder="free, open source, DIY" />
+                  <Label>{t('listeners.negativeKeywords')} <span className="text-slate-400 font-normal">{t('listeners.optionalHint')}</span></Label>
+                  <Input value={newListener.config.negative_keywords} onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, negative_keywords: e.target.value } })} placeholder={t('listeners.negativeKeywordsPlaceholder')} />
                 </div>
                 <div>
-                  <Label>Persona Description <span className="text-slate-400 font-normal">(helps AI classify)</span></Label>
-                  <Input value={newListener.config.personas} onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, personas: e.target.value } })} placeholder="Small business owners looking for a CRM solution" />
+                  <Label>{t('listeners.personaDescription')} <span className="text-slate-400 font-normal">{t('listeners.personaHint')}</span></Label>
+                  <Input value={newListener.config.personas} onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, personas: e.target.value } })} placeholder={t('listeners.personaPlaceholder')} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Poll Cadence</Label>
+                    <Label>{t('listeners.pollCadence')}</Label>
                     <Select value={newListener.config.cadence} onValueChange={v => setNewListener({ ...newListener, config: { ...newListener.config, cadence: v } })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="15min">Every 15 min</SelectItem>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="15min">{t('listeners.cadence15min')}</SelectItem>
+                        <SelectItem value="hourly">{t('listeners.cadenceHourly')}</SelectItem>
+                        <SelectItem value="daily">{t('listeners.cadenceDaily')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>Digest Cadence</Label>
+                    <Label>{t('listeners.digestCadence')}</Label>
                     <Select value={newListener.config.digest_cadence} onValueChange={v => setNewListener({ ...newListener, config: { ...newListener.config, digest_cadence: v } })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="daily">{t('listeners.cadenceDaily')}</SelectItem>
+                        <SelectItem value="weekly">{t('listeners.cadenceWeekly')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div>
-                  <Label>Min. Confidence for Auto-Task <span className="text-slate-400 font-normal">({Math.round(newListener.config.min_confidence * 100)}%)</span></Label>
+                  <Label>{t('listeners.minConfidence')} <span className="text-slate-400 font-normal">({Math.round(newListener.config.min_confidence * 100)}%)</span></Label>
                   <input type="range" min="0.3" max="1" step="0.05" value={newListener.config.min_confidence}
                     onChange={e => setNewListener({ ...newListener, config: { ...newListener.config, min_confidence: parseFloat(e.target.value) } })}
                     className="w-full mt-1" />
                 </div>
-                <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">Create Listener</Button>
+                <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">{t('listeners.createListener')}</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -286,10 +288,10 @@ export default function ListenersPage() {
             {!loading && listeners.length === 0 && (
               <Card className="p-6 text-center text-slate-500">
                 <Radio className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                <p className="text-sm font-medium text-slate-700">No listeners yet</p>
-                <p className="text-xs mt-1">A listener watches a social campaign for keywords and lets AI classify incoming posts.</p>
+                <p className="text-sm font-medium text-slate-700">{t('listeners.noListenersYet')}</p>
+                <p className="text-xs mt-1">{t('listeners.noListenersDesc')}</p>
                 <Button size="sm" className="mt-3 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setIsAddOpen(true)}>
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first listener
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> {t('listeners.createFirstListener')}
                 </Button>
               </Card>
             )}
@@ -313,8 +315,8 @@ export default function ListenersPage() {
                       </p>
                       {l.stats && (
                         <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{l.stats.hits_total || 0} hits</span>
-                          <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" />{l.stats.tasks_created || 0} tasks</span>
+                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{t('listeners.hitsCount').replace('{count}', l.stats.hits_total || 0)}</span>
+                          <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" />{t('listeners.tasksCount').replace('{count}', l.stats.tasks_created || 0)}</span>
                         </div>
                       )}
                     </div>
@@ -341,18 +343,17 @@ export default function ListenersPage() {
                     <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center mb-4">
                       <Radio className="w-7 h-7 text-[#0EA5A0]" />
                     </div>
-                    <p className="font-semibold text-slate-900">What's a listener?</p>
+                    <p className="font-semibold text-slate-900">{t('listeners.whatIsListener')}</p>
                     <p className="text-sm text-slate-600 mt-2 max-w-md">
-                      Listeners monitor a social campaign (e.g. a Facebook group) for keywords you care about,
-                      then use AI to classify matching posts as buying signals, complaints, questions, and more.
+                      {t('listeners.whatIsListenerDesc')}
                     </p>
                     <ul className="text-xs text-slate-500 mt-4 space-y-1 text-left">
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> Read-only — no automated posting or messaging.</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> Auto-creates tasks for high-confidence hits.</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> Digest reports summarise activity on a cadence you choose.</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> {t('listeners.bulletReadOnly')}</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> {t('listeners.bulletAutoTasks')}</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#0EA5A0]" /> {t('listeners.bulletDigest')}</li>
                     </ul>
                     <Button className="mt-5 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setIsAddOpen(true)}>
-                      <Plus className="w-4 h-4 mr-2" /> Create a listener
+                      <Plus className="w-4 h-4 mr-2" /> {t('listeners.createAListener')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -360,7 +361,7 @@ export default function ListenersPage() {
                 <Card className="h-64 flex items-center justify-center text-slate-400">
                   <div className="text-center">
                     <ChevronRight className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="text-sm">Select a listener to view details</p>
+                    <p className="text-sm">{t('listeners.selectListenerPrompt')}</p>
                   </div>
                 </Card>
               )
@@ -370,29 +371,29 @@ export default function ListenersPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-base">{selectedListener.campaign_name || selectedListener.campaign_id}</CardTitle>
-                      <p className="text-xs text-slate-500 mt-0.5 capitalize">{selectedListener.channel} · {selectedListener.config?.cadence} polling · {statusBadge(selectedListener.status)}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 capitalize">{selectedListener.channel} · {selectedListener.config?.cadence} {t('listeners.polling')} · {statusBadge(selectedListener.status)}</p>
                     </div>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={handleDiscover} disabled={discovering}>
                         {discovering ? <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-1" />}
-                        Discover Groups
+                        {t('listeners.discoverGroups')}
                       </Button>
                       <Button variant="outline" size="sm" onClick={handleGenerateReport} disabled={generatingReport}>
                         {generatingReport ? <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileText className="w-3.5 h-3.5 mr-1" />}
-                        Generate Report
+                        {t('listeners.generateReport')}
                       </Button>
                     </div>
                   </div>
                   {/* Tabs */}
                   <div className="flex gap-1 mt-3">
-                    {['sources', 'hits', 'reports'].map(t => (
-                      <button key={t} onClick={() => setTab(t)}
-                        className={`px-3 py-1.5 text-sm rounded-md capitalize transition-colors ${tab === t ? 'bg-[#0EA5A0] text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                        {t === 'sources' && <Globe className="w-3.5 h-3.5 inline mr-1" />}
-                        {t === 'hits' && <Zap className="w-3.5 h-3.5 inline mr-1" />}
-                        {t === 'reports' && <FileText className="w-3.5 h-3.5 inline mr-1" />}
-                        {t}
-                        {t === 'hits' && hits.length > 0 && <span className="ml-1.5 bg-white/20 text-xs px-1 rounded">{hits.length}</span>}
+                    {['sources', 'hits', 'reports'].map(tabKey => (
+                      <button key={tabKey} onClick={() => setTab(tabKey)}
+                        className={`px-3 py-1.5 text-sm rounded-md capitalize transition-colors ${tab === tabKey ? 'bg-[#0EA5A0] text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+                        {tabKey === 'sources' && <Globe className="w-3.5 h-3.5 inline mr-1" />}
+                        {tabKey === 'hits' && <Zap className="w-3.5 h-3.5 inline mr-1" />}
+                        {tabKey === 'reports' && <FileText className="w-3.5 h-3.5 inline mr-1" />}
+                        {tabKey === 'sources' ? t('listeners.tabSources') : tabKey === 'hits' ? t('listeners.tabHits') : t('listeners.tabReports')}
+                        {tabKey === 'hits' && hits.length > 0 && <span className="ml-1.5 bg-white/20 text-xs px-1 rounded">{hits.length}</span>}
                       </button>
                     ))}
                   </div>
@@ -405,8 +406,8 @@ export default function ListenersPage() {
                       {sources.length === 0 && (
                         <div className="p-8 text-center text-slate-400">
                           <Globe className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                          <p className="text-sm">No sources yet</p>
-                          <p className="text-xs mt-1">Click "Discover Groups" to find relevant Facebook groups</p>
+                          <p className="text-sm">{t('listeners.noSourcesYet')}</p>
+                          <p className="text-xs mt-1">{t('listeners.noSourcesHint')}</p>
                         </div>
                       )}
                       {sources.map(src => (
@@ -420,19 +421,19 @@ export default function ListenersPage() {
                             </div>
                             <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
                               <span className="capitalize">{src.type?.replace('_', ' ')}</span>
-                              {src.discovered_by && <span>via {src.discovered_by}</span>}
-                              {src.url && <a href={src.url} target="_blank" rel="noreferrer" className="text-[#0EA5A0] flex items-center gap-0.5" onClick={e => e.stopPropagation()}>View <ExternalLink className="w-2.5 h-2.5" /></a>}
+                              {src.discovered_by && <span>{t('listeners.via')} {src.discovered_by}</span>}
+                              {src.url && <a href={src.url} target="_blank" rel="noreferrer" className="text-[#0EA5A0] flex items-center gap-0.5" onClick={e => e.stopPropagation()}>{t('listeners.view')} <ExternalLink className="w-2.5 h-2.5" /></a>}
                             </div>
                           </div>
                           <div className="flex gap-1 shrink-0">
                             {src.status !== 'active' && (
                               <Button variant="outline" size="sm" className="h-7 text-xs text-emerald-600 border-emerald-200" onClick={() => handleSourceStatus(src, 'active')}>
-                                <CheckCircle className="w-3 h-3 mr-1" />Approve
+                                <CheckCircle className="w-3 h-3 mr-1" />{t('listeners.approve')}
                               </Button>
                             )}
                             {src.status === 'active' && (
                               <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 border-rose-200" onClick={() => handleSourceStatus(src, 'rejected')}>
-                                <XCircle className="w-3 h-3 mr-1" />Reject
+                                <XCircle className="w-3 h-3 mr-1" />{t('listeners.reject')}
                               </Button>
                             )}
                           </div>
@@ -447,8 +448,8 @@ export default function ListenersPage() {
                       {hits.length === 0 && (
                         <div className="p-8 text-center text-slate-400">
                           <Zap className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                          <p className="text-sm">No hits yet</p>
-                          <p className="text-xs mt-1">Hits appear when the listener detects matching posts</p>
+                          <p className="text-sm">{t('listeners.noHitsYet')}</p>
+                          <p className="text-xs mt-1">{t('listeners.noHitsHint')}</p>
                         </div>
                       )}
                       {hits.map(hit => (
@@ -469,21 +470,21 @@ export default function ListenersPage() {
                               <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
                                 {hit.author?.name && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{hit.author.name}</span>}
                                 {hit.seen_at && <span>{new Date(hit.seen_at).toLocaleString()}</span>}
-                                {hit.url && <a href={hit.url} target="_blank" rel="noreferrer" className="text-[#0EA5A0] flex items-center gap-0.5">Open post <ExternalLink className="w-2.5 h-2.5" /></a>}
+                                {hit.url && <a href={hit.url} target="_blank" rel="noreferrer" className="text-[#0EA5A0] flex items-center gap-0.5">{t('listeners.openPost')} <ExternalLink className="w-2.5 h-2.5" /></a>}
                               </div>
                               {hit.suggested_reply && (
                                 <div className="mt-2 p-2 bg-slate-50 rounded text-xs text-slate-600 border-l-2 border-[#0EA5A0]">
-                                  <span className="font-medium text-[#0EA5A0]">Suggested reply: </span>{hit.suggested_reply}
+                                  <span className="font-medium text-[#0EA5A0]">{t('listeners.suggestedReply')}</span>{hit.suggested_reply}
                                 </div>
                               )}
                             </div>
                             <div className="shrink-0">
                               {!hit.acted_on && !hit.related_task_id && (
                                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleCreateTask(hit)}>
-                                  <CheckCircle className="w-3 h-3 mr-1" />Create Task
+                                  <CheckCircle className="w-3 h-3 mr-1" />{t('listeners.createTask')}
                                 </Button>
                               )}
-                              {hit.related_task_id && <span className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Task created</span>}
+                              {hit.related_task_id && <span className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />{t('listeners.taskCreated')}</span>}
                             </div>
                           </div>
                         </div>
@@ -497,8 +498,8 @@ export default function ListenersPage() {
                       {reports.length === 0 && (
                         <div className="p-8 text-center text-slate-400">
                           <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                          <p className="text-sm">No reports yet</p>
-                          <p className="text-xs mt-1">Click "Generate Report" for an AI digest of recent activity</p>
+                          <p className="text-sm">{t('listeners.noReportsYet')}</p>
+                          <p className="text-xs mt-1">{t('listeners.noReportsHint')}</p>
                         </div>
                       )}
                       {reports.map(r => (
@@ -507,12 +508,12 @@ export default function ListenersPage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-xs text-slate-400">{r.generated_at ? new Date(r.generated_at).toLocaleString() : ''}</span>
-                                <Badge className="text-xs bg-slate-100 text-slate-600">{r.period || 'custom'}</Badge>
+                                <Badge className="text-xs bg-slate-100 text-slate-600">{r.period || t('listeners.periodCustom')}</Badge>
                               </div>
                               <p className="text-sm font-medium text-slate-900 mb-2">{r.summary}</p>
                               {r.top_hits?.length > 0 && (
                                 <div className="space-y-1">
-                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Top Hits</p>
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('listeners.topHits')}</p>
                                   {r.top_hits.slice(0, 3).map((h, i) => (
                                     <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
                                       <span className={`w-2 h-2 rounded-full ${h.classification === 'buying_signal' ? 'bg-emerald-400' : 'bg-slate-300'}`} />
@@ -524,7 +525,7 @@ export default function ListenersPage() {
                               )}
                               {r.recommended_actions?.length > 0 && (
                                 <div className="mt-2 space-y-1">
-                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Recommendations</p>
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('listeners.recommendations')}</p>
                                   {r.recommended_actions.map((a, i) => (
                                     <p key={i} className="text-xs text-slate-600 flex items-start gap-1">
                                       <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />{a}

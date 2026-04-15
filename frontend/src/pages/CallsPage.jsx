@@ -51,7 +51,7 @@ const CallsPage = () => {
   // Call dialog
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [callMessage, setCallMessage] = useState('Thank you for your interest');
+  const [callMessage, setCallMessage] = useState(t('calls.defaultOpeningMessage'));
   const [calling, setCalling] = useState(false);
 
   // Schedule dialog
@@ -135,13 +135,13 @@ const CallsPage = () => {
       const res = await axios.post(`${API}/calls/initiate`, {
         lead_id: selectedLead, message: callMessage
       }, { headers });
-      toast.success(`Call initiated to ${res.data.to}`);
+      toast.success(t('calls.toastCallInitiated').replace('{to}', res.data.to));
       setShowCallDialog(false);
       setSelectedLead(null);
       fetchCalls();
       fetchStats();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to initiate call');
+      toast.error(err.response?.data?.detail || t('calls.toastInitiateFailed'));
     } finally { setCalling(false); }
   };
 
@@ -158,12 +158,12 @@ const CallsPage = () => {
         notes: schedNotes || null,
         reminder_minutes: parseInt(schedReminder)
       }, { headers });
-      toast.success(`Call scheduled with ${res.data.lead_name}`);
+      toast.success(t('calls.toastCallScheduled').replace('{name}', res.data.lead_name));
       setShowScheduleDialog(false);
       resetScheduleForm();
       fetchScheduled();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to schedule call');
+      toast.error(err.response?.data?.detail || t('calls.toastScheduleFailed'));
     } finally { setScheduling(false); }
   };
 
@@ -178,28 +178,28 @@ const CallsPage = () => {
         updates.scheduled_at = dt.toISOString();
       }
       await axios.put(`${API}/calls/scheduled/${editingSchedule.schedule_id}`, updates, { headers });
-      toast.success('Schedule updated');
+      toast.success(t('calls.toastScheduleUpdated'));
       setEditingSchedule(null);
       fetchScheduled();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to update');
+      toast.error(err.response?.data?.detail || t('calls.toastUpdateFailed'));
     }
   };
 
   const cancelSchedule = async (id) => {
     try {
       await axios.delete(`${API}/calls/scheduled/${id}`, { headers });
-      toast.success('Call cancelled');
+      toast.success(t('calls.toastCallCancelled'));
       fetchScheduled();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to cancel');
+      toast.error(err.response?.data?.detail || t('calls.toastCancelFailed'));
     }
   };
 
   const markComplete = async (id) => {
     try {
       await axios.put(`${API}/calls/scheduled/${id}`, { status: 'completed' }, { headers });
-      toast.success('Marked as completed');
+      toast.success(t('calls.toastMarkedCompleted'));
       fetchScheduled();
     } catch (err) { console.error(err); }
   };
@@ -208,11 +208,11 @@ const CallsPage = () => {
     setAnalyzing(true);
     try {
       const res = await axios.post(`${API}/calls/${callId}/analyze`, {}, { headers });
-      toast.success('Call analysis complete');
+      toast.success(t('calls.toastAnalysisComplete'));
       setSelectedCall({ ...selectedCall, ai_analysis: res.data.analysis });
       fetchCalls();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Analysis failed');
+      toast.error(err.response?.data?.detail || t('calls.toastAnalysisFailed'));
     } finally { setAnalyzing(false); }
   };
 
@@ -257,8 +257,8 @@ const CallsPage = () => {
   };
 
   const getDayLabel = (iso) => {
-    if (isToday(iso)) return 'Today';
-    if (isTomorrow(iso)) return 'Tomorrow';
+    if (isToday(iso)) return t('calls.dayToday');
+    if (isTomorrow(iso)) return t('calls.dayTomorrow');
     return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
@@ -293,15 +293,15 @@ const CallsPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900" data-testid="calls-page-title">Calls</h1>
-            <p className="text-slate-500 text-sm mt-1">Outbound calling, scheduling & AI analysis</p>
+            <h1 className="text-2xl font-bold text-slate-900" data-testid="calls-page-title">{t('calls.title')}</h1>
+            <p className="text-slate-500 text-sm mt-1">{t('calls.subtitle')}</p>
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setShowScheduleDialog(true)} variant="outline" data-testid="schedule-call-btn">
-              <CalendarPlus className="w-4 h-4 mr-2" /> Schedule Call
+              <CalendarPlus className="w-4 h-4 mr-2" /> {t('calls.scheduleCall')}
             </Button>
             <Button onClick={() => setShowCallDialog(true)} className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="new-call-btn">
-              <Phone className="w-4 h-4 mr-2" /> Call Now
+              <Phone className="w-4 h-4 mr-2" /> {t('calls.newCall')}
             </Button>
           </div>
         </div>
@@ -310,8 +310,8 @@ const CallsPage = () => {
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3" data-testid="twilio-not-configured">
             <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium text-amber-800">Twilio not configured</p>
-              <p className="text-sm text-amber-600 mt-1">Add your Twilio credentials to enable outbound calling. Scheduling still works.</p>
+              <p className="font-medium text-amber-800">{t('calls.twilioNotConfigured')}</p>
+              <p className="text-sm text-amber-600 mt-1">{t('calls.twilioNotConfiguredDesc')}</p>
             </div>
           </div>
         )}
@@ -322,7 +322,7 @@ const CallsPage = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Bell className="w-4 h-4 text-[#0EA5A0]" />
-                <span className="font-semibold text-sm text-slate-800">Upcoming Calls</span>
+                <span className="font-semibold text-sm text-slate-800">{t('calls.upcomingCalls')}</span>
                 <Badge variant="secondary" className="ml-1">{upcomingCalls.length}</Badge>
               </div>
               <div className="flex gap-3 overflow-x-auto pb-1">
@@ -350,11 +350,11 @@ const CallsPage = () => {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Total Calls', value: stats.total_calls, icon: <Phone className="w-5 h-5 text-[#0EA5A0]" />, bg: 'bg-teal-100', testId: 'stat-total-calls' },
-              { label: 'Completed', value: stats.completed_calls, icon: <PhoneCall className="w-5 h-5 text-emerald-600" />, bg: 'bg-emerald-100', testId: 'stat-completed' },
-              { label: 'Avg Duration', value: formatDuration(Math.round(stats.avg_duration_seconds)), icon: <Clock className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-100', testId: 'stat-avg-duration' },
-              { label: 'AI Analyzed', value: stats.analyzed_calls, icon: <Sparkles className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-100', testId: 'stat-analyzed' },
-              { label: 'Scheduled', value: scheduledCalls.length, icon: <CalendarDays className="w-5 h-5 text-teal-600" />, bg: 'bg-teal-100', testId: 'stat-scheduled' },
+              { label: t('calls.totalCalls'), value: stats.total_calls, icon: <Phone className="w-5 h-5 text-[#0EA5A0]" />, bg: 'bg-teal-100', testId: 'stat-total-calls' },
+              { label: t('calls.completed'), value: stats.completed_calls, icon: <PhoneCall className="w-5 h-5 text-emerald-600" />, bg: 'bg-emerald-100', testId: 'stat-completed' },
+              { label: t('calls.avgDuration'), value: formatDuration(Math.round(stats.avg_duration_seconds)), icon: <Clock className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-100', testId: 'stat-avg-duration' },
+              { label: t('calls.aiAnalyzed'), value: stats.analyzed_calls, icon: <Sparkles className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-100', testId: 'stat-analyzed' },
+              { label: t('calls.scheduled'), value: scheduledCalls.length, icon: <CalendarDays className="w-5 h-5 text-teal-600" />, bg: 'bg-teal-100', testId: 'stat-scheduled' },
             ].map(s => (
               <Card key={s.label}>
                 <CardContent className="p-4">
@@ -381,10 +381,10 @@ const CallsPage = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="history" data-testid="tab-history">
-              Call History {calls.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs">{calls.length}</Badge>}
+              {t('calls.callHistory')} {calls.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs">{calls.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="scheduled" data-testid="tab-scheduled">
-              Scheduled {scheduledCalls.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs">{scheduledCalls.length}</Badge>}
+              {t('calls.scheduled')} {scheduledCalls.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs">{scheduledCalls.length}</Badge>}
             </TabsTrigger>
           </TabsList>
 
@@ -399,8 +399,8 @@ const CallsPage = () => {
                 ) : filteredCalls.length === 0 ? (
                   <div className="text-center py-12 text-slate-500">
                     <Phone className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p className="font-medium">No calls yet</p>
-                    <p className="text-sm mt-1">Start making outbound calls to your leads</p>
+                    <p className="font-medium">{t('calls.noCalls')}</p>
+                    <p className="text-sm mt-1">{t('calls.noCallsDesc')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -411,7 +411,7 @@ const CallsPage = () => {
                             {call.status === 'completed' ? <PhoneCall className="w-4 h-4 text-emerald-600" /> : call.status === 'failed' ? <PhoneOff className="w-4 h-4 text-red-500" /> : <Phone className="w-4 h-4 text-slate-500" />}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 text-sm truncate">{call.lead_name || 'Unknown'}</p>
+                            <p className="font-medium text-slate-900 text-sm truncate">{call.lead_name || t('calls.unknown')}</p>
                             <p className="text-xs text-slate-500">{call.to_number}</p>
                           </div>
                         </div>
@@ -437,10 +437,10 @@ const CallsPage = () => {
                 {filteredScheduled.length === 0 ? (
                   <div className="text-center py-12 text-slate-500">
                     <CalendarDays className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p className="font-medium">No scheduled calls</p>
-                    <p className="text-sm mt-1">Schedule calls with your leads to stay organized</p>
+                    <p className="font-medium">{t('calls.noScheduled')}</p>
+                    <p className="text-sm mt-1">{t('calls.noScheduledDesc')}</p>
                     <Button onClick={() => setShowScheduleDialog(true)} className="mt-4 bg-[#0EA5A0] hover:bg-teal-700" data-testid="schedule-empty-btn">
-                      <CalendarPlus className="w-4 h-4 mr-2" /> Schedule a Call
+                      <CalendarPlus className="w-4 h-4 mr-2" /> {t('calls.scheduleACall')}
                     </Button>
                   </div>
                 ) : (
@@ -464,10 +464,10 @@ const CallsPage = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {sc.reminder_sent && <Bell className="w-3.5 h-3.5 text-amber-500" title="Reminder sent" />}
+                            {sc.reminder_sent && <Bell className="w-3.5 h-3.5 text-amber-500" title={t('calls.reminderSent')} />}
                             {isPast && (
                               <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => markComplete(sc.schedule_id)} data-testid={`complete-${sc.schedule_id}`}>
-                                Done
+                                {t('calls.done')}
                               </Button>
                             )}
                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditSchedule(sc)}>
@@ -491,13 +491,13 @@ const CallsPage = () => {
         <Dialog open={showScheduleDialog} onOpenChange={(open) => { setShowScheduleDialog(open); if (!open) resetScheduleForm(); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><CalendarPlus className="w-5 h-5 text-[#0EA5A0]" /> Schedule Call</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><CalendarPlus className="w-5 h-5 text-[#0EA5A0]" /> {t('calls.scheduleCall')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Lead</label>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.leadLabel')}</label>
                 <Select value={schedLead || ''} onValueChange={setSchedLead}>
-                  <SelectTrigger data-testid="sched-lead-select"><SelectValue placeholder="Select a lead" /></SelectTrigger>
+                  <SelectTrigger data-testid="sched-lead-select"><SelectValue placeholder={t('calls.selectLeadPlaceholder')} /></SelectTrigger>
                   <SelectContent>
                     {leads.map(l => (
                       <SelectItem key={l.lead_id} value={l.lead_id}>
@@ -508,12 +508,12 @@ const CallsPage = () => {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Date</label>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.dateLabel')}</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="sched-date-btn">
                       <CalendarDays className="w-4 h-4 mr-2 text-slate-400" />
-                      {schedDate ? schedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' }) : 'Pick a date'}
+                      {schedDate ? schedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' }) : t('calls.pickDate')}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -522,34 +522,34 @@ const CallsPage = () => {
                 </Popover>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Time</label>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.timeLabel')}</label>
                 <Select value={schedTime} onValueChange={setSchedTime}>
                   <SelectTrigger data-testid="sched-time-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {timeSlots.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Reminder</label>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.reminderLabel')}</label>
                 <Select value={schedReminder} onValueChange={setSchedReminder}>
                   <SelectTrigger data-testid="sched-reminder-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5 min before</SelectItem>
-                    <SelectItem value="15">15 min before</SelectItem>
-                    <SelectItem value="30">30 min before</SelectItem>
-                    <SelectItem value="60">1 hour before</SelectItem>
-                    <SelectItem value="1440">1 day before</SelectItem>
+                    <SelectItem value="5">{t('calls.reminder5Min')}</SelectItem>
+                    <SelectItem value="15">{t('calls.reminder15Min')}</SelectItem>
+                    <SelectItem value="30">{t('calls.reminder30Min')}</SelectItem>
+                    <SelectItem value="60">{t('calls.reminder1Hour')}</SelectItem>
+                    <SelectItem value="1440">{t('calls.reminder1Day')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Notes (optional)</label>
-                <Textarea value={schedNotes} onChange={(e) => setSchedNotes(e.target.value)} placeholder="Talking points, goals..." rows={2} data-testid="sched-notes" />
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.notesOptional')}</label>
+                <Textarea value={schedNotes} onChange={(e) => setSchedNotes(e.target.value)} placeholder={t('calls.notesPlaceholder')} rows={2} data-testid="sched-notes" />
               </div>
               <Button onClick={scheduleCall} disabled={!schedLead || !schedDate || scheduling} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="confirm-schedule-btn">
-                {scheduling ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Scheduling...</span> :
-                  <span className="flex items-center gap-2"><CalendarPlus className="w-4 h-4" /> Schedule Call</span>}
+                {scheduling ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {t('calls.scheduling')}</span> :
+                  <span className="flex items-center gap-2"><CalendarPlus className="w-4 h-4" /> {t('calls.scheduleCall')}</span>}
               </Button>
             </div>
           </DialogContent>
@@ -559,7 +559,7 @@ const CallsPage = () => {
         <Dialog open={!!editingSchedule} onOpenChange={() => setEditingSchedule(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Edit2 className="w-5 h-5 text-[#0EA5A0]" /> Edit Schedule</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Edit2 className="w-5 h-5 text-[#0EA5A0]" /> {t('calls.editSchedule')}</DialogTitle>
             </DialogHeader>
             {editingSchedule && (
               <div className="space-y-4 pt-2">
@@ -568,12 +568,12 @@ const CallsPage = () => {
                   {editingSchedule.lead_phone && <p className="text-xs text-slate-500">{editingSchedule.lead_phone}</p>}
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">Date</label>
+                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.dateLabel')}</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left font-normal">
                         <CalendarDays className="w-4 h-4 mr-2 text-slate-400" />
-                        {editDate ? editDate.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' }) : 'Pick a date'}
+                        {editDate ? editDate.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' }) : t('calls.pickDate')}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -582,31 +582,31 @@ const CallsPage = () => {
                   </Popover>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">Time</label>
+                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.timeLabel')}</label>
                   <Select value={editTime} onValueChange={setEditTime}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{timeSlots.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    <SelectContent>{timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">Reminder</label>
+                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.reminderLabel')}</label>
                   <Select value={editReminder} onValueChange={setEditReminder}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5 min before</SelectItem>
-                      <SelectItem value="15">15 min before</SelectItem>
-                      <SelectItem value="30">30 min before</SelectItem>
-                      <SelectItem value="60">1 hour before</SelectItem>
-                      <SelectItem value="1440">1 day before</SelectItem>
+                      <SelectItem value="5">{t('calls.reminder5Min')}</SelectItem>
+                      <SelectItem value="15">{t('calls.reminder15Min')}</SelectItem>
+                      <SelectItem value="30">{t('calls.reminder30Min')}</SelectItem>
+                      <SelectItem value="60">{t('calls.reminder1Hour')}</SelectItem>
+                      <SelectItem value="1440">{t('calls.reminder1Day')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">Notes</label>
-                  <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Talking points, goals..." rows={2} />
+                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('forms.notes')}</label>
+                  <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder={t('calls.notesPlaceholder')} rows={2} />
                 </div>
                 <Button onClick={updateSchedule} className="w-full bg-[#0EA5A0] hover:bg-teal-700">
-                  Save Changes
+                  {t('common.saveChanges')}
                 </Button>
               </div>
             )}
@@ -619,26 +619,26 @@ const CallsPage = () => {
             <DialogHeader><DialogTitle>{ t('calls.newCall') }</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Select Lead</label>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.selectLead')}</label>
                 <Select value={selectedLead || ''} onValueChange={setSelectedLead}>
-                  <SelectTrigger data-testid="call-lead-select"><SelectValue placeholder="Choose a lead with phone number" /></SelectTrigger>
+                  <SelectTrigger data-testid="call-lead-select"><SelectValue placeholder={t('calls.chooseLeadWithPhone')} /></SelectTrigger>
                   <SelectContent>
                     {leadsWithPhone.map(l => (
                       <SelectItem key={l.lead_id} value={l.lead_id}>
                         <span className="flex items-center gap-2"><User className="w-3 h-3" /> {l.first_name} {l.last_name} — {l.phone}</span>
                       </SelectItem>
                     ))}
-                    {leadsWithPhone.length === 0 && <div className="p-3 text-sm text-slate-500 text-center">No leads with phone numbers</div>}
+                    {leadsWithPhone.length === 0 && <div className="p-3 text-sm text-slate-500 text-center">{t('calls.noLeadsWithPhone')}</div>}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Opening Message</label>
-                <Input value={callMessage} onChange={(e) => setCallMessage(e.target.value)} placeholder="Message to play when call connects" data-testid="call-message-input" />
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('calls.openingMessage')}</label>
+                <Input value={callMessage} onChange={(e) => setCallMessage(e.target.value)} placeholder={t('calls.openingMessagePlaceholder')} data-testid="call-message-input" />
               </div>
               <Button onClick={initiateCall} disabled={!selectedLead || calling} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="initiate-call-btn">
-                {calling ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Calling...</span> :
-                  <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> Make Call</span>}
+                {calling ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {t('calls.calling')}</span> :
+                  <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> {t('calls.makeCall')}</span>}
               </Button>
             </div>
           </DialogContent>
@@ -650,17 +650,17 @@ const CallsPage = () => {
             {selectedCall && (
               <>
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2"><PhoneCall className="w-5 h-5 text-[#0EA5A0]" /> Call Details</DialogTitle>
+                  <DialogTitle className="flex items-center gap-2"><PhoneCall className="w-5 h-5 text-[#0EA5A0]" /> {t('calls.callDetails')}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: 'Lead', value: selectedCall.lead_name || 'Unknown' },
-                      { label: 'Phone', value: selectedCall.to_number },
-                      { label: 'Duration', value: formatDuration(selectedCall.duration) },
-                      { label: 'Status', value: selectedCall.status, badge: true },
-                      { label: 'Called By', value: selectedCall.initiated_by_name },
-                      { label: 'Date', value: new Date(selectedCall.created_at).toLocaleString() },
+                      { label: t('calls.leadLabel'), value: selectedCall.lead_name || t('calls.unknown') },
+                      { label: t('calls.phoneLabel'), value: selectedCall.to_number },
+                      { label: t('calls.durationLabel'), value: formatDuration(selectedCall.duration) },
+                      { label: t('calls.statusLabel'), value: selectedCall.status, badge: true },
+                      { label: t('calls.calledByLabel'), value: selectedCall.initiated_by_name },
+                      { label: t('calls.dateLabel'), value: new Date(selectedCall.created_at).toLocaleString() },
                     ].map(item => (
                       <div key={item.label} className="bg-slate-50 rounded-lg p-3">
                         <p className="text-xs text-slate-500">{item.label}</p>
@@ -670,22 +670,22 @@ const CallsPage = () => {
                   </div>
                   {selectedCall.recording_url && (
                     <div className="bg-teal-50 rounded-lg p-4 border border-teal-100">
-                      <p className="text-sm font-medium text-teal-900 mb-2 flex items-center gap-2"><Mic className="w-4 h-4" /> Recording</p>
+                      <p className="text-sm font-medium text-teal-900 mb-2 flex items-center gap-2"><Mic className="w-4 h-4" /> {t('calls.recording')}</p>
                       <audio controls className="w-full" data-testid="call-recording-player"><source src={`${selectedCall.recording_url}.mp3`} type="audio/mpeg" /></audio>
                     </div>
                   )}
                   {/* Transcription */}
                   {selectedCall.transcription && (
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 space-y-2" data-testid="call-transcription">
-                      <p className="text-sm font-medium text-blue-900 flex items-center gap-2"><Mic className="w-4 h-4" /> Transcription</p>
+                      <p className="text-sm font-medium text-blue-900 flex items-center gap-2"><Mic className="w-4 h-4" /> {t('calls.transcription')}</p>
                       <p className="text-sm text-slate-700">{selectedCall.transcription.transcript_summary}</p>
                       {selectedCall.transcription.key_points?.length > 0 && (
-                        <div><p className="text-xs font-medium text-blue-700 mb-1">Key Points</p>
+                        <div><p className="text-xs font-medium text-blue-700 mb-1">{t('calls.keyPoints')}</p>
                           <ul className="space-y-1">{selectedCall.transcription.key_points.map((p, i) => <li key={i} className="text-xs text-slate-600">- {p}</li>)}</ul>
                         </div>
                       )}
                       {selectedCall.transcription.action_items?.length > 0 && (
-                        <div><p className="text-xs font-medium text-emerald-700 mb-1">Follow-up Tasks (auto-created)</p>
+                        <div><p className="text-xs font-medium text-emerald-700 mb-1">{t('calls.followUpTasksAutoCreated')}</p>
                           <ul className="space-y-1">{selectedCall.transcription.action_items.map((a, i) => <li key={i} className="text-xs text-slate-600">- {a.title} ({a.priority})</li>)}</ul>
                         </div>
                       )}
@@ -693,21 +693,21 @@ const CallsPage = () => {
                   )}
                   {selectedCall.ai_analysis ? (
                     <div className="bg-amber-50 rounded-lg p-4 border border-amber-100 space-y-3" data-testid="call-analysis">
-                      <p className="text-sm font-medium text-amber-900 flex items-center gap-2"><Sparkles className="w-4 h-4" /> AI Analysis <span className="ml-auto text-lg font-bold">{selectedCall.ai_analysis.score}/10</span></p>
+                      <p className="text-sm font-medium text-amber-900 flex items-center gap-2"><Sparkles className="w-4 h-4" /> {t('calls.aiAnalysis')} <span className="ml-auto text-lg font-bold">{selectedCall.ai_analysis.score}/10</span></p>
                       <p className="text-sm text-slate-700">{selectedCall.ai_analysis.summary}</p>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <p className="text-xs font-medium text-emerald-700 mb-1">Strengths</p>
+                          <p className="text-xs font-medium text-emerald-700 mb-1">{t('calls.strengths')}</p>
                           <ul className="space-y-1">{selectedCall.ai_analysis.strengths?.map((s, i) => <li key={i} className="text-xs text-slate-600 flex items-start gap-1"><TrendingUp className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" /> {s}</li>)}</ul>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-orange-700 mb-1">Improvements</p>
+                          <p className="text-xs font-medium text-orange-700 mb-1">{t('calls.improvements')}</p>
                           <ul className="space-y-1">{selectedCall.ai_analysis.improvements?.map((s, i) => <li key={i} className="text-xs text-slate-600 flex items-start gap-1"><ArrowUpRight className="w-3 h-3 text-orange-500 mt-0.5 shrink-0" /> {s}</li>)}</ul>
                         </div>
                       </div>
                       {selectedCall.ai_analysis.next_steps && (
                         <div>
-                          <p className="text-xs font-medium text-blue-700 mb-1">Next Steps</p>
+                          <p className="text-xs font-medium text-blue-700 mb-1">{t('calls.nextSteps')}</p>
                           <ul className="space-y-1">{selectedCall.ai_analysis.next_steps?.map((s, i) => <li key={i} className="text-xs text-slate-600">- {s}</li>)}</ul>
                         </div>
                       )}
@@ -715,18 +715,18 @@ const CallsPage = () => {
                   ) : selectedCall.recording_url ? (
                     <div className="space-y-2">
                       <Button onClick={() => analyzeCall(selectedCall.call_id)} disabled={analyzing} className="w-full bg-amber-500 hover:bg-amber-600 text-white" data-testid="analyze-call-btn">
-                        {analyzing ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Analyzing...</span> :
-                          <span className="flex items-center gap-2"><Sparkles className="w-4 h-4" /> Analyze with AI</span>}
+                        {analyzing ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {t('calls.analyzing')}</span> :
+                          <span className="flex items-center gap-2"><Sparkles className="w-4 h-4" /> {t('calls.analyzeAi')}</span>}
                       </Button>
                       <Button onClick={async () => {
                         try {
                           const res = await axios.post(`${API}/calls/${selectedCall.call_id}/transcribe`, {}, { headers });
-                          toast.success(`Transcribed! ${res.data.tasks_created} follow-up tasks created`);
+                          toast.success(t('calls.toastTranscribed').replace('{count}', res.data.tasks_created));
                           setSelectedCall(prev => ({ ...prev, transcription: res.data.transcription }));
                           fetchCalls();
-                        } catch (e) { toast.error(e.response?.data?.detail || 'Transcription failed'); }
+                        } catch (e) { toast.error(e.response?.data?.detail || t('calls.toastTranscriptionFailed')); }
                       }} className="w-full bg-blue-500 hover:bg-blue-600 text-white" data-testid="transcribe-call-btn">
-                        <span className="flex items-center gap-2"><Mic className="w-4 h-4" /> Transcribe + Create Follow-ups</span>
+                        <span className="flex items-center gap-2"><Mic className="w-4 h-4" /> {t('calls.transcribe')}</span>
                       </Button>
                     </div>
                   ) : null}

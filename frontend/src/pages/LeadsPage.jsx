@@ -125,7 +125,7 @@ const LeadsPage = () => {
       });
       setLeads(response.data);
     } catch (error) {
-      toast.error('Failed to fetch leads');
+      toast.error(t('leads.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,7 @@ const LeadsPage = () => {
     e.preventDefault();
     try {
       await axios.post(`${API}/leads`, newLead, { headers, withCredentials: true });
-      toast.success('Lead added successfully');
+      toast.success(t('leads.addSuccess'));
       setIsAddDialogOpen(false);
       setNewLead({
         first_name: '',
@@ -149,7 +149,7 @@ const LeadsPage = () => {
       });
       fetchLeads();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to add lead');
+      toast.error(error.response?.data?.detail || t('leads.addFailed'));
     }
   };
 
@@ -165,11 +165,11 @@ const LeadsPage = () => {
         headers: { ...headers, 'Content-Type': 'multipart/form-data' },
         withCredentials: true
       });
-      toast.success(`Imported ${response.data.count} leads`);
+      toast.success(t('leads.importSuccess').replace('{count}', response.data.count));
       setIsImportDialogOpen(false);
       fetchLeads();
     } catch (error) {
-      toast.error('Failed to import CSV');
+      toast.error(t('leads.importFailed'));
     }
   };
 
@@ -177,13 +177,13 @@ const LeadsPage = () => {
     setScoring(leadId);
     try {
       const response = await axios.post(`${API}/ai/score-lead/${leadId}`, {}, axiosConfig);
-      toast.success(`Lead scored: ${response.data.ai_score}/100`);
+      toast.success(t('leads.scoreSuccess').replace('{score}', response.data.ai_score));
       fetchLeads();
       if (selectedLead?.lead_id === leadId) {
         setSelectedLead(prev => ({ ...prev, ai_score: response.data.ai_score }));
       }
     } catch (error) {
-      toast.error('Failed to score lead');
+      toast.error(t('leads.scoreFailed'));
     } finally {
       setScoring(null);
     }
@@ -192,18 +192,18 @@ const LeadsPage = () => {
   const handleDeleteLead = async (leadId) => {
     try {
       await axios.delete(`${API}/leads/${leadId}`, axiosConfig);
-      toast.success('Lead deleted');
+      toast.success(t('leads.deleteSuccess'));
       setSelectedLead(null);
       fetchLeads();
     } catch (error) {
-      toast.error('Failed to delete lead');
+      toast.error(t('leads.deleteFailed'));
     }
   };
 
   const handleStatusChange = async (leadId, status) => {
     try {
       await axios.put(`${API}/leads/${leadId}`, { status }, axiosConfig);
-      toast.success('Lead status updated');
+      toast.success(t('leads.statusUpdated'));
       fetchLeads();
       // If qualified, suggest conversion
       if (status === 'qualified') {
@@ -214,7 +214,7 @@ const LeadsPage = () => {
         }
       }
     } catch (error) {
-      toast.error('Failed to update status');
+      toast.error(t('leads.statusUpdateFailed'));
     }
   };
 
@@ -227,14 +227,14 @@ const LeadsPage = () => {
         null,
         { ...axiosConfig, params: { deal_id: convertDealId !== 'none' ? convertDealId : undefined } }
       );
-      toast.success(`${convertLead.first_name} converted to Contact`);
+      toast.success(t('leads.convertSuccess').replace('{name}', convertLead.first_name));
       setShowConvertDialog(false);
       setConvertLead(null);
       setConvertDealId('none');
       fetchLeads();
       navigate(`/contacts?detail=${res.data.contact_id}`);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Conversion failed');
+      toast.error(err.response?.data?.detail || t('leads.convertFailed'));
     } finally {
       setConverting(false);
     }
@@ -252,13 +252,13 @@ const LeadsPage = () => {
     try {
       const { lead_id, organization_id, created_by, created_at, _id, ...updates } = editData;
       const res = await axios.put(`${API}/leads/${selectedLead.lead_id}`, updates, axiosConfig);
-      toast.success('Lead updated');
+      toast.success(t('leads.updateSuccess'));
       setSelectedLead(res.data);
       setEditData(res.data);
       setEditMode(false);
       fetchLeads();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to update');
+      toast.error(err.response?.data?.detail || t('leads.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -268,12 +268,12 @@ const LeadsPage = () => {
     setEnriching(true);
     try {
       const res = await axios.post(`${API}/ai/enrich-lead/${leadId}`, {}, axiosConfig);
-      toast.success('Lead enriched with AI data');
+      toast.success(t('leads.enrichSuccess'));
       setSelectedLead(res.data.lead);
       setEditData(res.data.lead);
       fetchLeads();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Enrichment failed');
+      toast.error(err.response?.data?.detail || t('leads.enrichFailed'));
     } finally {
       setEnriching(false);
     }
@@ -285,21 +285,21 @@ const LeadsPage = () => {
     if (!selectedIds.length) return;
     try {
       await axios.post(`${API}/bulk/delete`, { entity_type: 'lead', entity_ids: selectedIds }, axiosConfig);
-      toast.success(`Deleted ${selectedIds.length} leads`);
+      toast.success(t('leads.bulkDeleteSuccess').replace('{count}', selectedIds.length));
       setSelectedIds([]);
       fetchLeads();
-    } catch { toast.error('Failed to delete'); }
+    } catch { toast.error(t('leads.bulkDeleteFailed')); }
   };
 
   const handleBulkEnrich = async () => {
     if (!selectedIds.length) return;
-    toast.info(`Enriching ${selectedIds.length} leads...`);
+    toast.info(t('leads.bulkEnrichInfo').replace('{count}', selectedIds.length));
     try {
       const res = await axios.post(`${API}/bulk/enrich`, { entity_type: 'lead', entity_ids: selectedIds }, axiosConfig);
-      toast.success(`Enriched ${res.data.enriched} leads`);
+      toast.success(t('leads.bulkEnrichSuccess').replace('{count}', res.data.enriched));
       setSelectedIds([]);
       fetchLeads();
-    } catch { toast.error('Enrichment failed'); }
+    } catch { toast.error(t('leads.enrichFailed')); }
   };
 
   const filteredLeads = leads.filter(lead => {
@@ -313,11 +313,11 @@ const LeadsPage = () => {
   });
 
   const statusOptions = [
-    { value: 'new', label: 'New', color: 'bg-slate-100 text-slate-700' },
-    { value: 'contacted', label: 'Contacted', color: 'bg-teal-100 text-teal-700' },
-    { value: 'qualified', label: 'Qualified', color: 'bg-emerald-100 text-emerald-700' },
-    { value: 'unqualified', label: 'Unqualified', color: 'bg-rose-100 text-rose-700' },
-    { value: 'converted', label: 'Converted', color: 'bg-blue-100 text-blue-700' }
+    { value: 'new', label: t('leads.statusNew'), color: 'bg-slate-100 text-slate-700' },
+    { value: 'contacted', label: t('leads.statusContacted'), color: 'bg-teal-100 text-teal-700' },
+    { value: 'qualified', label: t('leads.statusQualified'), color: 'bg-emerald-100 text-emerald-700' },
+    { value: 'unqualified', label: t('leads.statusUnqualified'), color: 'bg-rose-100 text-rose-700' },
+    { value: 'converted', label: t('leads.statusConverted'), color: 'bg-blue-100 text-blue-700' }
   ];
 
   return (
@@ -326,14 +326,14 @@ const LeadsPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900" data-testid="leads-title">Leads</h1>
-            <p className="text-slate-600 mt-1">Manage and track your sales leads</p>
+            <h1 className="text-2xl font-bold text-slate-900" data-testid="leads-title">{t('leads.title')}</h1>
+            <p className="text-slate-600 mt-1">{t('leads.subtitleAlt')}</p>
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
             {/* AI Features */}
             <SmartSearch onSelectResult={(type, item) => {
               if (type === 'lead') {
-                toast.info(`Selected lead: ${item.first_name} ${item.last_name}`);
+                toast.info(t('leads.selectedLeadInfo').replace('{name}', `${item.first_name} ${item.last_name}`));
               }
             }} />
             <AIEmailComposer />
@@ -342,16 +342,16 @@ const LeadsPage = () => {
               <DialogTrigger asChild>
                 <Button variant="outline" data-testid="import-csv-btn">
                   <Upload className="w-4 h-4 mr-2" />
-                  Import CSV
+                  {t('leads.importCsv')}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Import Leads from CSV</DialogTitle>
+                  <DialogTitle>{t('leads.importDialogTitle')}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <p className="text-sm text-slate-600">
-                    Upload a CSV file with columns: first_name, last_name, email, phone, company, job_title, linkedin_url
+                    {t('leads.importDialogDesc')}
                   </p>
                   <Input
                     type="file"
@@ -367,17 +367,17 @@ const LeadsPage = () => {
               <DialogTrigger asChild>
                 <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="add-lead-btn">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Lead
+                  {t('leads.addLead')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add New Lead</DialogTitle>
+                  <DialogTitle>{t('leads.addDialogTitle')}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleAddLead} className="space-y-4 pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="first_name">First Name *</Label>
+                      <Label htmlFor="first_name">{t('leads.firstNameRequired')}</Label>
                       <Input
                         id="first_name"
                         value={newLead.first_name}
@@ -387,7 +387,7 @@ const LeadsPage = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="last_name">Last Name *</Label>
+                      <Label htmlFor="last_name">{t('leads.lastNameRequired')}</Label>
                       <Input
                         id="last_name"
                         value={newLead.last_name}
@@ -398,7 +398,7 @@ const LeadsPage = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lead_email">Email</Label>
+                    <Label htmlFor="lead_email">{t('leads.email')}</Label>
                     <Input
                       id="lead_email"
                       type="email"
@@ -408,7 +408,7 @@ const LeadsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lead_phone">Phone</Label>
+                    <Label htmlFor="lead_phone">{t('leads.phone')}</Label>
                     <Input
                       id="lead_phone"
                       value={newLead.phone}
@@ -417,7 +417,7 @@ const LeadsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lead_company">Company</Label>
+                    <Label htmlFor="lead_company">{t('leads.company')}</Label>
                     <Input
                       id="lead_company"
                       value={newLead.company}
@@ -426,7 +426,7 @@ const LeadsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lead_job_title">Job Title</Label>
+                    <Label htmlFor="lead_job_title">{t('leads.jobTitle')}</Label>
                     <Input
                       id="lead_job_title"
                       value={newLead.job_title}
@@ -435,18 +435,18 @@ const LeadsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lead_linkedin">LinkedIn URL</Label>
+                    <Label htmlFor="lead_linkedin">{t('leads.linkedinUrl')}</Label>
                     <Input
                       id="lead_linkedin"
                       value={newLead.linkedin_url}
                       onChange={(e) => setNewLead({ ...newLead, linkedin_url: e.target.value })}
-                      placeholder="https://linkedin.com/in/..."
+                      placeholder={t('leads.linkedinPlaceholder')}
                       data-testid="lead-linkedin"
                     />
                   </div>
                   <div className="pt-4">
                     <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-lead-btn">
-                      Add Lead
+                      {t('leads.addLead')}
                     </Button>
                   </div>
                 </form>
@@ -462,7 +462,7 @@ const LeadsPage = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder="Search leads..."
+                  placeholder={t('leads.searchLeads')}
                   className="pl-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -472,10 +472,10 @@ const LeadsPage = () => {
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[180px]" data-testid="status-filter">
                   <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder={t('leads.filterByStatus')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="all">{t('leads.allStatus')}</SelectItem>
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -491,21 +491,21 @@ const LeadsPage = () => {
         <div className="flex items-center justify-between">
           {selectedIds.length > 0 ? (
             <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3 flex-1">
-              <span className="text-sm font-medium text-teal-800">{selectedIds.length} selected</span>
-              <Button size="sm" variant="outline" onClick={handleBulkEnrich} data-testid="bulk-enrich-btn"><Wand2 className="w-3.5 h-3.5 mr-1" /> Enrich</Button>
+              <span className="text-sm font-medium text-teal-800">{t('leads.selectedCount').replace('{count}', selectedIds.length)}</span>
+              <Button size="sm" variant="outline" onClick={handleBulkEnrich} data-testid="bulk-enrich-btn"><Wand2 className="w-3.5 h-3.5 mr-1" /> {t('leads.enrich')}</Button>
               <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={handleBulkDelete} data-testid="bulk-delete-btn"><X className="w-3.5 h-3.5 mr-1" />{ t('common.delete') }</Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>{t('common.clear')}</Button>
             </div>
           ) : <div />}
           <Button size="sm" variant="ghost" onClick={() => setShowColSettings(!showColSettings)} data-testid="column-settings-btn">
-            <Filter className="w-3.5 h-3.5 mr-1" /> Columns
+            <Filter className="w-3.5 h-3.5 mr-1" /> {t('leads.columns')}
           </Button>
         </div>
 
         {showColSettings && (
           <Card className="p-3">
             <div className="flex flex-wrap gap-4">
-              {[{key:'company',label:'Company'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'job_title',label:'Job Title'},{key:'source',label:'Source'},{key:'ai_score',label:'AI Score'}].map(col => (
+              {[{key:'company',label:t('leads.colCompany')},{key:'email',label:t('leads.colEmail')},{key:'phone',label:t('leads.colPhone')},{key:'job_title',label:t('leads.colJobTitle')},{key:'source',label:t('leads.colSource')},{key:'ai_score',label:t('leads.colAiScore')}].map(col => (
                 <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={visibleCols[col.key]} onChange={() => setVisibleCols(prev => ({...prev, [col.key]: !prev[col.key]}))} className="accent-[#0EA5A0]" />
                   {col.label}
@@ -521,7 +521,7 @@ const LeadsPage = () => {
             {!loading && filteredLeads.length > 0 && (
               <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-3 bg-slate-50">
                 <input type="checkbox" checked={selectedIds.length === filteredLeads.length && filteredLeads.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredLeads.length ? [] : filteredLeads.map(l => l.lead_id))} className="w-4 h-4 accent-[#0EA5A0]" data-testid="select-all-leads" />
-                <span className="text-xs text-slate-500">Select all {filteredLeads.length} leads{searchQuery || statusFilter !== 'all' ? ' (filtered)' : ''}</span>
+                <span className="text-xs text-slate-500">{(searchQuery || statusFilter !== 'all' ? t('leads.selectAllLeadsFiltered') : t('leads.selectAllLeads')).replace('{count}', filteredLeads.length)}</span>
               </div>
             )}
             {loading ? (
@@ -533,27 +533,26 @@ const LeadsPage = () => {
                 <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                 {leads.length === 0 ? (
                   <>
-                    <p className="font-medium text-slate-700">No leads yet</p>
+                    <p className="font-medium text-slate-700">{t('leads.noLeads')}</p>
                     <p className="text-sm mt-1 max-w-md mx-auto">
-                      Leads are prospects you haven't qualified yet. Import a CSV (LinkedIn Connections works)
-                      or add one manually to get started.
+                      {t('leads.noLeadsBody')}
                     </p>
                     <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
                       <Button onClick={() => setIsAddDialogOpen(true)} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" data-testid="empty-add-lead">
-                        <Plus className="w-4 h-4 mr-2" /> Add your first lead
+                        <Plus className="w-4 h-4 mr-2" /> {t('leads.addFirstLead')}
                       </Button>
                       <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} data-testid="empty-import-csv">
-                        <Upload className="w-4 h-4 mr-2" /> Import from CSV
+                        <Upload className="w-4 h-4 mr-2" /> {t('leads.importFromCsv')}
                       </Button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <p className="font-medium text-slate-700">No leads match your filters</p>
-                    <p className="text-sm mt-1">Try clearing your search or selecting a different status.</p>
+                    <p className="font-medium text-slate-700">{t('leads.noLeadsMatch')}</p>
+                    <p className="text-sm mt-1">{t('leads.noLeadsMatchDesc')}</p>
                     <div className="mt-4">
                       <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}>
-                        Clear filters
+                        {t('leads.clearFilters')}
                       </Button>
                     </div>
                   </>
@@ -622,7 +621,7 @@ const LeadsPage = () => {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => navigate(`/chat?type=lead&id=${lead.lead_id}`)}
-                            title="Discuss this lead"
+                            title={t('leads.discussLead')}
                             data-testid={`discuss-lead-${lead.lead_id}`}
                           >
                             <MessageSquare className="w-4 h-4" />
@@ -654,45 +653,45 @@ const LeadsPage = () => {
                           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenuItem onClick={() => { openLeadDetail(lead); setEditMode(true); }}>
                               <Edit2 className="w-4 h-4 mr-2" />
-                              Edit Lead
+                              {t('leads.editLead')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { openLeadDetail(lead); handleEnrichLead(lead.lead_id); }}>
                               <Wand2 className="w-4 h-4 mr-2" />
-                              AI Enrich
+                              {t('leads.aiEnrich')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleScoreLead(lead.lead_id)}>
                               <Zap className="w-4 h-4 mr-2" />
-                              AI Score
+                              {t('leads.aiScoreAction')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/chat?type=lead&id=${lead.lead_id}`)}>
                               <MessageSquare className="w-4 h-4 mr-2" />
-                              Discuss Lead
+                              {t('leads.discussLeadMenu')}
                             </DropdownMenuItem>
                             {lead.phone && (
                               <DropdownMenuItem onClick={() => navigate(`/calls?lead=${lead.lead_id}`)}>
                                 <Phone className="w-4 h-4 mr-2" />
-                                Call Lead
+                                {t('leads.callLead')}
                               </DropdownMenuItem>
                             )}
                             {lead.linkedin_url && (
                               <DropdownMenuItem asChild>
                                 <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">
                                   <Linkedin className="w-4 h-4 mr-2" />
-                                  View LinkedIn
+                                  {t('leads.viewLinkedin')}
                                 </a>
                               </DropdownMenuItem>
                             )}
                             {lead.status === 'qualified' && lead.status !== 'converted' && (
                               <DropdownMenuItem onClick={() => { setConvertLead(lead); setShowConvertDialog(true); }}>
                                 <Users className="w-4 h-4 mr-2" />
-                                Convert to Contact
+                                {t('leads.convertToContactMenu')}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
                               className="text-rose-600"
                               onClick={() => handleDeleteLead(lead.lead_id)}
                             >
-                              Delete
+                              {t('common.delete')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -717,7 +716,7 @@ const LeadsPage = () => {
                     <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
                       <span className="text-[#0EA5A0] font-medium text-sm">{selectedLead.first_name?.[0]}{selectedLead.last_name?.[0]}</span>
                     </div>
-                    {editMode ? 'Edit Lead' : `${selectedLead.first_name} ${selectedLead.last_name}`}
+                    {editMode ? t('leads.editLead') : `${selectedLead.first_name} ${selectedLead.last_name}`}
                   </span>
                   <div className="flex items-center gap-1.5">
                     {selectedLead.ai_score && (
@@ -726,15 +725,15 @@ const LeadsPage = () => {
                     {!editMode && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => setEditMode(true)} data-testid="edit-lead-btn">
-                          <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                          <Edit2 className="w-3.5 h-3.5 mr-1" /> {t('common.edit')}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEnrichLead(selectedLead.lead_id)} disabled={enriching} data-testid="enrich-lead-btn">
                           {enriching ? <div className="w-3.5 h-3.5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />}
-                          Enrich
+                          {t('leads.enrich')}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleScoreLead(selectedLead.lead_id)} disabled={scoring === selectedLead.lead_id} data-testid="score-lead-btn">
                           {scoring === selectedLead.lead_id ? <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Zap className="w-3.5 h-3.5 mr-1" />}
-                          Score
+                          {t('leads.score')}
                         </Button>
                       </>
                     )}
@@ -745,18 +744,18 @@ const LeadsPage = () => {
               {editMode ? (
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   {[
-                    { key: 'first_name', label: 'First Name', icon: null },
-                    { key: 'last_name', label: 'Last Name', icon: null },
-                    { key: 'email', label: 'Email', icon: Mail },
-                    { key: 'phone', label: 'Phone', icon: Phone },
-                    { key: 'company', label: 'Company', icon: Building },
-                    { key: 'job_title', label: 'Job Title', icon: Briefcase },
-                    { key: 'linkedin_url', label: 'LinkedIn URL', icon: Linkedin },
-                    { key: 'website', label: 'Website', icon: Globe },
-                    { key: 'location', label: 'Location', icon: MapPin },
-                    { key: 'industry', label: 'Industry', icon: Tag },
-                    { key: 'company_size', label: 'Company Size', icon: Building },
-                    { key: 'source', label: 'Source', icon: null },
+                    { key: 'first_name', label: t('leads.editLabelFirstName'), icon: null },
+                    { key: 'last_name', label: t('leads.editLabelLastName'), icon: null },
+                    { key: 'email', label: t('leads.editLabelEmail'), icon: Mail },
+                    { key: 'phone', label: t('leads.editLabelPhone'), icon: Phone },
+                    { key: 'company', label: t('leads.editLabelCompany'), icon: Building },
+                    { key: 'job_title', label: t('leads.editLabelJobTitle'), icon: Briefcase },
+                    { key: 'linkedin_url', label: t('leads.editLabelLinkedinUrl'), icon: Linkedin },
+                    { key: 'website', label: t('leads.editLabelWebsite'), icon: Globe },
+                    { key: 'location', label: t('leads.editLabelLocation'), icon: MapPin },
+                    { key: 'industry', label: t('leads.editLabelIndustry'), icon: Tag },
+                    { key: 'company_size', label: t('leads.editLabelCompanySize'), icon: Building },
+                    { key: 'source', label: t('leads.editLabelSource'), icon: null },
                   ].map(f => (
                     <div key={f.key}>
                       <Label className="text-xs text-slate-500 mb-1 block">{f.label}</Label>
@@ -768,7 +767,7 @@ const LeadsPage = () => {
                     </div>
                   ))}
                   <div className="col-span-2">
-                    <Label className="text-xs text-slate-500 mb-1 block">Notes</Label>
+                    <Label className="text-xs text-slate-500 mb-1 block">{t('leads.notes')}</Label>
                     <Textarea
                       value={editData.notes || ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
@@ -779,9 +778,9 @@ const LeadsPage = () => {
                   <div className="col-span-2 flex gap-2 pt-2">
                     <Button onClick={handleSaveLead} disabled={saving} className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="save-lead-btn">
                       {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                      Save Changes
+                      {t('leads.saveChanges')}
                     </Button>
-                    <Button variant="outline" onClick={() => { setEditMode(false); setEditData({ ...selectedLead }); }}>Cancel</Button>
+                    <Button variant="outline" onClick={() => { setEditMode(false); setEditData({ ...selectedLead }); }}>{t('common.cancel')}</Button>
                   </div>
                 </div>
               ) : (
@@ -789,18 +788,18 @@ const LeadsPage = () => {
                   {/* Basic Info */}
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: 'Email', value: selectedLead.email, icon: <Mail className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Phone', value: selectedLead.phone, icon: <Phone className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Company', value: selectedLead.company, icon: <Building className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Job Title', value: selectedLead.job_title, icon: <Briefcase className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Website', value: selectedLead.website, icon: <Globe className="w-3.5 h-3.5 text-slate-400" />, link: true },
-                      { label: 'LinkedIn', value: selectedLead.linkedin_url, icon: <Linkedin className="w-3.5 h-3.5 text-slate-400" />, link: true },
-                      { label: 'Location', value: selectedLead.location, icon: <MapPin className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Industry', value: selectedLead.industry, icon: <Tag className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Company Size', value: selectedLead.company_size, icon: <Building className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Source', value: selectedLead.source, icon: <Filter className="w-3.5 h-3.5 text-slate-400" /> },
-                      { label: 'Status', value: selectedLead.status },
-                      { label: 'AI Score', value: selectedLead.ai_score ? `${selectedLead.ai_score}/100` : 'Not scored' },
+                      { label: t('leads.fieldEmail'), value: selectedLead.email, icon: <Mail className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldPhone'), value: selectedLead.phone, icon: <Phone className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldCompany'), value: selectedLead.company, icon: <Building className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldJobTitle'), value: selectedLead.job_title, icon: <Briefcase className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldWebsite'), value: selectedLead.website, icon: <Globe className="w-3.5 h-3.5 text-slate-400" />, link: true },
+                      { label: t('leads.fieldLinkedin'), value: selectedLead.linkedin_url, icon: <Linkedin className="w-3.5 h-3.5 text-slate-400" />, link: true },
+                      { label: t('leads.fieldLocation'), value: selectedLead.location, icon: <MapPin className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldIndustry'), value: selectedLead.industry, icon: <Tag className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldCompanySize'), value: selectedLead.company_size, icon: <Building className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldSource'), value: selectedLead.source, icon: <Filter className="w-3.5 h-3.5 text-slate-400" /> },
+                      { label: t('leads.fieldStatus'), value: selectedLead.status },
+                      { label: t('leads.fieldAiScore'), value: selectedLead.ai_score ? `${selectedLead.ai_score}/100` : t('leads.notScored') },
                     ].filter(f => f.value).map(f => (
                       <div key={f.label} className="bg-slate-50 rounded-lg p-3">
                         <p className="text-xs text-slate-500 flex items-center gap-1">{f.icon}{f.label}</p>
@@ -816,7 +815,7 @@ const LeadsPage = () => {
                   {/* Company Description */}
                   {selectedLead.company_description && (
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 mb-1">Company Description</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('leads.companyDescription')}</p>
                       <p className="text-sm text-slate-700">{selectedLead.company_description}</p>
                     </div>
                   )}
@@ -824,7 +823,7 @@ const LeadsPage = () => {
                   {/* Notes */}
                   {selectedLead.notes && (
                     <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-500 mb-1">Notes</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('leads.notes')}</p>
                       <p className="text-sm text-slate-700">{selectedLead.notes}</p>
                     </div>
                   )}
@@ -832,23 +831,23 @@ const LeadsPage = () => {
                   {/* AI Enrichment Data */}
                   {selectedLead.enrichment && (
                     <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-2">
-                      <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> AI Enrichment</p>
+                      <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Wand2 className="w-4 h-4" /> {t('leads.aiEnrichment')}</p>
                       {selectedLead.enrichment.recommended_approach && (
-                        <p className="text-sm text-slate-700"><strong>Approach:</strong> {selectedLead.enrichment.recommended_approach}</p>
+                        <p className="text-sm text-slate-700"><strong>{t('leads.approach')}</strong> {selectedLead.enrichment.recommended_approach}</p>
                       )}
                       {selectedLead.enrichment.technologies?.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          <span className="text-xs text-slate-500 mr-1">Tech:</span>
-                          {selectedLead.enrichment.technologies.map((t, i) => (
-                            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+                          <span className="text-xs text-slate-500 mr-1">{t('leads.tech')}</span>
+                          {selectedLead.enrichment.technologies.map((tech, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">{tech}</Badge>
                           ))}
                         </div>
                       )}
                       {selectedLead.enrichment.interests?.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          <span className="text-xs text-slate-500 mr-1">Interests:</span>
-                          {selectedLead.enrichment.interests.map((t, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">{t}</Badge>
+                          <span className="text-xs text-slate-500 mr-1">{t('leads.interests')}</span>
+                          {selectedLead.enrichment.interests.map((interest, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{interest}</Badge>
                           ))}
                         </div>
                       )}
@@ -859,27 +858,27 @@ const LeadsPage = () => {
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                     {selectedLead.status !== 'converted' && (
                       <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setConvertLead(selectedLead); setShowConvertDialog(true); setSelectedLead(null); }} data-testid="convert-from-detail">
-                        <UserPlus className="w-3.5 h-3.5 mr-1" /> Convert to Contact
+                        <UserPlus className="w-3.5 h-3.5 mr-1" /> {t('leads.convertToContact')}
                       </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => handleEnrichLead(selectedLead.lead_id)} disabled={enriching}>
-                      {enriching ? <div className="w-3.5 h-3.5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />} Enrich
+                      {enriching ? <div className="w-3.5 h-3.5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />} {t('leads.enrich')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setEmailLeadId(selectedLead.lead_id); setEmailLeadName(`${selectedLead.first_name} ${selectedLead.last_name}`); setSelectedLead(null); }}>
-                      <Mail className="w-3.5 h-3.5 mr-1" /> Draft Email
+                      <Mail className="w-3.5 h-3.5 mr-1" /> {t('leads.draftEmail')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedLead(null); navigate(`/deals?create=true&lead_id=${selectedLead.lead_id}`); }}>
-                      <Target className="w-3.5 h-3.5 mr-1" /> Add Deal
+                      <Target className="w-3.5 h-3.5 mr-1" /> {t('leads.addDeal')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedLead(null); navigate(`/tasks?create=true&lead_id=${selectedLead.lead_id}`); }}>
-                      <CheckSquare className="w-3.5 h-3.5 mr-1" /> Add Task
+                      <CheckSquare className="w-3.5 h-3.5 mr-1" /> {t('leads.addTask')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => navigate(`/chat?type=lead&id=${selectedLead.lead_id}`)}>
-                      <MessageSquare className="w-3.5 h-3.5 mr-1" /> Discuss
+                      <MessageSquare className="w-3.5 h-3.5 mr-1" /> {t('leads.discuss')}
                     </Button>
                     {selectedLead.phone && (
                       <Button size="sm" variant="outline" onClick={() => navigate(`/calls?lead=${selectedLead.lead_id}`)}>
-                        <Phone className="w-3.5 h-3.5 mr-1" /> Call
+                        <Phone className="w-3.5 h-3.5 mr-1" /> {t('leads.call')}
                       </Button>
                     )}
                   </div>
@@ -894,7 +893,7 @@ const LeadsPage = () => {
       <Dialog open={showConvertDialog} onOpenChange={() => { setShowConvertDialog(false); setConvertLead(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[#0EA5A0]" /> Convert Lead to Contact</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[#0EA5A0]" /> {t('leads.convertDialogTitle')}</DialogTitle>
           </DialogHeader>
           {convertLead && (
             <div className="space-y-4 pt-2">
@@ -902,20 +901,20 @@ const LeadsPage = () => {
                 <p className="font-medium text-slate-900">{convertLead.first_name} {convertLead.last_name}</p>
                 <p className="text-sm text-slate-500">{convertLead.company} {convertLead.job_title && `· ${convertLead.job_title}`}</p>
               </div>
-              <p className="text-sm text-slate-600">This will create a Contact with all lead data and mark the lead as converted. You can optionally link a deal.</p>
+              <p className="text-sm text-slate-600">{t('leads.convertDialogDesc')}</p>
               <div>
-                <Label className="text-sm font-medium text-slate-700 mb-1.5 block">Link to Deal (optional)</Label>
+                <Label className="text-sm font-medium text-slate-700 mb-1.5 block">{t('leads.linkToDeal')}</Label>
                 <Select value={convertDealId} onValueChange={setConvertDealId}>
-                  <SelectTrigger data-testid="convert-deal-select"><SelectValue placeholder="No deal linked" /></SelectTrigger>
+                  <SelectTrigger data-testid="convert-deal-select"><SelectValue placeholder={t('leads.noDealLinked')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No deal</SelectItem>
+                    <SelectItem value="none">{t('leads.noDeal')}</SelectItem>
                     {deals.map(d => <SelectItem key={d.deal_id} value={d.deal_id}>{d.name} — €{d.value}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <Button onClick={handleConvertToContact} disabled={converting} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="confirm-convert-btn">
                 {converting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                Convert to Contact
+                {t('leads.convertToContact')}
               </Button>
             </div>
           )}

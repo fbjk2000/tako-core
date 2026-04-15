@@ -66,28 +66,28 @@ const FilesPage = () => {
     if (description) params.set('description', description);
     try {
       const res = await axios.post(`${API}/files/upload?${params}`, formData, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true, timeout: 60000 });
-      toast.success('File uploaded');
-      if (res.data.ai_summary) toast.success(`AI: ${res.data.ai_summary.summary?.slice(0, 80)}...`);
+      toast.success(t('files.toastUploaded'));
+      if (res.data.ai_summary) toast.success(`${t('files.toastAiPrefix')}${res.data.ai_summary.summary?.slice(0, 80)}...`);
       fetchFiles();
       setDescription('');
       setLinkedType('none');
       setLinkedId('none');
       setUploadOpen(false);
       if (fileRef.current) fileRef.current.value = '';
-    } catch (err) { console.error(err); toast.error(err.response?.data?.detail || 'Upload failed'); }
+    } catch (err) { console.error(err); toast.error(err.response?.data?.detail || t('files.toastUploadFailed')); }
     finally { setUploading(false); }
   };
 
   const handleDelete = async (fileId) => {
-    try { await axios.delete(`${API}/files/${fileId}`, getCfg()); toast.success('Deleted'); fetchFiles(); }
-    catch (err) { console.error(err); toast.error('Failed'); }
+    try { await axios.delete(`${API}/files/${fileId}`, getCfg()); toast.success(t('files.toastDeleted')); fetchFiles(); }
+    catch (err) { console.error(err); toast.error(t('files.toastFailed')); }
   };
 
   const handleCreateTasks = async (fileId) => {
     try {
       const res = await axios.post(`${API}/files/${fileId}/create-tasks`, {}, getCfg());
-      toast.success(`${res.data.tasks_created} tasks created`);
-    } catch (err) { console.error(err); toast.error(err.response?.data?.detail || 'Failed'); }
+      toast.success(t('files.toastTasksCreated').replace('{count}', res.data.tasks_created));
+    } catch (err) { console.error(err); toast.error(err.response?.data?.detail || t('files.toastFailed')); }
   };
 
   const formatSize = (bytes) => {
@@ -111,12 +111,12 @@ const FilesPage = () => {
       <div className="p-6 space-y-6" data-testid="files-page">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Files</h1>
-            <p className="text-slate-500 text-sm mt-1">Upload, manage, and link files to your CRM records</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t('files.title')}</h1>
+            <p className="text-slate-500 text-sm mt-1">{t('files.subtitle')}</p>
           </div>
           {files.length > 0 && (
             <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setUploadOpen(true)} data-testid="upload-file-btn">
-              <Upload className="w-4 h-4 mr-2" /> Upload File
+              <Upload className="w-4 h-4 mr-2" /> {t('files.uploadFile')}
             </Button>
           )}
         </div>
@@ -127,32 +127,32 @@ const FilesPage = () => {
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Upload a file</DialogTitle>
+              <DialogTitle>{t('files.uploadDialogTitle')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Link to type</Label>
+                  <Label className="text-xs">{t('files.linkToType')}</Label>
                   <Select value={linkedType} onValueChange={v => { setLinkedType(v); setLinkedId('none'); }}>
                     <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="lead">Lead</SelectItem>
-                      <SelectItem value="contact">Contact</SelectItem>
-                      <SelectItem value="company">Company</SelectItem>
-                      <SelectItem value="deal">Deal</SelectItem>
-                      <SelectItem value="project">Project</SelectItem>
-                      <SelectItem value="campaign">Campaign</SelectItem>
+                      <SelectItem value="none">{t('files.none')}</SelectItem>
+                      <SelectItem value="lead">{t('files.typeLead')}</SelectItem>
+                      <SelectItem value="contact">{t('files.typeContact')}</SelectItem>
+                      <SelectItem value="company">{t('files.typeCompany')}</SelectItem>
+                      <SelectItem value="deal">{t('files.typeDeal')}</SelectItem>
+                      <SelectItem value="project">{t('files.typeProject')}</SelectItem>
+                      <SelectItem value="campaign">{t('files.typeCampaign')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {linkedType !== 'none' && (
                   <div>
-                    <Label className="text-xs">Select record</Label>
+                    <Label className="text-xs">{t('files.selectRecord')}</Label>
                     <Select value={linkedId} onValueChange={setLinkedId}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="none">{t('files.none')}</SelectItem>
                         {entityOptions.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -160,15 +160,15 @@ const FilesPage = () => {
                 )}
               </div>
               <div>
-                <Label className="text-xs">Description</Label>
-                <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional — what's in this file?" />
+                <Label className="text-xs">{t('files.description')}</Label>
+                <Input value={description} onChange={e => setDescription(e.target.value)} placeholder={t('files.descriptionPlaceholder')} />
               </div>
               <Button
                 className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
               >
-                {uploading ? 'Uploading…' : <><Upload className="w-4 h-4 mr-2" /> Choose file and upload</>}
+                {uploading ? t('files.uploading') : <><Upload className="w-4 h-4 mr-2" /> {t('files.chooseAndUpload')}</>}
               </Button>
             </div>
           </DialogContent>
@@ -177,7 +177,7 @@ const FilesPage = () => {
         {files.length > 0 && (
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+            <Input placeholder={t('files.searchPlaceholder')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
         )}
 
@@ -190,27 +190,27 @@ const FilesPage = () => {
               <div className="p-10 text-center text-slate-500">
                 <Upload className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                 <p className="font-medium text-slate-700">
-                  {files.length === 0 ? 'No files yet' : 'No files match your search'}
+                  {files.length === 0 ? t('files.noFilesYet') : t('files.noFilesMatch')}
                 </p>
                 <p className="text-sm mt-1 max-w-md mx-auto">
                   {files.length === 0
-                    ? 'Upload PDFs, images or documents and link them to leads, deals, or projects. AI will summarise and suggest follow-up tasks.'
-                    : 'Try a different search term.'}
+                    ? t('files.noFilesDesc')
+                    : t('files.tryDifferentSearch')}
                 </p>
                 {files.length === 0 && (
                   <Button className="mt-4 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => setUploadOpen(true)} data-testid="empty-upload-btn">
-                    <Upload className="w-4 h-4 mr-2" /> Upload your first file
+                    <Upload className="w-4 h-4 mr-2" /> {t('files.uploadFirstFile')}
                   </Button>
                 )}
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-slate-50">
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">File</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Linked To</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Size</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">AI Summary</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Uploaded</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('files.colFile')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('files.colLinkedTo')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('files.colSize')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('files.colAiSummary')}</th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('files.colUploaded')}</th>
                   <th className="py-3 px-4 w-28"></th>
                 </tr></thead>
                 <tbody>
@@ -230,7 +230,7 @@ const FilesPage = () => {
                         <div className="flex gap-1">
                           <a href={`${API}/files/${f.file_id}/download`} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="h-7 w-7 p-0"><Download className="w-3.5 h-3.5" /></Button></a>
                           {f.ai_summary?.follow_ups?.length > 0 && (
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#0EA5A0]" onClick={() => handleCreateTasks(f.file_id)} title="Create follow-up tasks"><CheckSquare className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#0EA5A0]" onClick={() => handleCreateTasks(f.file_id)} title={t('files.createFollowUpTasks')}><CheckSquare className="w-3.5 h-3.5" /></Button>
                           )}
                           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" onClick={() => handleDelete(f.file_id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
@@ -253,20 +253,20 @@ const FilesPage = () => {
               </DialogHeader>
               <div className="space-y-3 pt-2">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Size</p><p className="text-sm font-medium">{formatSize(selectedFile.size)}</p></div>
-                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Type</p><p className="text-sm font-medium">{selectedFile.content_type || 'Unknown'}</p></div>
-                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Uploaded by</p><p className="text-sm font-medium">{selectedFile.uploaded_by_name}</p></div>
-                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Date</p><p className="text-sm font-medium">{new Date(selectedFile.created_at).toLocaleString()}</p></div>
+                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('files.colSize')}</p><p className="text-sm font-medium">{formatSize(selectedFile.size)}</p></div>
+                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('files.colType')}</p><p className="text-sm font-medium">{selectedFile.content_type || t('files.unknownType')}</p></div>
+                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('files.uploadedBy')}</p><p className="text-sm font-medium">{selectedFile.uploaded_by_name}</p></div>
+                  <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('files.colDate')}</p><p className="text-sm font-medium">{new Date(selectedFile.created_at).toLocaleString()}</p></div>
                 </div>
-                {selectedFile.linked_type && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Linked to</p><Badge variant="secondary">{selectedFile.linked_type}: {selectedFile.linked_id}</Badge></div>}
-                {selectedFile.description && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">Description</p><p className="text-sm text-slate-700">{selectedFile.description}</p></div>}
+                {selectedFile.linked_type && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('files.linkedTo')}</p><Badge variant="secondary">{selectedFile.linked_type}: {selectedFile.linked_id}</Badge></div>}
+                {selectedFile.description && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">{t('files.description')}</p><p className="text-sm text-slate-700">{selectedFile.description}</p></div>}
                 {selectedFile.ai_summary && (
                   <div className="bg-teal-50 rounded-lg p-4 border border-teal-100 space-y-2">
-                    <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Zap className="w-4 h-4" /> AI Summary</p>
+                    <p className="text-sm font-medium text-teal-900 flex items-center gap-1"><Zap className="w-4 h-4" /> {t('files.aiSummary')}</p>
                     <p className="text-sm text-slate-700">{selectedFile.ai_summary.summary}</p>
                     {selectedFile.ai_summary.follow_ups?.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-teal-700 mb-1">Suggested follow-ups</p>
+                        <p className="text-xs font-medium text-teal-700 mb-1">{t('files.suggestedFollowUps')}</p>
                         {selectedFile.ai_summary.follow_ups.map((fu, i) => (
                           <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-teal-100 last:border-0">
                             <span className="text-slate-700">{fu.title}</span>
@@ -274,15 +274,15 @@ const FilesPage = () => {
                           </div>
                         ))}
                         <Button size="sm" className="mt-2 bg-[#0EA5A0] hover:bg-[#0B8C88] text-white" onClick={() => { handleCreateTasks(selectedFile.file_id); setSelectedFile(null); }}>
-                          <CheckSquare className="w-3.5 h-3.5 mr-1" /> Create these tasks
+                          <CheckSquare className="w-3.5 h-3.5 mr-1" /> {t('files.createTheseTasks')}
                         </Button>
                       </div>
                     )}
                   </div>
                 )}
                 <div className="flex gap-2 pt-1">
-                  <a href={`${API}/files/${selectedFile.file_id}/download`} target="_blank" rel="noopener noreferrer"><Button variant="outline" size="sm"><Download className="w-3.5 h-3.5 mr-1" /> Download</Button></a>
-                  <Button variant="outline" size="sm" className="text-red-500" onClick={() => { handleDelete(selectedFile.file_id); setSelectedFile(null); }}><Trash2 className="w-3.5 h-3.5 mr-1" /> Delete</Button>
+                  <a href={`${API}/files/${selectedFile.file_id}/download`} target="_blank" rel="noopener noreferrer"><Button variant="outline" size="sm"><Download className="w-3.5 h-3.5 mr-1" /> {t('files.download')}</Button></a>
+                  <Button variant="outline" size="sm" className="text-red-500" onClick={() => { handleDelete(selectedFile.file_id); setSelectedFile(null); }}><Trash2 className="w-3.5 h-3.5 mr-1" /> {t('files.delete')}</Button>
                 </div>
               </div>
             </>

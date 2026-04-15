@@ -14,6 +14,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { useT } from '../useT';
 import {
   Send,
   Hash,
@@ -54,6 +55,7 @@ const CHANNEL_CONFIG = {
 };
 
 const ChatPage = () => {
+  const { t } = useT();
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -83,11 +85,11 @@ const ChatPage = () => {
   const archiveChannel = async (channelId) => {
     try {
       await axios.put(`${API}/chat/channels/${channelId}/archive`, {}, { headers: getH(), withCredentials: true });
-      toast.success('Channel archived');
+      toast.success(t('chat.toastChannelArchived'));
       setActiveChannel(null);
       fetchChannels();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to archive');
+      toast.error(err.response?.data?.detail || t('chat.toastArchiveFailed'));
     }
   };
 
@@ -108,7 +110,7 @@ const ChatPage = () => {
       });
     } catch (error) {
       console.error('Failed to load contextual channel:', error);
-      toast.error('Failed to load discussion');
+      toast.error(t('chat.toastLoadDiscussionFailed'));
     }
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -278,7 +280,7 @@ const ChatPage = () => {
       setReplyTo(null);
       setLastFetchTime(new Date().toISOString());
     } catch (error) {
-      toast.error('Failed to send message');
+      toast.error(t('chat.toastSendFailed'));
     } finally {
       setSending(false);
     }
@@ -295,9 +297,9 @@ const ChatPage = () => {
         m.message_id === messageId ? { ...m, content, is_edited: true } : m
       ));
       setEditingMessage(null);
-      toast.success('Message updated');
+      toast.success(t('chat.toastMessageUpdated'));
     } catch (error) {
-      toast.error('Failed to edit message');
+      toast.error(t('chat.toastEditFailed'));
     }
   };
 
@@ -308,9 +310,9 @@ const ChatPage = () => {
         withCredentials: true
       });
       setMessages(prev => prev.filter(m => m.message_id !== messageId));
-      toast.success('Message deleted');
+      toast.success(t('chat.toastMessageDeleted'));
     } catch (error) {
-      toast.error('Failed to delete message');
+      toast.error(t('chat.toastDeleteFailed'));
     }
   };
 
@@ -347,9 +349,9 @@ const ChatPage = () => {
       setActiveChannel(response.data);
       setShowNewChannelDialog(false);
       setNewChannel({ name: '', description: '' });
-      toast.success('Channel created');
+      toast.success(t('chat.toastChannelCreated'));
     } catch (error) {
-      toast.error('Failed to create channel');
+      toast.error(t('chat.toastCreateChannelFailed'));
     }
   };
 
@@ -389,8 +391,8 @@ const ChatPage = () => {
     const now = new Date();
     const diff = now - date;
     
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 60000) return t('chat.justNow');
+    if (diff < 3600000) return t('chat.minutesAgo').replace('{count}', Math.floor(diff / 60000));
     if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
@@ -418,7 +420,7 @@ const ChatPage = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-[#0EA5A0]" />
-                Team Chat
+                {t('chat.teamChat')}
               </CardTitle>
               <Dialog open={showNewChannelDialog} onOpenChange={setShowNewChannelDialog}>
                 <DialogTrigger asChild>
@@ -428,31 +430,31 @@ const ChatPage = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Create New Channel</DialogTitle>
-                    <DialogDescription>Add a new channel for your team to collaborate</DialogDescription>
+                    <DialogTitle>{t('chat.createNewChannel')}</DialogTitle>
+                    <DialogDescription>{t('chat.createChannelDesc')}</DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleCreateChannel} className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="channel-name">Channel Name</Label>
+                      <Label htmlFor="channel-name">{t('chat.channelNameLabel')}</Label>
                       <Input
                         id="channel-name"
-                        placeholder="e.g., sales-team"
+                        placeholder={t('chat.channelNamePlaceholder')}
                         value={newChannel.name}
                         onChange={(e) => setNewChannel({ ...newChannel, name: e.target.value })}
                         data-testid="channel-name-input"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="channel-desc">Description (optional)</Label>
+                      <Label htmlFor="channel-desc">{t('chat.channelDescLabel')}</Label>
                       <Input
                         id="channel-desc"
-                        placeholder="What's this channel about?"
+                        placeholder={t('chat.channelDescPlaceholder')}
                         value={newChannel.description}
                         onChange={(e) => setNewChannel({ ...newChannel, description: e.target.value })}
                       />
                     </div>
                     <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-channel-btn">
-                      Create Channel
+                      {t('chat.createChannelBtn')}
                     </Button>
                   </form>
                 </DialogContent>
@@ -466,7 +468,7 @@ const ChatPage = () => {
               <div>
                 <button onClick={() => toggleSection('channels')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 px-3 uppercase w-full hover:text-slate-700" data-testid="toggle-channels">
                   {collapsedSections.channels ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  Channels
+                  {t('chat.channels')}
                 </button>
                 {!collapsedSections.channels && (
                   <div className="space-y-1 mt-1">
@@ -489,7 +491,7 @@ const ChatPage = () => {
                 <div>
                   <button onClick={() => toggleSection('leads')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 px-3 uppercase w-full hover:text-slate-700" data-testid="toggle-leads">
                     {collapsedSections.leads ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    <UserCircle className="w-3 h-3" /> Lead Discussions
+                    <UserCircle className="w-3 h-3" /> {t('chat.leadDiscussions')}
                   </button>
                   {!collapsedSections.leads && (
                     <div className="space-y-1 mt-1">
@@ -509,7 +511,7 @@ const ChatPage = () => {
                 <div>
                   <button onClick={() => toggleSection('deals')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 px-3 uppercase w-full hover:text-slate-700" data-testid="toggle-deals">
                     {collapsedSections.deals ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    <Target className="w-3 h-3" /> Deal Discussions
+                    <Target className="w-3 h-3" /> {t('chat.dealDiscussions')}
                   </button>
                   {!collapsedSections.deals && (
                     <div className="space-y-1 mt-1">
@@ -529,7 +531,7 @@ const ChatPage = () => {
                 <div>
                   <button onClick={() => toggleSection('projects')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 px-3 uppercase w-full hover:text-slate-700" data-testid="toggle-projects">
                     {collapsedSections.projects ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    Project Channels
+                    {t('chat.projectChannels')}
                   </button>
                   {!collapsedSections.projects && (
                     <div className="space-y-1 mt-1">
@@ -553,7 +555,7 @@ const ChatPage = () => {
               className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 w-full"
             >
               <Users className="w-4 h-4" />
-              <span>Team Members ({members.length})</span>
+              <span>{t('chat.teamMembers').replace('{count}', members.length)}</span>
             </button>
             {showMembers && (
               <div className="mt-2 space-y-1 max-h-40 overflow-auto">
@@ -571,7 +573,7 @@ const ChatPage = () => {
                     </Avatar>
                     <span className="truncate">{member.name}</span>
                     {member.user_id === user?.user_id && (
-                      <Badge variant="outline" className="text-xs ml-auto">You</Badge>
+                      <Badge variant="outline" className="text-xs ml-auto">{t('chat.you')}</Badge>
                     )}
                   </div>
                 ))}
@@ -613,12 +615,12 @@ const ChatPage = () => {
                         className="flex items-center gap-1 text-sm text-slate-600 hover:text-[#0EA5A0] transition-colors"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        View {activeChannel.channel_type}
+                        {t('chat.viewEntity').replace('{type}', activeChannel.channel_type)}
                       </Link>
                     )}
                     {activeChannel.channel_id !== 'general' && (user?.role === 'admin' || user?.role === 'owner' || user?.role === 'super_admin' || user?.email === 'florian@unyted.world') && (
                       <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-500" onClick={() => archiveChannel(activeChannel.channel_id)} data-testid="archive-channel-btn">
-                        <Archive className="w-4 h-4 mr-1" /> Archive
+                        <Archive className="w-4 h-4 mr-1" /> {t('chat.archive')}
                       </Button>
                     )}
                   </div>
@@ -636,7 +638,7 @@ const ChatPage = () => {
                           {contextEntity.first_name} {contextEntity.last_name}
                         </p>
                         <p className="text-sm text-slate-500">
-                          {contextEntity.job_title && `${contextEntity.job_title} at `}{contextEntity.company || 'No company'}
+                          {contextEntity.job_title && `${contextEntity.job_title} at `}{contextEntity.company || t('chat.noCompany')}
                         </p>
                       </div>
                       <Badge variant="outline" className="ml-auto capitalize">{contextEntity.status}</Badge>
@@ -653,10 +655,10 @@ const ChatPage = () => {
                       <div>
                         <p className="font-medium text-slate-900">{contextEntity.name}</p>
                         <p className="text-sm text-slate-500">
-                          €{contextEntity.value?.toLocaleString()} • Stage: {contextEntity.stage}
+                          €{contextEntity.value?.toLocaleString()} • {t('chat.stageLabel')}: {contextEntity.stage}
                         </p>
                       </div>
-                      <Badge variant="outline" className="ml-auto">{contextEntity.probability}% probability</Badge>
+                      <Badge variant="outline" className="ml-auto">{t('chat.probabilityBadge').replace('{pct}', contextEntity.probability)}</Badge>
                     </div>
                   </div>
                 )}
@@ -668,10 +670,10 @@ const ChatPage = () => {
                   {messages.length === 0 ? (
                     <div className="text-center py-12">
                       <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-500">No messages yet. Start the conversation!</p>
+                      <p className="text-slate-500">{t('chat.noMessages')}</p>
                       {activeChannel.channel_type && activeChannel.channel_type !== 'general' && (
                         <p className="text-sm text-slate-400 mt-1">
-                          Discuss this {activeChannel.channel_type} with your team
+                          {t('chat.discussWithTeam').replace('{type}', activeChannel.channel_type)}
                         </p>
                       )}
                     </div>
@@ -708,7 +710,7 @@ const ChatPage = () => {
                                   {formatTime(message.created_at)}
                                 </span>
                                 {message.is_edited && (
-                                  <span className="text-xs text-slate-400">(edited)</span>
+                                  <span className="text-xs text-slate-400">{t('chat.editedTag')}</span>
                                 )}
                               </div>
                             )}
@@ -717,7 +719,7 @@ const ChatPage = () => {
                             {message.reply_to && (
                               <div className="text-xs text-slate-500 mb-1 flex items-center gap-1">
                                 <Reply className="w-3 h-3" />
-                                <span>Replying to a message</span>
+                                <span>{t('chat.replyingToMessage')}</span>
                               </div>
                             )}
 
@@ -740,7 +742,7 @@ const ChatPage = () => {
                                   size="sm"
                                   onClick={() => setEditingMessage(null)}
                                 >
-                                  Cancel
+                                  {t('common.cancel')}
                                 </Button>
                               </div>
                             ) : (
@@ -839,14 +841,14 @@ const ChatPage = () => {
                 {replyTo && (
                   <div className="flex items-center gap-2 mb-2 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
                     <Reply className="w-4 h-4" />
-                    <span>Replying to {replyTo.sender_name}</span>
+                    <span>{t('chat.replyingTo').replace('{name}', replyTo.sender_name)}</span>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 ml-auto"
                       onClick={() => setReplyTo(null)}
                     >
-                      <span className="sr-only">Cancel reply</span>
+                      <span className="sr-only">{t('chat.cancelReply')}</span>
                       ×
                     </Button>
                   </div>
@@ -860,7 +862,7 @@ const ChatPage = () => {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-56 p-2">
-                      <p className="text-xs text-slate-500 mb-2">Mention a team member</p>
+                      <p className="text-xs text-slate-500 mb-2">{t('chat.mentionTeamMember')}</p>
                       <div className="space-y-1 max-h-40 overflow-auto">
                         {members.map((member) => (
                           <button
@@ -883,7 +885,7 @@ const ChatPage = () => {
 
                   <Input
                     ref={inputRef}
-                    placeholder={`Message #${activeChannel.name}`}
+                    placeholder={t('chat.messageChannelPlaceholder').replace('{channel}', activeChannel.name)}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     className="flex-1"
@@ -909,8 +911,8 @@ const ChatPage = () => {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700">Select a channel</h3>
-                <p className="text-slate-500">Choose a channel to start chatting</p>
+                <h3 className="text-lg font-semibold text-slate-700">{t('chat.selectAChannel')}</h3>
+                <p className="text-slate-500">{t('chat.selectChannelHint')}</p>
               </div>
             </div>
           )}

@@ -727,6 +727,10 @@ async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
                 "code": "ai_trial_expired",
                 "message": "Your 30-day AI trial has ended.",
                 "action": "Add your own Anthropic API key to keep AI features on, or reach out to support — we'll help you get set up.",
+                # German variants — the frontend picks based on tako_lang in
+                # localStorage so users on the German UI see German copy.
+                "message_de": "Deine 30-taegige KI-Testphase ist beendet.",
+                "action_de": "Fuege deinen eigenen Anthropic-API-Schluessel hinzu, um KI-Funktionen weiter zu nutzen, oder melde dich beim Support — wir helfen dir bei der Einrichtung.",
                 "settings_url": "/settings?tab=integrations",
                 "support_url": "/support",
             },
@@ -737,6 +741,8 @@ async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
             "code": "ai_key_missing",
             "message": "AI features require an Anthropic API key.",
             "action": "Add your key in Settings → Integrations → AI / LLM.",
+            "message_de": "KI-Funktionen benoetigen einen Anthropic-API-Schluessel.",
+            "action_de": "Fuege deinen Schluessel unter Einstellungen → Integrationen → KI / LLM hinzu.",
             "settings_url": "/settings?tab=integrations",
             "support_url": "/support",
         },
@@ -1249,11 +1255,33 @@ async def change_password(data: PasswordChange, request: Request, current_user: 
             when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
             frontend_url = os.environ.get("FRONTEND_URL", "")
             reset_link = f"{frontend_url}/forgot-password" if frontend_url else "/forgot-password"
-            await asyncio.to_thread(resend.Emails.send, {
-                "from": SENDER_EMAIL,
-                "to": [user["email"].lower()],
-                "subject": "Your TAKO password was changed",
-                "html": f"""<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #0F0A1E;">
+
+            # Pick language from Accept-Language header (browser/Chrome/etc. send
+            # this) or explicit ?lang= query param. Default to English. We only
+            # branch copy for the languages we actually ship a UI in.
+            accept_lang = (request.headers.get("accept-language") or "").lower()
+            qlang = (request.query_params.get("lang") or "").lower()
+            is_de = qlang.startswith("de") or accept_lang.startswith("de")
+
+            if is_de:
+                subject = "Dein TAKO-Passwort wurde geaendert"
+                html_body = f"""<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #0F0A1E;">
+                    <h2 style="color: #0C1024; margin-bottom: 8px;">Passwort geaendert</h2>
+                    <p style="color: #475569;">Das Passwort fuer dein TAKO-Konto ({user["email"]}) wurde soeben geaendert.</p>
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #475569;">
+                        <div><strong>Wann:</strong> {when}</div>
+                        <div style="margin-top: 4px;"><strong>Geraet:</strong> {ua}</div>
+                        <div style="margin-top: 4px;"><strong>IP:</strong> {ip}</div>
+                    </div>
+                    <p style="color: #475569;">Wenn du diese Aenderung vorgenommen hast, kannst du diese E-Mail ignorieren.</p>
+                    <p style="color: #B91C1C;"><strong>Warst du das nicht</strong>, setze dein Passwort sofort zurueck
+                        und wende dich an den Support unter <a href="mailto:support@tako.software">support@tako.software</a>.</p>
+                    <p style="margin-top: 16px;"><a href="{reset_link}" style="background: #0EA5A0; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 14px;">Passwort zuruecksetzen</a></p>
+                    <p style="color: #94A3B8; font-size: 11px; margin-top: 24px;">Du erhaeltst diese Sicherheitsbenachrichtigung, weil das Passwort deines TAKO-Kontos geaendert wurde. Diese E-Mail kann nicht deaktiviert werden.</p>
+                </div>"""
+            else:
+                subject = "Your TAKO password was changed"
+                html_body = f"""<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #0F0A1E;">
                     <h2 style="color: #0C1024; margin-bottom: 8px;">Password changed</h2>
                     <p style="color: #475569;">The password for your TAKO account ({user["email"]}) was just changed.</p>
                     <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #475569;">
@@ -1267,6 +1295,12 @@ async def change_password(data: PasswordChange, request: Request, current_user: 
                     <p style="margin-top: 16px;"><a href="{reset_link}" style="background: #0EA5A0; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 14px;">Reset password</a></p>
                     <p style="color: #94A3B8; font-size: 11px; margin-top: 24px;">You're receiving this security notice because your TAKO account password was changed. This email cannot be disabled.</p>
                 </div>"""
+
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": SENDER_EMAIL,
+                "to": [user["email"].lower()],
+                "subject": subject,
+                "html": html_body,
             })
         except Exception as e:
             # Don't fail the password change if the email can't go out —

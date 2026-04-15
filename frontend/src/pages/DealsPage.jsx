@@ -124,7 +124,7 @@ const DealsPage = () => {
       });
       setDeals(response.data);
     } catch (error) {
-      toast.error('Failed to fetch deals');
+      toast.error(t('deals.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -162,7 +162,7 @@ const DealsPage = () => {
   };
 
   const handleRemoveTag = (tagToRemove) => {
-    setNewDeal({ ...newDeal, tags: newDeal.tags.filter(t => t !== tagToRemove) });
+    setNewDeal({ ...newDeal, tags: newDeal.tags.filter(tag => tag !== tagToRemove) });
   };
 
   const handleAddDeal = async (e) => {
@@ -170,11 +170,11 @@ const DealsPage = () => {
     
     // Validate mandatory task fields
     if (!newDeal.task_title.trim()) {
-      toast.error('Task title is required when creating a deal');
+      toast.error(t('deals.taskTitleValidation'));
       return;
     }
     if (!newDeal.task_owner_id) {
-      toast.error('Task owner is required when creating a deal');
+      toast.error(t('deals.taskOwnerValidation'));
       return;
     }
     
@@ -193,7 +193,7 @@ const DealsPage = () => {
       if (!dealData.task_due_date) delete dealData.task_due_date;
       
       await axios.post(`${API}/deals`, dealData, { headers, withCredentials: true });
-      toast.success('Deal created with associated task');
+      toast.success(t('deals.createSuccess'));
       setIsAddDialogOpen(false);
       setNewDeal({
         name: '',
@@ -215,7 +215,7 @@ const DealsPage = () => {
       fetchDeals();
       fetchTags();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create deal');
+      toast.error(error.response?.data?.detail || t('deals.createFailed'));
     }
   };
 
@@ -229,10 +229,10 @@ const DealsPage = () => {
         headers,
         withCredentials: true
       });
-      toast.success('Deal stage updated');
+      toast.success(t('deals.stageUpdated'));
       fetchDeals();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to update deal');
+      toast.error(error.response?.data?.detail || t('deals.updateFailed'));
     }
   };
 
@@ -253,10 +253,10 @@ const DealsPage = () => {
   const handleDeleteDeal = async (dealId) => {
     try {
       await axios.delete(`${API}/deals/${dealId}`, { headers, withCredentials: true });
-      toast.success('Deal deleted');
+      toast.success(t('deals.deleteSuccess'));
       setSelectedDeal(null);
       fetchDeals();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to delete deal'); }
+    } catch (err) { toast.error(err.response?.data?.detail || t('deals.deleteFailed')); }
   };
 
   const openDealDetail = (deal) => { setSelectedDeal(deal); setDealEditData({...deal}); setDealEditMode(false); };
@@ -266,10 +266,10 @@ const DealsPage = () => {
     try {
       const { deal_id, organization_id, created_by, created_at, _id, ...updates } = dealEditData;
       const res = await axios.put(`${API}/deals/${selectedDeal.deal_id}`, updates, { headers, withCredentials: true });
-      toast.success('Deal updated');
+      toast.success(t('deals.updateSuccess'));
       setSelectedDeal(res.data); setDealEditData(res.data); setDealEditMode(false);
       fetchDeals();
-    } catch (err) { console.error(err); toast.error('Failed to update'); }
+    } catch (err) { console.error(err); toast.error(t('deals.updateFailedShort')); }
   };
 
   const onDragEnd = async (result) => {
@@ -290,23 +290,23 @@ const DealsPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900" data-testid="deals-title">Deals Pipeline</h1>
-            <p className="text-slate-600 mt-1">Track your deals through the sales pipeline</p>
+            <h1 className="text-2xl font-bold text-slate-900" data-testid="deals-title">{t('deals.pipelineTitle')}</h1>
+            <p className="text-slate-600 mt-1">{t('deals.pipelineSubtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex border border-slate-200 rounded-lg overflow-hidden">
               <button onClick={() => setViewMode('kanban')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'kanban' ? 'bg-[#0EA5A0] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="kanban-view-btn">
-                <LayoutGrid className="w-3.5 h-3.5" /> Kanban
+                <LayoutGrid className="w-3.5 h-3.5" /> {t('deals.kanban')}
               </button>
               <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-sm flex items-center gap-1 ${viewMode === 'list' ? 'bg-[#0EA5A0] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`} data-testid="list-view-btn">
-                <List className="w-3.5 h-3.5" /> List
+                <List className="w-3.5 h-3.5" /> {t('deals.list')}
               </button>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="add-deal-btn">
                 <Plus className="w-4 h-4 mr-2" />
-                New Deal
+                {t('deals.addDeal')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -316,20 +316,20 @@ const DealsPage = () => {
               <form onSubmit={handleAddDeal} className="space-y-4 pt-4">
                 {/* Deal Info Section */}
                 <div className="space-y-4 border-b pb-4">
-                  <h3 className="font-semibold text-slate-700">Deal Information</h3>
+                  <h3 className="font-semibold text-slate-700">{t('deals.dealInformation')}</h3>
                   <div className="space-y-2">
-                    <Label>Deal Name *</Label>
+                    <Label>{t('deals.dealNameRequired')}</Label>
                     <Input
                       value={newDeal.name}
                       onChange={(e) => setNewDeal({ ...newDeal, name: e.target.value })}
-                      placeholder="e.g., Enterprise License - Acme Corp"
+                      placeholder={t('deals.dealNamePlaceholder')}
                       required
                       data-testid="deal-name"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Value</Label>
+                      <Label>{t('deals.value')}</Label>
                       <div className="relative">
                         <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
@@ -342,7 +342,7 @@ const DealsPage = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Probability %</Label>
+                      <Label>{t('deals.probability')}</Label>
                       <div className="relative">
                         <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
@@ -359,7 +359,7 @@ const DealsPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Stage</Label>
+                      <Label>{t('deals.stage')}</Label>
                       <Select
                         value={newDeal.stage}
                         onValueChange={(value) => {
@@ -384,7 +384,7 @@ const DealsPage = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Expected Close Date</Label>
+                      <Label>{t('deals.expectedCloseDate')}</Label>
                       <Input
                         type="date"
                         value={newDeal.expected_close_date}
@@ -396,12 +396,12 @@ const DealsPage = () => {
                   
                   {/* Tags */}
                   <div className="space-y-2">
-                    <Label>Tags</Label>
+                    <Label>{t('deals.tags')}</Label>
                     <div className="flex gap-2">
                       <Input
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
-                        placeholder="Add a tag..."
+                        placeholder={t('deals.addTagPlaceholder')}
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                         data-testid="deal-tag-input"
                       />
@@ -421,7 +421,7 @@ const DealsPage = () => {
                     )}
                     {existingTags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="text-xs text-slate-500">Existing tags:</span>
+                        <span className="text-xs text-slate-500">{t('deals.existingTags')}</span>
                         {existingTags.slice(0, 5).map((tag, idx) => (
                           <Badge 
                             key={idx} 
@@ -437,11 +437,11 @@ const DealsPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Notes</Label>
+                    <Label>{t('deals.notes')}</Label>
                     <Input
                       value={newDeal.notes}
                       onChange={(e) => setNewDeal({ ...newDeal, notes: e.target.value })}
-                      placeholder="Additional details..."
+                      placeholder={t('deals.notesPlaceholder')}
                       data-testid="deal-notes"
                     />
                   </div>
@@ -452,41 +452,41 @@ const DealsPage = () => {
                   <h3 className="font-semibold text-slate-800 text-sm">{ t('deals.linkTo') }</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Lead</Label>
+                      <Label className="text-xs">{t('deals.lead')}</Label>
                       <Select value={newDeal.lead_id || 'none'} onValueChange={(v) => {
                         setNewDeal({ ...newDeal, lead_id: v === 'none' ? '' : v });
                         if (v !== 'none') setNewDeal(prev => ({ ...prev, lead_id: v, probability: Math.min(prev.probability, 30) }));
                       }}>
                         <SelectTrigger className="h-8 text-xs" data-testid="deal-lead-select"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="none">{t('common.none')}</SelectItem>
                           {availableLeads.map(l => <SelectItem key={l.lead_id} value={l.lead_id}>{l.first_name} {l.last_name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Contact</Label>
+                      <Label className="text-xs">{t('deals.contact')}</Label>
                       <Select value={newDeal.contact_id || 'none'} onValueChange={(v) => setNewDeal({ ...newDeal, contact_id: v === 'none' ? '' : v })}>
                         <SelectTrigger className="h-8 text-xs" data-testid="deal-contact-select"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="none">{t('common.none')}</SelectItem>
                           {availableContacts.map(c => <SelectItem key={c.contact_id} value={c.contact_id}>{c.first_name} {c.last_name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Company</Label>
+                      <Label className="text-xs">{t('deals.company')}</Label>
                       <Select value={newDeal.company_id || 'none'} onValueChange={(v) => setNewDeal({ ...newDeal, company_id: v === 'none' ? '' : v })}>
                         <SelectTrigger className="h-8 text-xs" data-testid="deal-company-select"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="none">{t('common.none')}</SelectItem>
                           {availableCompanies.map(c => <SelectItem key={c.company_id} value={c.company_id}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   {newDeal.lead_id && newDeal.lead_id !== 'none' && (
-                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">Linking to a lead suggests a lower probability of closing. Consider 10-30%.</p>
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">{t('deals.leadProbNote')}</p>
                   )}
                 </div>
                 
@@ -494,16 +494,16 @@ const DealsPage = () => {
                 <div className="space-y-4 bg-teal-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-teal-900 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Initial Task (Required)
+                    {t('deals.initialTaskRequired')}
                   </h3>
-                  <p className="text-xs text-teal-700">Every deal must have an initial task and owner</p>
-                  
+                  <p className="text-xs text-teal-700">{t('deals.initialTaskDesc')}</p>
+
                   <div className="space-y-2">
-                    <Label>Task Title *</Label>
+                    <Label>{t('deals.taskTitleRequired')}</Label>
                     <Input
                       value={newDeal.task_title}
                       onChange={(e) => setNewDeal({ ...newDeal, task_title: e.target.value })}
-                      placeholder="e.g., Initial contact call"
+                      placeholder={t('deals.taskTitlePlaceholder')}
                       required
                       data-testid="task-title"
                     />
@@ -511,13 +511,13 @@ const DealsPage = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Task Owner *</Label>
+                      <Label>{t('deals.taskOwnerRequired')}</Label>
                       <Select
                         value={newDeal.task_owner_id}
                         onValueChange={(value) => setNewDeal({ ...newDeal, task_owner_id: value })}
                       >
                         <SelectTrigger data-testid="task-owner">
-                          <SelectValue placeholder="Select owner" />
+                          <SelectValue placeholder={t('deals.selectOwner')} />
                         </SelectTrigger>
                         <SelectContent>
                           {members.length > 0 ? members.map((member) => (
@@ -526,16 +526,16 @@ const DealsPage = () => {
                             </SelectItem>
                           )) : user?.user_id ? (
                             <SelectItem value={user.user_id}>
-                              {user?.name || 'Me'}
+                              {user?.name || t('deals.me')}
                             </SelectItem>
                           ) : (
-                            <SelectItem value="self">Me (default)</SelectItem>
+                            <SelectItem value="self">{t('deals.meDefault')}</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Task Due Date</Label>
+                      <Label>{t('deals.taskDueDate')}</Label>
                       <Input
                         type="date"
                         value={newDeal.task_due_date}
@@ -546,18 +546,18 @@ const DealsPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Task Description</Label>
+                    <Label>{t('deals.taskDescription')}</Label>
                     <Input
                       value={newDeal.task_description}
                       onChange={(e) => setNewDeal({ ...newDeal, task_description: e.target.value })}
-                      placeholder="What needs to be done?"
+                      placeholder={t('deals.taskDescriptionPlaceholder')}
                       data-testid="task-description"
                     />
                   </div>
                 </div>
                 
                 <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88]" data-testid="submit-deal-btn">
-                  Create Deal with Task
+                  {t('deals.createDealWithTask')}
                 </Button>
               </form>
             </DialogContent>
@@ -570,49 +570,49 @@ const DealsPage = () => {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-500" />
-              <span className="text-sm font-medium text-slate-700">Filters:</span>
+              <span className="text-sm font-medium text-slate-700">{t('deals.filters')}</span>
             </div>
             
             <Select value={filterStage || "all"} onValueChange={(v) => setFilterStage(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[150px]" data-testid="filter-stage">
-                <SelectValue placeholder="All Stages" />
+                <SelectValue placeholder={t('deals.allStages')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Stages</SelectItem>
+                <SelectItem value="all">{t('deals.allStages')}</SelectItem>
                 {stages.map((stage) => (
                   <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
+
             <Select value={filterTag || "all"} onValueChange={(v) => setFilterTag(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[150px]" data-testid="filter-tag">
-                <SelectValue placeholder="All Tags" />
+                <SelectValue placeholder={t('deals.allTags')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Tags</SelectItem>
+                <SelectItem value="all">{t('deals.allTags')}</SelectItem>
                 {existingTags.map((tag) => (
                   <SelectItem key={tag} value={tag}>{tag}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
+
             <Select value={filterOwner || "all"} onValueChange={(v) => setFilterOwner(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[150px]" data-testid="filter-owner">
-                <SelectValue placeholder="All Owners" />
+                <SelectValue placeholder={t('deals.allOwners')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Owners</SelectItem>
+                <SelectItem value="all">{t('deals.allOwners')}</SelectItem>
                 {members.map((member) => (
                   <SelectItem key={member.user_id} value={member.user_id}>{member.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
+
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="clear-filters">
                 <X className="w-4 h-4 mr-1" />
-                Clear
+                {t('common.clear')}
               </Button>
             )}
           </div>
@@ -621,11 +621,11 @@ const DealsPage = () => {
         {/* Bulk actions */}
         {selectedDealIds.length > 0 && (
           <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3">
-            <span className="text-sm font-medium text-teal-800">{selectedDealIds.length} selected</span>
+            <span className="text-sm font-medium text-teal-800">{t('deals.selectedCount').replace('{count}', selectedDealIds.length)}</span>
             <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={async () => {
-              try { await axios.post(`${API}/bulk/delete`, { entity_type: 'deal', entity_ids: selectedDealIds }, { headers, withCredentials: true }); toast.success('Deals deleted'); setSelectedDealIds([]); fetchDeals(); } catch { toast.error('Failed'); }
-            }} data-testid="bulk-delete-deals"><Trash2 className="w-3.5 h-3.5 mr-1" /> Delete</Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelectedDealIds([])}>Clear</Button>
+              try { await axios.post(`${API}/bulk/delete`, { entity_type: 'deal', entity_ids: selectedDealIds }, { headers, withCredentials: true }); toast.success(t('deals.dealsDeleted')); setSelectedDealIds([]); fetchDeals(); } catch { toast.error(t('deals.bulkDeleteFailed')); }
+            }} data-testid="bulk-delete-deals"><Trash2 className="w-3.5 h-3.5 mr-1" /> {t('common.delete')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedDealIds([])}>{t('common.clear')}</Button>
           </div>
         )}
 
@@ -642,12 +642,12 @@ const DealsPage = () => {
                 <thead>
                   <tr className="border-b bg-slate-50">
                     <th className="py-3 px-4 text-left w-10"><input type="checkbox" checked={selectedDealIds.length === deals.length && deals.length > 0} onChange={() => setSelectedDealIds(selectedDealIds.length === deals.length ? [] : deals.map(d => d.deal_id))} className="accent-[#0EA5A0]" /></th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Deal</th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Value</th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Stage</th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Probability</th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Tags</th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">Actions</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('deals.colDeal')}</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('deals.value')}</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('deals.stage')}</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('deals.colProbability')}</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('deals.tags')}</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-slate-500">{t('deals.colActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -666,7 +666,7 @@ const DealsPage = () => {
                         </Select>
                       </td>
                       <td className="py-3 px-4 text-xs">{deal.probability}%</td>
-                      <td className="py-3 px-4"><div className="flex gap-1">{deal.tags?.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}</div></td>
+                      <td className="py-3 px-4"><div className="flex gap-1">{deal.tags?.map(tg => <Badge key={tg} variant="secondary" className="text-xs">{tg}</Badge>)}</div></td>
                       <td className="py-3 px-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
@@ -699,7 +699,7 @@ const DealsPage = () => {
                             </div>
                             <div>
                               <p className="text-lg font-bold text-slate-900">€{getStageValue(stage.id).toLocaleString()}</p>
-                              <p className="text-xs text-slate-500">Weighted: €{getWeightedValue(stage.id).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                              <p className="text-xs text-slate-500">{t('deals.weighted')} €{getWeightedValue(stage.id).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
                             </div>
                           </CardHeader>
                           <CardContent
@@ -731,7 +731,7 @@ const DealsPage = () => {
                                             )}
                                           </div>
                                           {deal.tags?.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mt-2">{deal.tags.map((t, i) => <Badge key={i} variant="outline" className="text-xs">{t}</Badge>)}</div>
+                                            <div className="flex flex-wrap gap-1 mt-2">{deal.tags.map((tg, i) => <Badge key={i} variant="outline" className="text-xs">{tg}</Badge>)}</div>
                                           )}
                                           {deal.notes && <p className="text-xs text-slate-500 mt-2 line-clamp-1">{deal.notes}</p>}
                                         </div>
@@ -742,7 +742,7 @@ const DealsPage = () => {
                                           <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={() => navigate(`/chat?type=deal&id=${deal.deal_id}`)}><MessageSquare className="w-3.5 h-3.5 mr-2" />{ t('leads.discuss') }</DropdownMenuItem>
                                             {stages.map(s => (
-                                              <DropdownMenuItem key={s.id} onClick={() => handleStageChange(deal.deal_id, s.id)} disabled={s.id === deal.stage}>Move to {s.name}</DropdownMenuItem>
+                                              <DropdownMenuItem key={s.id} onClick={() => handleStageChange(deal.deal_id, s.id)} disabled={s.id === deal.stage}>{t('deals.moveTo').replace('{name}', s.name)}</DropdownMenuItem>
                                             ))}
                                             <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteDeal(deal.deal_id)}><Trash2 className="w-3.5 h-3.5 mr-2" />{ t('common.delete') }</DropdownMenuItem>
                                           </DropdownMenuContent>
@@ -797,19 +797,19 @@ const DealsPage = () => {
                     <div><Label>{t('forms.linkedLead')}</Label>
                       <Select value={dealEditData.lead_id || 'none'} onValueChange={v => setDealEditData({...dealEditData, lead_id: v === 'none' ? null : v})}>
                         <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="none">None</SelectItem>{availableLeads.map(l => <SelectItem key={l.lead_id} value={l.lead_id}>{l.first_name} {l.last_name}</SelectItem>)}</SelectContent>
+                        <SelectContent><SelectItem value="none">{t('common.none')}</SelectItem>{availableLeads.map(l => <SelectItem key={l.lead_id} value={l.lead_id}>{l.first_name} {l.last_name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div><Label>{t('forms.linkedContact')}</Label>
                       <Select value={dealEditData.contact_id || 'none'} onValueChange={v => setDealEditData({...dealEditData, contact_id: v === 'none' ? null : v})}>
                         <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="none">None</SelectItem>{availableContacts.map(c => <SelectItem key={c.contact_id} value={c.contact_id}>{c.first_name} {c.last_name}</SelectItem>)}</SelectContent>
+                        <SelectContent><SelectItem value="none">{t('common.none')}</SelectItem>{availableContacts.map(c => <SelectItem key={c.contact_id} value={c.contact_id}>{c.first_name} {c.last_name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div><Label>{t('forms.linkedCompany')}</Label>
                       <Select value={dealEditData.company_id || 'none'} onValueChange={v => setDealEditData({...dealEditData, company_id: v === 'none' ? null : v})}>
                         <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="none">None</SelectItem>{availableCompanies.map(c => <SelectItem key={c.company_id} value={c.company_id}>{c.name}</SelectItem>)}</SelectContent>
+                        <SelectContent><SelectItem value="none">{t('common.none')}</SelectItem>{availableCompanies.map(c => <SelectItem key={c.company_id} value={c.company_id}>{c.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                   </div>

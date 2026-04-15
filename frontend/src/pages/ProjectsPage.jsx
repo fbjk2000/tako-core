@@ -51,7 +51,7 @@ const ProjectsPage = () => {
 
   const fetchProjects = async () => {
     try { const r = await axios.get(`${API}/projects`, getAx()); setProjects(r.data); }
-    catch { toast.error('Failed to load projects'); }
+    catch { toast.error(t('projects.loadFailed')); }
     finally { setLoading(false); }
   };
   const fetchDeals = async () => { try { const r = await axios.get(`${API}/deals`, getAx()); setDeals(r.data); } catch (err) { console.error(err); } };
@@ -70,17 +70,17 @@ const ProjectsPage = () => {
     try {
       const payload = { ...newProject, deal_id: newProject.deal_id === 'none' ? null : newProject.deal_id || null };
       const r = await axios.post(`${API}/projects`, payload, getAx());
-      toast.success('Project created');
+      toast.success(t('projects.createSuccess'));
       setShowCreate(false);
       setNewProject({ name: '', description: '', deal_id: '', members: [] });
       fetchProjects();
       openProject(r.data.project_id);
-    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+    } catch (e) { toast.error(e.response?.data?.detail || t('projects.createFailed')); }
   };
 
   const openProject = async (id) => {
     try { const r = await axios.get(`${API}/projects/${id}`, getAx()); setSelectedProject(r.data); }
-    catch { toast.error('Failed to load project'); }
+    catch { toast.error(t('projects.loadProjectFailed')); }
   };
 
   const handleAddTask = async () => {
@@ -90,11 +90,11 @@ const ProjectsPage = () => {
       if (!payload.due_date) delete payload.due_date;
       if (!payload.assigned_to) payload.assigned_to = user?.user_id;
       await axios.post(`${API}/tasks`, payload, getAx());
-      toast.success('Task added');
+      toast.success(t('projects.taskAdded'));
       setShowAddTask(false);
       setNewTask({ title: '', description: '', priority: 'medium', assigned_to: '', due_date: '' });
       openProject(selectedProject.project_id);
-    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+    } catch (e) { toast.error(e.response?.data?.detail || t('projects.taskAddFailed')); }
   };
 
   const handleTaskStatus = async (taskId, status) => {
@@ -105,9 +105,9 @@ const ProjectsPage = () => {
   };
 
   const handleDeleteProject = async (id) => {
-    if (!window.confirm('Delete this project?')) return;
-    try { await axios.delete(`${API}/projects/${id}`, getAx()); toast.success('Deleted'); setSelectedProject(null); fetchProjects(); }
-    catch { toast.error('Failed'); }
+    if (!window.confirm(t('projects.confirmDelete'))) return;
+    try { await axios.delete(`${API}/projects/${id}`, getAx()); toast.success(t('projects.deleteSuccess')); setSelectedProject(null); fetchProjects(); }
+    catch { toast.error(t('projects.deleteFailed')); }
   };
 
   const handleUpdateStatus = async (id, status) => {
@@ -121,12 +121,12 @@ const ProjectsPage = () => {
 
   const refreshTaskDetail = async (taskId) => {
     if (selectedProject) await openProject(selectedProject.project_id);
-    try { const res = await axios.get(`${API}/tasks`, getAx()); const fresh = res.data.find(t => t.task_id === taskId); if (fresh) { setTaskDetail(fresh); setTaskEditData({ ...fresh }); } } catch (err) { console.error(err); }
+    try { const res = await axios.get(`${API}/tasks`, getAx()); const fresh = res.data.find(tk => tk.task_id === taskId); if (fresh) { setTaskDetail(fresh); setTaskEditData({ ...fresh }); } } catch (err) { console.error(err); }
   };
 
   const handleSaveTask = async () => {
     if (!taskDetail) return;
-    try { const { task_id, organization_id, created_by, created_at, _id, subtasks, comments, activity, subtask_count, subtasks_done, ...updates } = taskEditData; await axios.put(`${API}/tasks/${taskDetail.task_id}`, updates, getAx()); toast.success('Task updated'); setTaskEditMode(false); refreshTaskDetail(taskDetail.task_id); } catch (err) { console.error(err); toast.error('Failed'); }
+    try { const { task_id, organization_id, created_by, created_at, _id, subtasks, comments, activity, subtask_count, subtasks_done, ...updates } = taskEditData; await axios.put(`${API}/tasks/${taskDetail.task_id}`, updates, getAx()); toast.success(t('projects.taskUpdateSuccess')); setTaskEditMode(false); refreshTaskDetail(taskDetail.task_id); } catch (err) { console.error(err); toast.error(t('projects.taskUpdateFailed')); }
   };
 
   const handleAddComment = async () => {
@@ -148,8 +148,8 @@ const ProjectsPage = () => {
 
   const handleReopenTask = async () => {
     if (!taskDetail) return;
-    try { await axios.post(`${API}/tasks/${taskDetail.task_id}/reopen`, {}, getAx()); toast.success('Task reopened'); refreshTaskDetail(taskDetail.task_id); }
-    catch (err) { console.error(err); toast.error('Failed'); }
+    try { await axios.post(`${API}/tasks/${taskDetail.task_id}/reopen`, {}, getAx()); toast.success(t('projects.taskReopened')); refreshTaskDetail(taskDetail.task_id); }
+    catch (err) { console.error(err); toast.error(t('projects.taskReopenFailed')); }
   };
 
 
@@ -166,7 +166,7 @@ const ProjectsPage = () => {
             <p className="text-slate-500 text-sm mt-1">{ t('projects.subtitle') }</p>
           </div>
           <Button className="bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setShowCreate(true)} data-testid="new-project-btn">
-            <Plus className="w-4 h-4 mr-2" /> New Project
+            <Plus className="w-4 h-4 mr-2" /> {t('projects.newProject')}
           </Button>
         </div>
 
@@ -175,8 +175,8 @@ const ProjectsPage = () => {
         ) : projects.length === 0 ? (
           <Card className="p-12 text-center">
             <p className="font-medium text-slate-600">{ t('projects.noProjects') }</p>
-            <p className="text-sm text-slate-400 mt-1">Create a project to organize tasks around a deal</p>
-            <Button className="mt-4 bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-2" /> Create Project</Button>
+            <p className="text-sm text-slate-400 mt-1">{t('projects.noProjectsDesc')}</p>
+            <Button className="mt-4 bg-[#0EA5A0] hover:bg-teal-700" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-2" /> {t('projects.createProject')}</Button>
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -192,10 +192,10 @@ const ProjectsPage = () => {
                   </div>
                   <Progress value={p.progress} className="h-2 mb-2" />
                   <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>{p.tasks_done}/{p.task_count} tasks done</span>
+                    <span>{t('projects.tasksDone').replace('{done}', p.tasks_done).replace('{total}', p.task_count)}</span>
                     <span>{p.progress}%</span>
                   </div>
-                  {p.deal_id && <div className="mt-2 text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded inline-block"><Target className="w-3 h-3 inline mr-1" />Linked deal</div>}
+                  {p.deal_id && <div className="mt-2 text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded inline-block"><Target className="w-3 h-3 inline mr-1" />{t('projects.linkedDeal')}</div>}
                 </CardContent>
               </Card>
             ))}
@@ -207,15 +207,15 @@ const ProjectsPage = () => {
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle><Plus className="w-5 h-5 inline mr-2 text-[#0EA5A0]" />{ t('projects.newProject') }</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
-              <div><Label>Project Name *</Label><Input value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} placeholder="Q2 Enterprise Onboarding" data-testid="project-name" /></div>
-              <div><Label>Description</Label><Textarea value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} rows={2} placeholder="Project goals and scope..." /></div>
-              <div><Label>Link to Deal</Label>
+              <div><Label>{t('projects.projectNameRequired')}</Label><Input value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} placeholder={t('projects.projectNamePlaceholder')} data-testid="project-name" /></div>
+              <div><Label>{t('forms.description')}</Label><Textarea value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} rows={2} placeholder={t('projects.descriptionPlaceholder')} /></div>
+              <div><Label>{t('projects.linkToDeal')}</Label>
                 <Select value={newProject.deal_id || 'none'} onValueChange={v => setNewProject({ ...newProject, deal_id: v === 'none' ? '' : v })}>
-                  <SelectTrigger><SelectValue placeholder="Select deal" /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">No deal</SelectItem>{deals.map(d => <SelectItem key={d.deal_id} value={d.deal_id}>{d.name} — €{d.value?.toLocaleString()}</SelectItem>)}</SelectContent>
+                  <SelectTrigger><SelectValue placeholder={t('projects.selectDeal')} /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">{t('projects.noDeal')}</SelectItem>{deals.map(d => <SelectItem key={d.deal_id} value={d.deal_id}>{d.name} — €{d.value?.toLocaleString()}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleCreate} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-project-submit"><Plus className="w-4 h-4 mr-2" /> Create Project</Button>
+              <Button onClick={handleCreate} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-project-submit"><Plus className="w-4 h-4 mr-2" /> {t('projects.createProject')}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -233,7 +233,7 @@ const ProjectsPage = () => {
                   <div className="flex items-center gap-2">
                     <Select value={selectedProject.status} onValueChange={v => handleUpdateStatus(selectedProject.project_id, v)}>
                       <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="on_hold">On Hold</SelectItem><SelectItem value="completed">Completed</SelectItem></SelectContent>
+                      <SelectContent><SelectItem value="active">{t('projects.statusActive')}</SelectItem><SelectItem value="on_hold">{t('projects.statusOnHold')}</SelectItem><SelectItem value="completed">{t('projects.statusCompleted')}</SelectItem></SelectContent>
                     </Select>
                     <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDeleteProject(selectedProject.project_id)}><Trash2 className="w-4 h-4" /></Button>
                   </div>
@@ -241,7 +241,7 @@ const ProjectsPage = () => {
 
                 {/* Progress */}
                 <div>
-                  <div className="flex justify-between text-xs text-slate-500 mb-1"><span>{selectedProject.tasks_done}/{selectedProject.task_count} tasks</span><span>{selectedProject.progress}%</span></div>
+                  <div className="flex justify-between text-xs text-slate-500 mb-1"><span>{t('projects.tasksCount').replace('{done}', selectedProject.tasks_done).replace('{total}', selectedProject.task_count)}</span><span>{selectedProject.progress}%</span></div>
                   <Progress value={selectedProject.progress} className="h-2" />
                 </div>
 
@@ -261,14 +261,14 @@ const ProjectsPage = () => {
 
                 {/* Tasks */}
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-sm text-slate-700">Tasks</h3>
+                  <h3 className="font-semibold text-sm text-slate-700">{t('projects.tasks')}</h3>
                   {selectedProject.tasks?.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-4 text-center">No tasks yet. Add one to get started.</p>
+                    <p className="text-sm text-slate-400 py-4 text-center">{t('projects.noTasksYet')}</p>
                   ) : (
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {selectedProject.tasks?.map(task => {
                         const stale = getDaysAgo(task.updated_at) > 7;
-                        const ownerName = task.assigned_to ? (members.find(m => m.user_id === task.assigned_to)?.name || 'Assigned') : 'Unassigned';
+                        const ownerName = task.assigned_to ? (members.find(m => m.user_id === task.assigned_to)?.name || t('projects.ownerAssigned')) : t('projects.ownerUnassigned');
                         return (
                         <div key={task.task_id} className={`flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors ${stale ? 'border-amber-200 bg-amber-50/30' : ''}`} onClick={() => openTaskDetail(task)} data-testid={`project-task-${task.task_id}`}>
                           <div className="flex items-center gap-3 min-w-0">
@@ -284,14 +284,14 @@ const ProjectsPage = () => {
                                 {task.due_date && <span className="text-xs text-slate-400"><Calendar className="w-3 h-3 inline mr-0.5" />{new Date(task.due_date).toLocaleDateString()}</span>}
                                 {task.subtasks?.length > 0 && <span className="text-xs text-slate-400"><CheckSquare className="w-3 h-3 inline mr-0.5" />{task.subtasks.filter(s => s.done).length}/{task.subtasks.length}</span>}
                                 {task.comments?.length > 0 && <span className="text-xs text-slate-400"><MessageSquare className="w-3 h-3 inline mr-0.5" />{task.comments.length}</span>}
-                                {stale && <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-300">stale</Badge>}
+                                {stale && <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-300">{t('projects.stale')}</Badge>}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                             <Select value={task.status} onValueChange={v => handleTaskStatus(task.task_id, v)}>
                               <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
-                              <SelectContent><SelectItem value="todo">To Do</SelectItem><SelectItem value="in_progress">In Progress</SelectItem><SelectItem value="done">Done</SelectItem></SelectContent>
+                              <SelectContent><SelectItem value="todo">{t('projects.statusTodo')}</SelectItem><SelectItem value="in_progress">{t('projects.statusInProgress')}</SelectItem><SelectItem value="done">{t('projects.statusDone')}</SelectItem></SelectContent>
                             </Select>
                           </div>
                         </div>
@@ -303,7 +303,7 @@ const ProjectsPage = () => {
 
                 {/* Members */}
                 <div>
-                  <h3 className="font-semibold text-sm text-slate-700 mb-2"><Users className="w-4 h-4 inline mr-1" /> Team ({selectedProject.members?.length || 0})</h3>
+                  <h3 className="font-semibold text-sm text-slate-700 mb-2"><Users className="w-4 h-4 inline mr-1" /> {t('projects.team').replace('{count}', selectedProject.members?.length || 0)}</h3>
                   <div className="flex gap-2 flex-wrap">
                     {selectedProject.members?.map(mid => {
                       const m = members.find(x => x.user_id === mid);
@@ -319,25 +319,25 @@ const ProjectsPage = () => {
         {/* Add Task to Project Dialog */}
         <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Add Task to Project</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t('projects.addTaskDialogTitle')}</DialogTitle></DialogHeader>
             <div className="space-y-3 pt-2">
-              <div><Label>Title *</Label><Input value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task description" data-testid="project-task-title" /></div>
-              <div><Label>Description</Label><Textarea value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} rows={2} /></div>
+              <div><Label>{t('projects.taskTitleRequired')}</Label><Input value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} placeholder={t('projects.taskTitlePlaceholder')} data-testid="project-task-title" /></div>
+              <div><Label>{t('projects.taskDescription')}</Label><Textarea value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} rows={2} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Priority</Label>
+                <div><Label>{t('projects.taskPriority')}</Label>
                   <Select value={newTask.priority} onValueChange={v => setNewTask({ ...newTask, priority: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
+                    <SelectContent><SelectItem value="low">{t('projects.priorityLow')}</SelectItem><SelectItem value="medium">{t('projects.priorityMedium')}</SelectItem><SelectItem value="high">{t('projects.priorityHigh')}</SelectItem></SelectContent>
                   </Select>
                 </div>
-                <div><Label>Assign To</Label>
+                <div><Label>{t('projects.assignTo')}</Label>
                   <Select value={newTask.assigned_to || 'self'} onValueChange={v => setNewTask({ ...newTask, assigned_to: v === 'self' ? '' : v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="self">Myself</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
+                    <SelectContent><SelectItem value="self">{t('projects.myself')}</SelectItem>{members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
-              <div><Label>Due Date</Label><Input type="date" value={newTask.due_date} onChange={e => setNewTask({ ...newTask, due_date: e.target.value })} /></div>
+              <div><Label>{t('projects.dueDate')}</Label><Input type="date" value={newTask.due_date} onChange={e => setNewTask({ ...newTask, due_date: e.target.value })} /></div>
               <Button onClick={handleAddTask} className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-project-task"><Plus className="w-4 h-4 mr-2" />{ t('projects.addTask') }</Button>
             </div>
           </DialogContent>
@@ -363,8 +363,8 @@ const ProjectsPage = () => {
                   <div><Label>{t('forms.title')}</Label><Input value={taskEditData.title || ''} onChange={e => setTaskEditData({...taskEditData, title: e.target.value})} /></div>
                   <div><Label>{t('forms.description')}</Label><Textarea value={taskEditData.description || ''} onChange={e => setTaskEditData({...taskEditData, description: e.target.value})} rows={3} /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>{t('forms.status')}</Label><Select value={taskEditData.status} onValueChange={v => setTaskEditData({...taskEditData, status: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todo">To Do</SelectItem><SelectItem value="in_progress">In Progress</SelectItem><SelectItem value="done">Done</SelectItem></SelectContent></Select></div>
-                    <div><Label>{t('forms.priority')}</Label><Select value={taskEditData.priority} onValueChange={v => setTaskEditData({...taskEditData, priority: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent></Select></div>
+                    <div><Label>{t('forms.status')}</Label><Select value={taskEditData.status} onValueChange={v => setTaskEditData({...taskEditData, status: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todo">{t('projects.statusTodo')}</SelectItem><SelectItem value="in_progress">{t('projects.statusInProgress')}</SelectItem><SelectItem value="done">{t('projects.statusDone')}</SelectItem></SelectContent></Select></div>
+                    <div><Label>{t('forms.priority')}</Label><Select value={taskEditData.priority} onValueChange={v => setTaskEditData({...taskEditData, priority: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">{t('projects.priorityLow')}</SelectItem><SelectItem value="medium">{t('projects.priorityMedium')}</SelectItem><SelectItem value="high">{t('projects.priorityHigh')}</SelectItem></SelectContent></Select></div>
                   </div>
                   <div className="flex gap-2 pt-2">
                     <Button onClick={handleSaveTask} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"><Save className="w-4 h-4 mr-2" />{t('common.save')}</Button>
@@ -375,10 +375,10 @@ const ProjectsPage = () => {
                 <div className="space-y-4 pt-2">
                   {taskDetail.description && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500 mb-1">{t('forms.description')}</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{taskDetail.description}</p></div>}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Status</p><p className="text-sm font-medium capitalize">{taskDetail.status?.replace('_', ' ')}</p></div>
-                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Priority</p><div className="flex items-center gap-1.5"><div className={`w-2 h-2 rounded-full ${priorityColors[taskDetail.priority]}`} /><span className="text-sm font-medium capitalize">{taskDetail.priority}</span></div></div>
-                    {taskDetail.assigned_to && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Owner</p><p className="text-sm font-medium">{members.find(m => m.user_id === taskDetail.assigned_to)?.name || 'Assigned'}</p></div>}
-                    {taskDetail.due_date && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">Due</p><p className="text-sm font-medium">{new Date(taskDetail.due_date).toLocaleDateString()}</p></div>}
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.status')}</p><p className="text-sm font-medium capitalize">{taskDetail.status?.replace('_', ' ')}</p></div>
+                    <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('forms.priority')}</p><div className="flex items-center gap-1.5"><div className={`w-2 h-2 rounded-full ${priorityColors[taskDetail.priority]}`} /><span className="text-sm font-medium capitalize">{taskDetail.priority}</span></div></div>
+                    {taskDetail.assigned_to && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('projects.owner')}</p><p className="text-sm font-medium">{members.find(m => m.user_id === taskDetail.assigned_to)?.name || t('projects.ownerAssigned')}</p></div>}
+                    {taskDetail.due_date && <div className="bg-slate-50 rounded-lg p-3"><p className="text-xs text-slate-500">{t('projects.due')}</p><p className="text-sm font-medium">{new Date(taskDetail.due_date).toLocaleDateString()}</p></div>}
                   </div>
 
                   {/* Tabs */}
@@ -434,7 +434,7 @@ const ProjectsPage = () => {
                             <div key={i} className="flex items-start gap-2 py-1.5 text-xs">
                               <Clock className="w-3 h-3 text-slate-300 mt-0.5 shrink-0" />
                               <div>
-                                <span className="font-medium text-slate-700">{a.by_name || 'System'}</span>{' '}
+                                <span className="font-medium text-slate-700">{a.by_name || t('projects.system')}</span>{' '}
                                 {a.action === 'created' && <span className="text-slate-500">{t('tasks.activity.created')}</span>}
                                 {a.action === 'comment_added' && <span className="text-slate-500">{t('tasks.activity.commentAdded')}</span>}
                                 {a.action === 'subtask_added' && <span className="text-slate-500">{t('tasks.activity.subtaskAdded')}: {a.detail}</span>}

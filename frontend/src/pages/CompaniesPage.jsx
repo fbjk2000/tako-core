@@ -36,7 +36,7 @@ const CompaniesPage = () => {
 
   const fetchCompanies = async () => {
     try { const r = await axios.get(`${API}/companies`, getAx()); setCompanies(r.data); }
-    catch (err) { console.error(err); toast.error('Failed to load companies'); }
+    catch (err) { console.error(err); toast.error(t('companies.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -44,11 +44,11 @@ const CompaniesPage = () => {
     e.preventDefault();
     try {
       await axios.post(`${API}/companies`, newCompany, getAx());
-      toast.success('Company added');
+      toast.success(t('companies.addSuccess'));
       setShowAdd(false);
       setNewCompany({ name: '', industry: '', website: '', size: '', description: '', location: '' });
       fetchCompanies();
-    } catch (err) { console.error(err); toast.error(err.response?.data?.detail || 'Failed'); }
+    } catch (err) { console.error(err); toast.error(err.response?.data?.detail || t('companies.addFailed')); }
   };
 
   const handleSave = async () => {
@@ -56,20 +56,20 @@ const CompaniesPage = () => {
     try {
       const { company_id, organization_id, created_by, created_at, _id, ...updates } = editData;
       const res = await axios.put(`${API}/companies/${selectedCompany.company_id}`, updates, getAx());
-      toast.success('Company updated');
+      toast.success(t('companies.updateSuccess'));
       setSelectedCompany(res.data); setEditData(res.data); setEditMode(false);
       fetchCompanies();
-    } catch (err) { console.error(err); toast.error('Failed to update'); }
+    } catch (err) { console.error(err); toast.error(t('companies.updateFailed')); }
   };
 
   const handleDelete = async (id) => {
-    try { await axios.delete(`${API}/companies/${id}`, getAx()); toast.success('Deleted'); setSelectedCompany(null); fetchCompanies(); }
-    catch (err) { console.error(err); toast.error('Failed'); }
+    try { await axios.delete(`${API}/companies/${id}`, getAx()); toast.success(t('companies.deleteSuccess')); setSelectedCompany(null); fetchCompanies(); }
+    catch (err) { console.error(err); toast.error(t('companies.deleteFailed')); }
   };
 
   const handleBulkDelete = async () => {
-    try { await axios.post(`${API}/bulk/delete`, { entity_type: 'company', entity_ids: selectedIds }, getAx()); toast.success(`${selectedIds.length} deleted`); setSelectedIds([]); fetchCompanies(); }
-    catch (err) { console.error(err); toast.error('Failed'); }
+    try { await axios.post(`${API}/bulk/delete`, { entity_type: 'company', entity_ids: selectedIds }, getAx()); toast.success(t('companies.bulkDeleteSuccess').replace('{count}', selectedIds.length)); setSelectedIds([]); fetchCompanies(); }
+    catch (err) { console.error(err); toast.error(t('companies.deleteFailed')); }
   };
 
   const handleImport = async (e) => {
@@ -79,9 +79,9 @@ const CompaniesPage = () => {
     formData.append('file', file);
     try {
       const res = await axios.post(`${API}/companies/import-csv`, formData, { headers: { ...headers, 'Content-Type': 'multipart/form-data' }, withCredentials: true });
-      toast.success(`Imported ${res.data.count} companies`);
+      toast.success(t('companies.importSuccess').replace('{count}', res.data.count));
       setShowImport(false); fetchCompanies();
-    } catch (err) { console.error(err); toast.error('Import failed'); }
+    } catch (err) { console.error(err); toast.error(t('companies.importFailed')); }
   };
 
   const openDetail = (c) => { setSelectedCompany(c); setEditData({ ...c }); setEditMode(false); };
@@ -194,8 +194,8 @@ const CompaniesPage = () => {
           <div className="space-y-4 pt-2">
             <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
               <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-              <p className="text-sm text-slate-600 mb-2">Upload a CSV file</p>
-              <p className="text-xs text-slate-400 mb-3">Columns: name, industry, website, size, location, description</p>
+              <p className="text-sm text-slate-600 mb-2">{t('companies.uploadCsvFile')}</p>
+              <p className="text-xs text-slate-400 mb-3">{t('companies.importColumns')}</p>
               <input type="file" accept=".csv" onChange={handleImport} className="text-sm" />
             </div>
           </div>

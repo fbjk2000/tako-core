@@ -162,6 +162,7 @@ const BookingPage = () => {
 
 // Public Booking Page (no auth required)
 export const PublicBookingPage = () => {
+  const { t } = useT();
   const { userId } = useParams();
   const [selectedDate, setSelectedDate] = useState(null);
   const [slots, setSlots] = useState([]);
@@ -211,8 +212,8 @@ export const PublicBookingPage = () => {
           <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
             <CheckSquare className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Meeting Confirmed!</h2>
-          <p className="text-slate-600 mb-4">Check your email for confirmation details and calendar invite.</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('bookings.meetingConfirmed')}</h2>
+          <p className="text-slate-600 mb-4">{t('bookings.meetingConfirmedDesc')}</p>
         </Card>
       </div>
     );
@@ -227,21 +228,21 @@ export const PublicBookingPage = () => {
             <img src={host.picture} alt={host?.name || 'Host'} className="w-14 h-14 rounded-full mx-auto mb-2 border-2 border-white shadow" />
           )}
           <CardTitle className="text-xl">
-            {host?.name ? `Book a Meeting with ${host.name}` : 'Book a Meeting'}
+            {host?.name ? `${t('bookings.bookMeetingWith')} ${host.name}` : t('bookings.bookMeeting')}
           </CardTitle>
           <CardDescription>
-            {host?.welcome_message || 'Select a date and time that works for you'}
+            {host?.welcome_message || t('bookings.selectDateTime')}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <Label className="text-sm font-medium mb-2 block">Duration</Label>
+                <Label className="text-sm font-medium mb-2 block">{t('bookings.duration')}</Label>
                 <div className="flex gap-2">
                   {[15, 30, 60].map(d => (
                     <Button key={d} variant={duration === d ? 'default' : 'outline'} size="sm" onClick={() => { setDuration(d); if (selectedDate) fetchSlots(selectedDate); }}
-                      className={duration === d ? 'bg-[#0EA5A0]' : ''}>{d} min</Button>
+                      className={duration === d ? 'bg-[#0EA5A0]' : ''}>{d} {t('calendar.minutesShort')}</Button>
                   ))}
                 </div>
               </div>
@@ -256,7 +257,7 @@ export const PublicBookingPage = () => {
                       {selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                     </Label>
                     {slots.length === 0 ? (
-                      <p className="text-sm text-slate-500 py-4">No available slots for this date</p>
+                      <p className="text-sm text-slate-500 py-4">{t('bookings.noSlots')}</p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2 max-h-[200px] overflow-y-auto">
                         {slots.map(s => (
@@ -270,12 +271,12 @@ export const PublicBookingPage = () => {
                   </div>
                   {selectedSlot && (
                     <div className="space-y-3 border-t pt-4">
-                      <div><Label>Your Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" /></div>
-                      <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="john@example.com" /></div>
-                      <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+44..." /></div>
-                      <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="What would you like to discuss?" /></div>
+                      <div><Label>{t('bookings.yourName')} *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" /></div>
+                      <div><Label>{t('bookings.email')} *</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="john@example.com" /></div>
+                      <div><Label>{t('bookings.phone')}</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+44..." /></div>
+                      <div><Label>{t('bookings.notes')}</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder={t('bookings.notesPlaceholder')} /></div>
                       <Button onClick={handleBook} disabled={loading || !form.name || !form.email} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white">
-                        {loading ? 'Booking...' : `Confirm ${duration}min Meeting`}
+                        {loading ? t('bookings.booking') : `${t('common.confirm')} · ${duration} ${t('calendar.minutesShort')} ${t('bookings.confirmMeetingSuffix')}`}
                       </Button>
                     </div>
                   )}

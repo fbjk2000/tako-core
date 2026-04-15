@@ -4,6 +4,8 @@ import axios from 'axios';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import './i18n';
+import enLocale from './locales/en.json';
+import deLocale from './locales/de.json';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -49,6 +51,16 @@ window.addEventListener('beforeinstallprompt', (e) => {
 // normalize the error.response.data.detail to a plain string so existing
 // per-page handlers (toast.error(e.response?.data?.detail)) still work.
 let _lastStructuredToastAt = 0;
+// Interceptor runs at module load — outside any component — so we read
+// translations directly from the locale bundles keyed by localStorage.
+const _tAxios = (key) => {
+  const lang = (typeof localStorage !== 'undefined' && localStorage.getItem('tako_lang')) || 'en';
+  const bundle = lang === 'de' ? deLocale : enLocale;
+  const parts = key.split('.');
+  let val = bundle;
+  for (const p of parts) val = val?.[p];
+  return val || key;
+};
 axios.interceptors.response.use(
   (r) => r,
   (error) => {
@@ -59,22 +71,30 @@ axios.interceptors.response.use(
         // Debounce: avoid stacking toasts when multiple AI calls fail in a row.
         if (now - _lastStructuredToastAt > 3000) {
           _lastStructuredToastAt = now;
-          const msg = detail.message || 'Action required';
-          const desc = detail.action || undefined;
+          // Prefer localized copy from the backend (detail.message_de / action_de)
+          // when the user's UI language is German and the backend supplied it.
+          const lang = (typeof localStorage !== 'undefined' && localStorage.getItem('tako_lang')) || 'en';
+          const localizedMsg = lang === 'de' ? (detail.message_de || detail.message) : detail.message;
+          const localizedAction = lang === 'de' ? (detail.action_de || detail.action) : detail.action;
+          const msg = localizedMsg || _tAxios('common.actionRequired');
+          const desc = localizedAction || undefined;
           const target = detail.settings_url || detail.support_url || null;
           toast.error(msg, {
             description: desc,
             duration: 8000,
             action: target
               ? {
-                  label: detail.code === 'ai_trial_expired' ? 'Add key' : 'Open settings',
+                  label: detail.code === 'ai_trial_expired' ? _tAxios('common.addKey') : _tAxios('common.openSettings'),
                   onClick: () => { window.location.href = target; },
                 }
               : undefined,
           });
         }
         // Replace dict with a plain string so existing handlers don't print [object Object].
-        error.response.data.detail = [detail.message, detail.action].filter(Boolean).join(' ');
+        const lang = (typeof localStorage !== 'undefined' && localStorage.getItem('tako_lang')) || 'en';
+        const flatMsg = lang === 'de' ? (detail.message_de || detail.message) : detail.message;
+        const flatAct = lang === 'de' ? (detail.action_de || detail.action) : detail.action;
+        error.response.data.detail = [flatMsg, flatAct].filter(Boolean).join(' ');
       }
     } catch (e) {
       // Never let the interceptor itself throw.
