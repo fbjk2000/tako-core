@@ -1,0 +1,21 @@
+# Override for deployments where an existing host-level nginx is the edge
+# reverse proxy (as on tako.software, where /etc/nginx/sites-enabled/tako-software
+# already terminates SSL and proxies to 127.0.0.1:8001/3000 — alongside other
+# sites this VPS serves). This file:
+#   1. Publishes backend + frontend on localhost so host nginx can proxy to them.
+#   2. Disables the Caddy service via a profile so it never tries to bind :80/:443.
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml -f docker-compose.host-nginx.yml up -d
+#
+# If you want Caddy-in-docker as the edge proxy instead, omit this override
+# (or pass `--profile with-caddy` explicitly).
+services:
+  caddy:
+    profiles: ["with-caddy"]
+  backend:
+    ports:
+      - "127.0.0.1:8001:8001"
+  frontend:
+    ports:
+      - "127.0.0.1:3000:3000"

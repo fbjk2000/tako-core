@@ -79,9 +79,27 @@ if docker compose ps --quiet 2>/dev/null | grep -q .; then
   docker compose down
 fi
 
+# ── Detect edge-proxy strategy ───────────────────────────────
+# If host-level nginx is already listening on :80/:443 (typical on this VPS
+# where nginx also serves other sites), use the host-nginx override so Caddy
+# doesn't try to bind those ports and backend/frontend publish to localhost
+# where host nginx can proxy to them.
+COMPOSE_FILES=(-f docker-compose.production.yml)
+if ss -tln '( sport = :80 or sport = :443 )' 2>/dev/null | grep -qE 'LISTEN.*(:80|:443) '; then
+  if [ -f docker-compose.host-nginx.yml ]; then
+    echo "=== Detected host-level service on :80/:443 — using host-nginx override ==="
+    COMPOSE_FILES+=(-f docker-compose.host-nginx.yml)
+  else
+    echo "WARN: host-level service is on :80/:443 but docker-compose.host-nginx.yml is missing." >&2
+    echo "      Caddy will likely fail to bind. Either stop host nginx or add the override." >&2
+  fi
+else
+  echo "=== Ports 80/443 free — using Caddy-in-docker as the edge proxy ==="
+fi
+
 # ── Build and start with production compose ──────────────────
 echo "=== Building and starting production stack ==="
-docker compose -f docker-compose.production.yml up -d --build
+docker compose "${COMPOSE_FILES[@]}" up -d --build
 
 # ── Wait for health ──────────────────────────────────────────
 echo "=== Waiting for services ==="
@@ -89,11 +107,14 @@ sleep 5
 
 echo ""
 echo "=== Service status ==="
-docker compose -f docker-compose.production.yml ps
+docker compose "${COMPOSE_FILES[@]}" ps
 
-echo ""
-echo "=== Caddy logs (check for SSL cert) ==="
-docker compose -f docker-compose.production.yml logs caddy --tail 20
+# Only show Caddy logs if Caddy is actually part of this deployment
+if docker compose "${COMPOSE_FILES[@]}" ps --services 2>/dev/null | grep -q '^caddy$'; then
+  echo ""
+  echo "=== Caddy logs (check for SSL cert) ==="
+  docker compose "${COMPOSE_FILES[@]}" logs caddy --tail 20
+fi
 
 echo ""
 echo "=== Backend health ==="
