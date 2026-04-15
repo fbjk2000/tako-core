@@ -20,10 +20,11 @@ import {
   HelpCircle,
   MessageSquare,
   Phone,
-  Radio
+  Radio,
+  Megaphone
 } from 'lucide-react';
 
-const ICONS = { LayoutDashboard, Users, Target, CheckSquare, Building, Mail, Settings, Shield, MessageSquare, Phone, BarChart3, HelpCircle, Radio };
+const ICONS = { LayoutDashboard, Users, Target, CheckSquare, Building, Mail, Megaphone, Settings, Shield, MessageSquare, Phone, BarChart3, HelpCircle, Radio };
 
 const DashboardLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -56,7 +57,7 @@ const DashboardLayout = ({ children }) => {
     { path: '/projects', label: l.projects, iconKey: 'CheckSquare' },
     { path: '/pipeline', label: l.pipeline, iconKey: 'BarChart3' },
     { path: '/companies', label: l.companies, iconKey: 'Building' },
-    { path: '/campaigns', label: l.campaigns, iconKey: 'Mail' },
+    { path: '/campaigns', label: l.campaigns, iconKey: 'Megaphone' },
     { path: '/listeners', label: l.listeners, iconKey: 'Radio' },
     { path: '/chat', label: l.teamChat, iconKey: 'MessageSquare' },
     { path: '/calls', label: l.calls, iconKey: 'Phone' },
