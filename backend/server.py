@@ -337,6 +337,9 @@ class Campaign(BaseModel):
     subject: str
     content: str
     status: str = "draft"
+    # Channel abstraction (spec: facebook-listener-spec.md §Phase 0 P1).
+    # Pre-existing campaigns are treated as "email" via a one-shot migration.
+    channel_type: str = "email"  # "email" | "facebook" | "instagram" | "linkedin"
     recipients: List[str] = []
     sent_count: int = 0
     open_count: int = 0
@@ -347,8 +350,9 @@ class Campaign(BaseModel):
 
 class CampaignCreate(BaseModel):
     name: str
-    subject: str
-    content: str
+    subject: str = ""
+    content: str = ""
+    channel_type: str = "email"
     recipients: List[str] = []
     scheduled_at: Optional[datetime] = None
 
@@ -3156,19 +3160,17 @@ async def create_kit_broadcast(broadcast: KitBroadcastCreate):
         logger.error(f"Kit broadcast error: {e}")
         raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
 
-@api_router.post("/campaigns/{campaign_id}/send")
-async def send_campaign_via_kit(campaign_id: str, current_user: dict = Depends(get_current_user)):
-    """Send a campaign as a Kit.com broadcast or via Resend email"""
-    campaign = await db.campaigns.find_one(
-        {"campaign_id": campaign_id, "organization_id": current_user.get("organization_id")},
-        {"_id": 0}
-    )
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
+async def send_campaign_via_kit_internal(campaign: dict) -> dict:
+    """Email-channel send pipeline (Kit.com → Resend fallback).
+
+    Extracted so `channels.email.EmailChannel.execute` can call it. Returns a
+    response dict; raises HTTPException on user-facing failures. Keep behavior
+    identical to the pre-refactor route so existing email campaigns are
+    unaffected.
+    """
+    campaign_id = campaign["campaign_id"]
     recipients = campaign.get("recipients", [])
-    
-    # Try Kit.com first if API secret is configured
+
     if KIT_API_SECRET:
         try:
             async with httpx.AsyncClient() as client:
@@ -3189,8 +3191,7 @@ async def send_campaign_via_kit(campaign_id: str, current_user: dict = Depends(g
                 logger.error(f"Kit.com error: {response.status_code} - {response.text}")
         except Exception as e:
             logger.error(f"Kit send error: {e}")
-    
-    # Fallback: send via Resend email
+
     if RESEND_API_KEY and recipients:
         sent = 0
         for email_addr in recipients:
@@ -3204,22 +3205,46 @@ async def send_campaign_via_kit(campaign_id: str, current_user: dict = Depends(g
                 sent += 1
             except Exception as e:
                 logger.error(f"Resend send error for {email_addr}: {e}")
-        
         await db.campaigns.update_one(
             {"campaign_id": campaign_id},
             {"$set": {"status": "sent", "sent_at": datetime.now(timezone.utc).isoformat(), "sent_count": sent}}
         )
         if sent > 0:
             return {"success": True, "message": f"Campaign sent via email to {sent}/{len(recipients)} recipients"}
-        else:
-            raise HTTPException(status_code=400, detail=f"Could not send to any of {len(recipients)} recipients. Email domain (tako.software) may need verification in Resend, or add your Kit.com API Secret for Kit.com delivery.")
-    
-    # Neither Kit nor Resend configured properly
+        raise HTTPException(status_code=400, detail=f"Could not send to any of {len(recipients)} recipients. Email domain may need verification in Resend, or add your Kit.com API Secret.")
     if not KIT_API_SECRET and not recipients:
         raise HTTPException(status_code=400, detail="No recipients added to this campaign. Add leads or contacts first.")
     if not KIT_API_SECRET:
         raise HTTPException(status_code=400, detail="Kit.com API Secret not configured. Go to your Kit.com account → Settings → API to get your secret key, then add it as KIT_API_SECRET in the backend configuration.")
     raise HTTPException(status_code=500, detail="Failed to send campaign. Check Kit.com and Resend configuration.")
+
+
+@api_router.post("/campaigns/{campaign_id}/send")
+async def send_campaign(campaign_id: str, current_user: dict = Depends(get_current_user)):
+    """Dispatch send by campaign.channel_type (spec §Phase 0 P1).
+
+    Email campaigns go through the Kit.com → Resend pipeline (unchanged).
+    Facebook campaigns route to the Listener activation (read-only; no sends).
+    """
+    from channels import get_handler  # local import: channels package imports server lazily
+
+    campaign = await db.campaigns.find_one(
+        {"campaign_id": campaign_id, "organization_id": current_user.get("organization_id")},
+        {"_id": 0}
+    )
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    channel_type = campaign.get("channel_type", "email")
+    handler = get_handler(channel_type)
+    if not handler:
+        raise HTTPException(status_code=400, detail=f"Unsupported channel_type: {channel_type}")
+
+    errs = await handler.validate_config(campaign["organization_id"])
+    if errs:
+        raise HTTPException(status_code=400, detail="; ".join(errs))
+    campaign = await handler.prepare(campaign)
+    return await handler.execute(campaign)
 
 # ==================== AI ROUTES ====================
 
@@ -7936,6 +7961,27 @@ async def health():
 # Include the router in the main app
 app.include_router(api_router)
 
+# ==================== LISTENERS (SMM AGENTS) ====================
+# All listener wiring lives in backend/listeners/. Each bind_* function takes the
+# monolith's globals (db, get_current_user, etc.) and returns a ready-to-include
+# APIRouter. See backend/listeners/README.md and docs/facebook-listener-spec.md.
+from listeners.routes import bind_deps as _bind_listener_deps
+from listeners.pairing import bind_pairing as _bind_pairing
+from listeners.webhook_ingest import bind_webhook_router as _bind_webhook_router
+from listeners.oauth_routes import bind_oauth_router as _bind_oauth_router
+
+app.include_router(
+    _bind_listener_deps(
+        get_current_user=get_current_user,
+        ensure_user_org=ensure_user_org,
+        db=db,
+        tako_ai_text=tako_ai_text,
+    )
+)
+app.include_router(_bind_pairing(get_current_user=get_current_user, ensure_user_org=ensure_user_org, db=db))
+app.include_router(_bind_webhook_router(db=db))
+app.include_router(_bind_oauth_router(get_current_user=get_current_user, ensure_user_org=ensure_user_org, db=db))
+
 _cors_origins = [
     os.environ.get("FRONTEND_URL", "http://localhost:3000"),
 ]
@@ -7951,6 +7997,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+async def _tako_startup() -> None:
+    """Start the APScheduler, ensure listener Mongo indexes, rehydrate jobs."""
+    try:
+        from jobs import start_scheduler
+        from listeners.indexes import ensure_indexes
+        from listeners.poller import reschedule_all_listeners
+
+        start_scheduler()
+        await ensure_indexes()
+        await reschedule_all_listeners()
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Startup hook failed: %s", e)
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    try:
+        from jobs import shutdown_scheduler
+
+        shutdown_scheduler()
+    except Exception:
+        pass
     client.close()
