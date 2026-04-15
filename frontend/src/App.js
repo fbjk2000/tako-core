@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import axios from 'axios';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
@@ -240,11 +240,22 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Scroll to top on route change (skip when a hash anchor is present so
-// in-page anchor links like /#features still work). Also disables the
-// browser's default scroll restoration so refreshes land at the top.
+// Scroll manager:
+// - On forward navigation (PUSH/REPLACE) → scroll to top (or to the hash
+//   target if present).
+// - On back/forward navigation (POP) → restore the previous scroll position
+//   for that history entry.
+// Positions are keyed by `location.key` (unique per history entry), kept in
+// memory only (sessionStorage would work too but isn't needed for a SPA).
+// Browser-native scroll restoration is disabled so refreshes land at the top
+// and we're in full control.
+const SCROLL_POSITIONS = new Map();
+
 const ScrollToTop = () => {
-  const { pathname, hash } = useLocation();
+  const location = useLocation();
+  const { pathname, hash, key } = location;
+  const navType = useNavigationType(); // 'POP' | 'PUSH' | 'REPLACE'
+  const prevKeyRef = useRef(key);
 
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
@@ -252,17 +263,37 @@ const ScrollToTop = () => {
     }
   }, []);
 
+  // Before leaving an entry, stash its scroll position against its key.
   useEffect(() => {
+    return () => {
+      if (prevKeyRef.current) {
+        SCROLL_POSITIONS.set(prevKeyRef.current, window.scrollY);
+      }
+    };
+  }, [key]);
+
+  useEffect(() => {
+    prevKeyRef.current = key;
+
+    // Hash anchors always win: let the browser/scroll-margin resolve them.
     if (hash) {
-      // Let the browser handle in-page anchors after render.
       const el = document.getElementById(hash.slice(1));
       if (el) {
         requestAnimationFrame(() => el.scrollIntoView({ behavior: 'auto', block: 'start' }));
         return;
       }
     }
+
+    if (navType === 'POP') {
+      // Back/forward: restore previous position if we have one, else top.
+      const saved = SCROLL_POSITIONS.get(key);
+      // Wait a frame so the destination page has mounted and measured.
+      requestAnimationFrame(() => window.scrollTo(0, typeof saved === 'number' ? saved : 0));
+      return;
+    }
+
     window.scrollTo(0, 0);
-  }, [pathname, hash]);
+  }, [pathname, hash, key, navType]);
 
   return null;
 };

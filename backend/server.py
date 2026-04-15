@@ -1219,7 +1219,7 @@ class PasswordChange(BaseModel):
     new_password: str
 
 @api_router.post("/auth/change-password")
-async def change_password(data: PasswordChange, current_user: dict = Depends(get_current_user)):
+async def change_password(data: PasswordChange, request: Request, current_user: dict = Depends(get_current_user)):
     if len(data.new_password) < 8:
         raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
     user = await db.users.find_one({"user_id": current_user["user_id"]})
@@ -1230,10 +1230,49 @@ async def change_password(data: PasswordChange, current_user: dict = Depends(get
         raise HTTPException(status_code=400, detail="This account uses single sign-on; password cannot be changed here.")
     if not verify_password(data.current_password, existing_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if data.new_password == data.current_password:
+        raise HTTPException(status_code=400, detail="New password must be different from current password")
     await db.users.update_one(
         {"user_id": current_user["user_id"]},
         {"$set": {"password_hash": hash_password(data.new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
+
+    # Security notification — confirm the change to the user so a compromised
+    # session or attacker can't quietly rotate the password without them
+    # noticing. We do NOT send the new password (obviously); we tell them what
+    # changed, when, and what to do if it wasn't them.
+    if RESEND_API_KEY and user.get("email"):
+        try:
+            import asyncio
+            ua = request.headers.get("user-agent", "an unknown device")[:200]
+            ip = (request.headers.get("x-forwarded-for") or request.client.host if request.client else "") or "unknown"
+            when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            frontend_url = os.environ.get("FRONTEND_URL", "")
+            reset_link = f"{frontend_url}/forgot-password" if frontend_url else "/forgot-password"
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": SENDER_EMAIL,
+                "to": [user["email"].lower()],
+                "subject": "Your TAKO password was changed",
+                "html": f"""<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #0F0A1E;">
+                    <h2 style="color: #0C1024; margin-bottom: 8px;">Password changed</h2>
+                    <p style="color: #475569;">The password for your TAKO account ({user["email"]}) was just changed.</p>
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #475569;">
+                        <div><strong>When:</strong> {when}</div>
+                        <div style="margin-top: 4px;"><strong>Device:</strong> {ua}</div>
+                        <div style="margin-top: 4px;"><strong>IP:</strong> {ip}</div>
+                    </div>
+                    <p style="color: #475569;">If you made this change, you can ignore this email.</p>
+                    <p style="color: #B91C1C;"><strong>If this wasn't you</strong>, reset your password immediately
+                        and contact support at <a href="mailto:support@tako.software">support@tako.software</a>.</p>
+                    <p style="margin-top: 16px;"><a href="{reset_link}" style="background: #0EA5A0; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 14px;">Reset password</a></p>
+                    <p style="color: #94A3B8; font-size: 11px; margin-top: 24px;">You're receiving this security notice because your TAKO account password was changed. This email cannot be disabled.</p>
+                </div>"""
+            })
+        except Exception as e:
+            # Don't fail the password change if the email can't go out —
+            # the password has already rotated. Just log it.
+            logger.error(f"Password-change notification email failed for {user.get('email')}: {e}")
+
     return {"message": "Password updated"}
 
 # ==================== ORGANIZATION ROUTES ====================

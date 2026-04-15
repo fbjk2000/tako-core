@@ -86,6 +86,7 @@ const SettingsPage = () => {
 
   // Profile editing
   const [profileForm, setProfileForm] = useState({ name: '', picture: '', timezone: '' });
+  const [profileBaseline, setProfileBaseline] = useState({ name: '', picture: '', timezone: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [savingPassword, setSavingPassword] = useState(false);
@@ -483,16 +484,44 @@ const SettingsPage = () => {
     setTaskStages(updated);
   };
 
-  // Keep profile form in sync with the auth user
+  // Keep profile form in sync with the auth user (and reset the baseline
+  // used to detect unsaved changes).
   useEffect(() => {
     if (user) {
-      setProfileForm({
+      const snapshot = {
         name: user.name || '',
         picture: user.picture || '',
         timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
-      });
+      };
+      setProfileForm(snapshot);
+      setProfileBaseline(snapshot);
     }
   }, [user]);
+
+  // Dirty check + tab-close guard. We can't reliably block in-app nav under
+  // <BrowserRouter> (data-router only), so we at least protect refresh,
+  // tab close, and typing a new URL. An inline "Unsaved changes" banner +
+  // Discard button covers the in-app case visibly.
+  const profileDirty = (
+    profileForm.name !== profileBaseline.name ||
+    profileForm.picture !== profileBaseline.picture ||
+    profileForm.timezone !== profileBaseline.timezone
+  );
+
+  useEffect(() => {
+    if (!profileDirty) return;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = ''; // Chrome needs this
+      return '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [profileDirty]);
+
+  const discardProfileChanges = () => {
+    setProfileForm(profileBaseline);
+  };
 
   const saveProfile = async () => {
     if (!profileForm.name.trim()) { toast.error('Name cannot be empty'); return; }
@@ -500,6 +529,10 @@ const SettingsPage = () => {
     try {
       await axios.put(`${API}/auth/me`, profileForm, { headers, withCredentials: true });
       await checkAuth();
+      // Sync the baseline so the dirty indicator clears immediately;
+      // the useEffect on `user` will also reconcile once the auth round-trip
+      // returns the canonical server copy.
+      setProfileBaseline(profileForm);
       toast.success('Profile updated');
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Could not update profile');
@@ -702,16 +735,40 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={saveProfile}
-                    disabled={savingProfile}
-                    className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"
-                    data-testid="profile-save-btn"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {savingProfile ? 'Saving…' : 'Save changes'}
-                  </Button>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-xs">
+                    {profileDirty ? (
+                      <span className="inline-flex items-center gap-1.5 text-amber-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        Unsaved changes
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">All changes saved</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {profileDirty && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={discardProfileChanges}
+                        disabled={savingProfile}
+                        data-testid="profile-discard-btn"
+                        className="text-slate-500 hover:text-slate-700"
+                      >
+                        Discard
+                      </Button>
+                    )}
+                    <Button
+                      onClick={saveProfile}
+                      disabled={savingProfile || !profileDirty}
+                      className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white"
+                      data-testid="profile-save-btn"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {savingProfile ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
