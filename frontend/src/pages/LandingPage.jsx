@@ -426,14 +426,15 @@ function positionLabels(wrapEl, labelsEl, cssW, cssH, vis) {
   const wR = wrapEl.getBoundingClientRect();
   const scale = cssW > 0 ? wR.width / cssW : 1;
 
+  const LABEL_PUSH = 28; // px beyond arm tip so labels clear the arm stroke
   AGENTS_DATA.forEach((agent, i) => {
     const a  = degToRad(agent.angle);
-    const ex = cx + Math.cos(a) * armLen;
-    const ey = cy + Math.sin(a) * armLen;
+    const lx = cx + Math.cos(a) * (armLen + LABEL_PUSH);
+    const ly = cy + Math.sin(a) * (armLen + LABEL_PUSH);
     const el = labelsEl.children[i];
     if (!el) return;
-    el.style.left      = `${ex * scale}px`;
-    el.style.top       = `${ey * scale}px`;
+    el.style.left      = `${lx * scale}px`;
+    el.style.top       = `${ly * scale}px`;
     el.style.transform = 'translate(-50%,-50%)';
     vis > 0.35 ? el.classList.add('visible') : el.classList.remove('visible');
   });
@@ -652,6 +653,9 @@ const LP_CSS = `
   opacity: 0;
   transition: opacity 0.6s ease;
   pointer-events: auto;
+  background: rgba(245,243,238,0.88);
+  padding: 2px 8px 4px;
+  border-radius: 8px;
 }
 .agent-label.visible { opacity: 1; }
 .agent-label .al-dot {
@@ -1333,16 +1337,24 @@ const LandingPage = () => {
       const r  = archRef.current ? archRef.current.getBoundingClientRect() : null;
       const vh = window.innerHeight;
 
-      // Ghost (0.05) when arch section below fold → fades to 1 as section top
-      // reaches viewport top → clamps at 1 after (stays visible while in arch section).
-      const vis = Math.max(0.05, r ? Math.min(1, Math.max(0, 1 - r.top / vh)) : 0.05);
+      // SPACER_CY: approximate distance from arch section top to the centre of
+      // the arch-spacer div (96px padding + ~220px header text + 340px = ~660px).
+      const SPACER_CY = 660;
 
-      // Scroll-follow: once the arch section top passes the viewport top,
-      // shift canvas up at the same rate so it rides out with the section.
-      const topCss = (r && r.top < 0) ? `calc(50% + ${r.top}px)` : '50%';
-      canvas.style.top = topCss;
+      // Spacer centre position in the viewport (moves as you scroll).
+      const spacerVP = r ? r.top + SPACER_CY : vh;
+
+      // Fade: ghost (0.05) when spacer is at/below viewport bottom,
+      //       full (1.0) when spacer centre reaches viewport centre (50%vh).
+      const vis = Math.max(0.05, Math.min(1, 2 - spacerVP / (vh * 0.5)));
+
+      // Head position: clamp at 50%vh while spacer is still approaching;
+      // once spacer centre passes 50%vh the head tracks it exactly so the
+      // octopus scrolls out with the architecture section.
+      const headPx = r ? Math.min(vh / 2, spacerVP) : vh / 2;
+      canvas.style.top = `${headPx}px`;
       const labelsWrap = labelsContRef.current?.parentElement;
-      if (labelsWrap) labelsWrap.style.top = topCss;
+      if (labelsWrap) labelsWrap.style.top = `${headPx}px`;
 
       // Draw in CSS-pixel space (divide physical canvas dims by dpr).
       const cssW = canvas.width  / dpr;
