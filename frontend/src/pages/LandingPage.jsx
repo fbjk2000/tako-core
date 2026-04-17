@@ -939,11 +939,11 @@ const LP_CSS = `
   font-weight: 500;
 }
 
-/* Architecture */
-.tako-lp .architecture { padding: 6rem 1.5rem; background: var(--lp-ink); text-align: center; }
+/* Architecture — cream background so dark-ink octopus is visible */
+.tako-lp .architecture { padding: 6rem 1.5rem 5rem; background: var(--lp-surface); text-align: center; }
 .tako-lp .architecture .section-tag { color: var(--lp-teal); }
-.tako-lp .architecture .section-title { color: #fff; margin: 0 auto 1rem; }
-.tako-lp .architecture .section-desc { color: rgba(255,255,255,0.55); margin: 0 auto; }
+.tako-lp .architecture .section-title { color: var(--lp-ink); margin: 0 auto 1rem; }
+.tako-lp .architecture .section-desc { color: var(--lp-muted); margin: 0 auto; max-width: 620px; }
 
 /* Proof */
 .tako-lp .proof { padding: 6rem 1.5rem; background: var(--lp-surface); }
@@ -1187,9 +1187,6 @@ const LP_CSS = `
 }
 
 /* Architecture section spacer — keeps the fixed octopus in view while scrolling */
-.tako-lp .architecture {
-  padding-bottom: 5rem;
-}
 .tako-lp .arch-spacer {
   height: min(680px, 70vw);
   pointer-events: none;
