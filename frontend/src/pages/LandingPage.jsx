@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useT } from '../useT';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -165,8 +165,13 @@ const LaunchEdition = () => {
 };
 
 const LandingPage = () => {
-  const { t, i18n } = useTranslation();
-  const toggleLang = () => { const nl = i18n.language === 'en' ? 'de' : 'en'; i18n.changeLanguage(nl); localStorage.setItem('tako_lang', nl); };
+  const { t, lang } = useT();
+  const toggleLang = () => {
+    const nl = lang === 'en' ? 'de' : 'en';
+    localStorage.setItem('tako_lang', nl);
+    try { window.dispatchEvent(new Event('languagechange')); } catch {}
+    window.location.reload();
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLeadMagnet, setShowLeadMagnet] = useState(false);
   const [leadMagnetEmail, setLeadMagnetEmail] = useState('');
@@ -239,7 +244,7 @@ const LandingPage = () => {
             <Link to="/support" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('common.support')}</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={toggleLang} className="px-2 py-1 text-xs font-semibold rounded bg-[#0F0A1E]/5 hover:bg-[#0F0A1E]/10 text-[#0F0A1E]/60" data-testid="landing-lang-toggle">{i18n.language === 'en' ? 'DE' : 'EN'}</button>
+            <button onClick={toggleLang} className="px-2 py-1 text-xs font-semibold rounded bg-[#0F0A1E]/5 hover:bg-[#0F0A1E]/10 text-[#0F0A1E]/60" data-testid="landing-lang-toggle">{lang === 'en' ? 'DE' : 'EN'}</button>
             <Link to="/login"><Button variant="ghost" className="text-sm h-9 text-[#0F0A1E]/70 hover:text-[#0F0A1E]">{t('common.signIn')}</Button></Link>
             <Link to="/signup"><Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-sm h-9 px-5 rounded-lg" data-testid="nav-cta">{t('common.startFree')}</Button></Link>
           </div>

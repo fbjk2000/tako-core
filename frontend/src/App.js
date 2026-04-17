@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useNa
 import axios from 'axios';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import './i18n';
 import enLocale from './locales/en.json';
 import deLocale from './locales/de.json';
 
