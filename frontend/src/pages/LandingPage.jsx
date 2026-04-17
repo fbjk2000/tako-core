@@ -624,20 +624,20 @@ const LP_CSS = `
 #octo-fixed {
   position: fixed;
   top: 50%; left: 50%;
-  transform: translate(-50%, -40%);
-  width: min(780px, 85vw);
-  height: min(780px, 85vw);
-  pointer-events: none;
-  z-index: 1;
-}
-.tako-lp .octo-labels-wrapper {
-  position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -40%);
+  transform: translate(-50%, -34%);
   width: min(780px, 85vw);
   height: min(780px, 85vw);
   pointer-events: none;
   z-index: 3;
+}
+.tako-lp .octo-labels-wrapper {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -34%);
+  width: min(780px, 85vw);
+  height: min(780px, 85vw);
+  pointer-events: none;
+  z-index: 4;
 }
 
 /* Agent labels */
@@ -1203,9 +1203,6 @@ const LP_CSS = `
   line-height: 1.75;
   padding-top: 1rem;
 }
-
-/* Labels sit BELOW hero (z-index 4) — only visible when scrolled to arch section */
-.tako-lp .octo-labels-wrapper { z-index: 2; }
 
 /* Hero gets a subtle radial mask so the ghost octopus doesn't distract */
 .tako-lp .hero::before {
