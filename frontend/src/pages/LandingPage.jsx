@@ -1330,9 +1330,19 @@ const LandingPage = () => {
     const loop = (ts) => {
       timeRef.current = ts / 1000;
 
-      // Visibility driven by how far the architecture section is in view.
-      // Math.max(0.05, ...) ensures a ghost at all times; 1.0 when fully in view.
-      const vis = Math.max(0.05, archRef.current ? getScrollVis(archRef.current) : 0.05);
+      const r  = archRef.current ? archRef.current.getBoundingClientRect() : null;
+      const vh = window.innerHeight;
+
+      // Ghost (0.05) when arch section below fold → fades to 1 as section top
+      // reaches viewport top → clamps at 1 after (stays visible while in arch section).
+      const vis = Math.max(0.05, r ? Math.min(1, Math.max(0, 1 - r.top / vh)) : 0.05);
+
+      // Scroll-follow: once the arch section top passes the viewport top,
+      // shift canvas up at the same rate so it rides out with the section.
+      const topCss = (r && r.top < 0) ? `calc(50% + ${r.top}px)` : '50%';
+      canvas.style.top = topCss;
+      const labelsWrap = labelsContRef.current?.parentElement;
+      if (labelsWrap) labelsWrap.style.top = topCss;
 
       // Draw in CSS-pixel space (divide physical canvas dims by dpr).
       const cssW = canvas.width  / dpr;
