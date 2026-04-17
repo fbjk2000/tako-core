@@ -627,7 +627,7 @@ const LP_CSS = `
 #octo-fixed {
   position: fixed;
   top: 50%; left: 50%;
-  transform: translate(-50%, -34%);
+  transform: translate(-50%, -50%);
   width: min(780px, 85vw);
   height: min(780px, 85vw);
   pointer-events: none;
@@ -636,7 +636,7 @@ const LP_CSS = `
 .tako-lp .octo-labels-wrapper {
   position: fixed;
   top: 50%; left: 50%;
-  transform: translate(-50%, -34%);
+  transform: translate(-50%, -50%);
   width: min(780px, 85vw);
   height: min(780px, 85vw);
   pointer-events: none;
@@ -1242,6 +1242,7 @@ const LandingPage = () => {
   const labelsContRef = useRef(null);
   const progBarRef    = useRef(null);
   const archRef       = useRef(null);   // architecture section — drives octopus visibility
+  const spacerRef     = useRef(null);   // arch-spacer div — measured for true centre position
   const rafRef        = useRef(null);
   const timeRef       = useRef(0);
 
@@ -1335,31 +1336,36 @@ const LandingPage = () => {
     const loop = (ts) => {
       timeRef.current = ts / 1000;
 
-      const r  = archRef.current ? archRef.current.getBoundingClientRect() : null;
-      const vh = window.innerHeight;
+      const r   = archRef.current ? archRef.current.getBoundingClientRect() : null;
+      const vh  = window.innerHeight;
 
-      // SPACER_CY: approximate distance from arch section top to the centre of
-      // the arch-spacer div (96px padding + ~220px header text + 340px = ~660px).
-      const SPACER_CY = 660;
+      // CSS-pixel canvas dimensions (needed for both clamp and draw).
+      const cssW = canvas.width  / dpr;
+      const cssH = canvas.height / dpr;
 
-      // Spacer centre position in the viewport (moves as you scroll).
-      const spacerVP = r ? r.top + SPACER_CY : vh;
+      // Measure the spacer's real viewport centre instead of using a magic
+      // constant. Fall back to the old arch-top + 660 estimate on mobile
+      // (where arch-spacer has display:none and offsetHeight === 0).
+      const spacerEl   = spacerRef.current;
+      const spacerRect = (spacerEl && spacerEl.offsetHeight > 0)
+        ? spacerEl.getBoundingClientRect()
+        : null;
+      const spacerVP = spacerRect
+        ? spacerRect.top + spacerRect.height / 2   // true measured centre
+        : r ? r.top + 660 : vh;                    // mobile / pre-mount fallback
 
-      // Fade: ghost (0.05) when spacer is at/below viewport bottom,
-      //       full (1.0) when spacer centre reaches viewport centre (50%vh).
+      // Fade: ghost (0.05) when spacer is below viewport, full (1.0) at vh/2.
       const vis = Math.max(0.05, Math.min(1, 2 - spacerVP / (vh * 0.5)));
 
-      // Head position: clamp at 50%vh while spacer is still approaching;
-      // once spacer centre passes 50%vh the head tracks it exactly so the
-      // octopus scrolls out with the architecture section.
-      const headPx = r ? Math.min(vh / 2, spacerVP) : vh / 2;
+      // Head position: hold at vh/2 while spacer approaches, then track it out.
+      // CSS transform is translate(-50%, -50%) so `top` == visual centre.
+      // Clamp so the canvas never clips at top or bottom of the viewport.
+      const rawHead = r ? Math.min(vh / 2, spacerVP) : vh / 2;
+      const headPx  = Math.min(vh - cssH / 2, Math.max(cssH / 2, rawHead));
+
       canvas.style.top = `${headPx}px`;
       const labelsWrap = labelsContRef.current?.parentElement;
       if (labelsWrap) labelsWrap.style.top = `${headPx}px`;
-
-      // Draw in CSS-pixel space (divide physical canvas dims by dpr).
-      const cssW = canvas.width  / dpr;
-      const cssH = canvas.height / dpr;
 
       ctx.save();
       ctx.scale(dpr, dpr);
@@ -1556,7 +1562,7 @@ const LandingPage = () => {
           <h2 className="section-title tl-reveal">{t.archTitle}</h2>
           <p className="section-desc tl-reveal" style={{ maxWidth: '680px', margin: '0 auto 2rem' }}>{t.archDesc}</p>
           {/* Spacer that lets the fixed octopus be fully visible while scrolling */}
-          <div className="arch-spacer" />
+          <div className="arch-spacer" ref={spacerRef} />
           <p className="arch-note tl-reveal">{t.archNote}</p>
         </div>
       </section>
