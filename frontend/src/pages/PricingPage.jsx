@@ -515,27 +515,39 @@ const PricingPage = () => {
           {/* Background glow */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#0EA5A0]/20 to-transparent pointer-events-none" />
 
-          <div className="relative z-10 max-w-2xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-[#0EA5A0]/20 text-[#0EA5A0] text-xs font-semibold px-3 py-1 rounded-full mb-4">
-              <Zap className="w-3 h-3" /> Limited availability
+          <div className="relative z-10 max-w-3xl mx-auto text-center">
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+              <div className="inline-flex items-center gap-2 bg-[#0EA5A0]/20 text-[#0EA5A0] text-xs font-semibold px-3 py-1 rounded-full">
+                <Zap className="w-3 h-3" /> Limited availability
+              </div>
+              <div className="inline-flex items-center bg-[#D4A853] text-[#0f172a] text-xs font-extrabold tracking-wider uppercase px-3 py-1 rounded-full">
+                75% OFF
+              </div>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-              Launch Edition — Founder Rate
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+              Launch Edition — Self-Hosted
             </h2>
+            <div className="flex items-baseline justify-center gap-3 mb-3">
+              <span className="text-3xl font-extrabold text-white">EUR 4,999</span>
+              <span className="text-slate-400 line-through text-lg">EUR 19,999</span>
+              <span className="text-slate-400 text-base">one-time</span>
+            </div>
             <p className="text-slate-300 mb-2">
-              The first 100 teams to sign up lock in <strong className="text-white">40% off Pro</strong> for life.
-              No contracts, no catch — just the best price this product will ever be.
+              Get the full TAKO platform with <strong className="text-white">unlimited users</strong>, deployed on <strong className="text-white">your own hosting</strong>.
+              One payment. No subscriptions. Yours forever.
             </p>
-            <p className="text-slate-400 text-sm mb-8">
-              Use code <code className="bg-white/10 px-2 py-0.5 rounded font-mono text-white">FOUNDER40</code> at checkout.
+            <p className="text-slate-400 text-sm mb-2">
+              Or lock in <strong className="text-white">40% off Pro</strong> for life — use code{' '}
+              <code className="bg-white/10 px-2 py-0.5 rounded font-mono text-white">FOUNDER40</code> at checkout.
             </p>
+            <p className="text-slate-500 text-xs mb-8">Offer expires June 30, 2026</p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link to="/signup">
-                <Button className="bg-[#0EA5A0] hover:bg-teal-600 text-white px-8 h-11">
-                  Claim founder rate
+              <a href="/#launch-edition">
+                <Button className="bg-[#D4A853] hover:bg-[#c49a48] text-[#0f172a] font-bold px-8 h-11">
+                  Get Launch Edition — EUR 4,999
                 </Button>
-              </Link>
+              </a>
               <button
                 className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
                 onClick={() => {
@@ -544,18 +556,19 @@ const PricingPage = () => {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               >
-                Already have an account? Apply code above
+                Apply FOUNDER40 to Pro instead
               </button>
             </div>
 
-            <div className="mt-8 grid grid-cols-3 divide-x divide-white/10 border border-white/10 rounded-xl overflow-hidden">
+            <div className="mt-8 grid grid-cols-4 divide-x divide-white/10 border border-white/10 rounded-xl overflow-hidden">
               {[
-                { label: 'Discount', value: '40% off' },
-                { label: 'Duration', value: 'Forever' },
-                { label: 'Seats remaining', value: '< 100' },
+                { label: 'Discount', value: '75% off' },
+                { label: 'Payment', value: 'One-time' },
+                { label: 'Users', value: 'Unlimited' },
+                { label: 'Slots left', value: '< 50' },
               ].map((item) => (
                 <div key={item.label} className="px-4 py-4 text-center">
-                  <p className="text-[#0EA5A0] font-bold text-lg">{item.value}</p>
+                  <p className="text-[#D4A853] font-bold text-lg">{item.value}</p>
                   <p className="text-slate-400 text-xs mt-0.5">{item.label}</p>
                 </div>
               ))}

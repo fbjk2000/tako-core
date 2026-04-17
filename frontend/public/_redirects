@@ -1,5 +1,2 @@
-# Redirect root to login — app.tako.software is the app, not the marketing site
-/  /login  302
-
-# SPA fallback — all other routes handled by React Router
+# SPA fallback — all routes handled by React Router
 /*  /index.html  200

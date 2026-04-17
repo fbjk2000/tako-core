@@ -107,12 +107,20 @@ const LaunchEdition = () => {
           <div className="grid md:grid-cols-[1.5fr_0.95fr] gap-8 p-8 md:p-10">
             {/* Left */}
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/[0.08] rounded-full px-3 py-1.5 mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
-                <span className="text-xs font-bold tracking-wider uppercase text-white/90">Limited time offer</span>
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                <div className="inline-flex items-center gap-2 bg-white/[0.08] rounded-full px-3 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
+                  <span className="text-xs font-bold tracking-wider uppercase text-white/90">Limited time offer</span>
+                </div>
+                <div className="inline-flex items-center bg-[#D4A853] rounded-full px-3 py-1.5">
+                  <span className="text-xs font-extrabold tracking-wider uppercase text-[#0f172a]">75% OFF</span>
+                </div>
               </div>
               <h3 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-1" style={{ fontFamily: "'Syne'" }}>Launch Edition</h3>
-              <p className="text-white text-xl font-bold mb-4">EUR 4,999 <span className="text-white/70 font-medium text-base ml-1">one-time</span></p>
+              <div className="flex items-baseline gap-3 mb-4">
+                <p className="text-white text-xl font-bold">EUR 4,999 <span className="text-white/70 font-medium text-base ml-1">one-time</span></p>
+                <p className="text-white/40 text-base line-through">EUR 19,999</p>
+              </div>
               <p className="text-white/90 text-base leading-relaxed mb-3">
                 Get the existing TAKO app with <strong>unlimited users</strong> and deploy it on <strong>your own hosting</strong>.
               </p>
