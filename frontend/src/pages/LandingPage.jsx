@@ -392,54 +392,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-24 px-6 scroll-mt-20" id="pricing">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#0EA5A0] mb-4">Pricing</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ fontFamily: "'Syne'" }}>
-              Simple, fair pricing
-            </h2>
-            <p className="text-[#0F0A1E]/60 text-lg">{t('landing.pricingDesc')}</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { plan: 'Free', price: '0', desc: 'For individuals getting started', features: ['Up to 3 users', '100 leads', 'Basic pipeline', 'Team chat'], cta: 'Start free', primary: false },
-              { plan: 'Pro', price: '15', desc: 'For growing sales teams', features: ['Unlimited users', 'Unlimited leads', 'AI scoring and enrichment', 'Outbound calling', 'Calendar booking', 'Priority support'], cta: 'Start free trial', primary: true },
-              { plan: 'Enterprise', price: 'Custom', desc: 'For organisations with complex needs', features: ['Everything in Pro', 'Custom integrations', 'Dedicated account manager', 'SSO and audit logs', 'SLA guarantee'], cta: 'Talk to sales', primary: false },
-            ].map((p, i) => (
-              <div key={i} className={`rounded-xl p-6 border ${p.primary ? 'bg-[#0C1024] border-[#0C1024] text-white' : 'bg-white border-[#0F0A1E]/5'}`} data-testid={`pricing-${p.plan.toLowerCase()}`}>
-                <p className={`text-sm font-medium mb-1 ${p.primary ? 'text-[#D4A853]' : 'text-[#0EA5A0]'}`}>{p.plan}</p>
-                <div className="flex items-baseline gap-1 mb-2">
-                  {p.price !== 'Custom' ? (
-                    <>
-                      <span className="text-4xl font-bold" style={{ fontFamily: "'Syne'" }}>{'\u20AC'}{p.price}</span>
-                      <span className={`text-sm ${p.primary ? 'text-white/60' : 'text-[#0F0A1E]/40'}`}>/user/month</span>
-                    </>
-                  ) : (
-                    <span className="text-4xl font-bold" style={{ fontFamily: "'Syne'" }}>Custom</span>
-                  )}
-                </div>
-                <p className={`text-sm mb-6 ${p.primary ? 'text-white/60' : 'text-[#0F0A1E]/50'}`}>{p.desc}</p>
-                <ul className="space-y-2.5 mb-6">
-                  {p.features.map((f, j) => (
-                    <li key={j} className={`text-sm flex items-start gap-2 ${p.primary ? 'text-white/80' : 'text-[#0F0A1E]/70'}`}>
-                      <svg className={`w-4 h-4 mt-0.5 shrink-0 ${p.primary ? 'text-[#D4A853]' : 'text-[#0EA5A0]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link to={p.plan === 'Enterprise' ? '/support?tab=contact' : '/signup'}>
-                  <Button className={`w-full h-10 rounded-lg text-sm ${p.primary ? 'bg-[#D4A853] hover:bg-[#c49a48] text-[#0F0A1E] font-medium' : 'bg-[#0F0A1E]/5 hover:bg-[#0F0A1E]/10 text-[#0F0A1E]'}`}>
-                    {p.cta}
-                  </Button>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Launch Edition */}
       <LaunchEdition />
 
