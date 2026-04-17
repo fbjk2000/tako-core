@@ -1243,6 +1243,7 @@ const LandingPage = () => {
   const progBarRef    = useRef(null);
   const archRef       = useRef(null);   // architecture section — drives octopus visibility
   const spacerRef     = useRef(null);   // arch-spacer div — measured for true centre position
+  const archNoteRef   = useRef(null);   // arch-note text — lower boundary for octopus
   const rafRef        = useRef(null);
   const timeRef       = useRef(0);
 
@@ -1359,11 +1360,20 @@ const LandingPage = () => {
 
       // Head position: hold at vh/2 while spacer approaches, then track it out.
       // CSS transform is translate(-50%, -50%) so `top` == visual centre.
-      // Bottom-only clamp: let the octopus travel freely upward but prevent
-      // the canvas bottom edge from exiting the viewport (8px breathing room).
-      const rawHead      = r ? Math.min(vh / 2, spacerVP) : vh / 2;
-      const bottomSafeHead = vh - cssH / 2 - 8;
-      const headPx       = Math.min(bottomSafeHead, rawHead);
+      // Lower boundary: viewport bottom guard, tightened by arch-note position
+      // so the octopus never overlaps the text block below the spacer.
+      // No top clamp — upward travel must remain unconstrained.
+      const rawHead   = r ? Math.min(vh / 2, spacerVP) : vh / 2;
+
+      const VIEWPORT_GAP = 8;   // px breathing room from viewport bottom
+      const NOTE_GAP     = 20;  // px gap between canvas bottom and note top
+      let lowerLimit = vh - cssH / 2 - VIEWPORT_GAP;
+      if (archNoteRef.current) {
+        const noteRect  = archNoteRef.current.getBoundingClientRect();
+        const noteLimit = noteRect.top - NOTE_GAP - cssH / 2;
+        lowerLimit = Math.min(lowerLimit, noteLimit);
+      }
+      const headPx = Math.min(rawHead, lowerLimit);
 
       canvas.style.top = `${headPx}px`;
       const labelsWrap = labelsContRef.current?.parentElement;
@@ -1565,7 +1575,7 @@ const LandingPage = () => {
           <p className="section-desc tl-reveal" style={{ maxWidth: '680px', margin: '0 auto 2rem' }}>{t.archDesc}</p>
           {/* Spacer that lets the fixed octopus be fully visible while scrolling */}
           <div className="arch-spacer" ref={spacerRef} />
-          <p className="arch-note tl-reveal">{t.archNote}</p>
+          <p className="arch-note tl-reveal" ref={archNoteRef}>{t.archNote}</p>
         </div>
       </section>
 
