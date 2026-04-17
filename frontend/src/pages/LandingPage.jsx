@@ -1359,9 +1359,11 @@ const LandingPage = () => {
 
       // Head position: hold at vh/2 while spacer approaches, then track it out.
       // CSS transform is translate(-50%, -50%) so `top` == visual centre.
-      // Clamp so the canvas never clips at top or bottom of the viewport.
-      const rawHead = r ? Math.min(vh / 2, spacerVP) : vh / 2;
-      const headPx  = Math.min(vh - cssH / 2, Math.max(cssH / 2, rawHead));
+      // Bottom-only clamp: let the octopus travel freely upward but prevent
+      // the canvas bottom edge from exiting the viewport (8px breathing room).
+      const rawHead      = r ? Math.min(vh / 2, spacerVP) : vh / 2;
+      const bottomSafeHead = vh - cssH / 2 - 8;
+      const headPx       = Math.min(bottomSafeHead, rawHead);
 
       canvas.style.top = `${headPx}px`;
       const labelsWrap = labelsContRef.current?.parentElement;
