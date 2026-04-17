@@ -1,499 +1,1649 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useT } from '../useT';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { toast } from 'sonner';
-import axios from 'axios';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+// ─── i18n data ────────────────────────────────────────────────────────────────
 
-const LaunchEdition = () => {
-  const [time, setTime] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '' });
-  const [loading, setLoading] = useState(false);
-  const [payMethod, setPayMethod] = useState('stripe');
-  const [unytStatus, setUnytStatus] = useState('');
+const AGENTS_DATA = [
+  { id: 'pipeline', angle: 201 },
+  { id: 'leads',    angle: 127 },
+  { id: 'email',    angle: 90  },
+  { id: 'calling',  angle: 164 },
+  { id: 'calendar', angle: 339 },
+  { id: 'research', angle: 53  },
+  { id: 'analytics',angle: 16  },
+  { id: 'projects', angle: 302 },
+];
 
+const AGENTS_I18N = {
+  en: [
+    { name:'Pipeline', sub:'Visual deal flow', id:'pipeline', angle:201, cardTitle:'Pipeline Management', cardDesc:'Drag deals between stages. Kanban and list views. Lost deals excluded from forecasts automatically. Always know where every deal stands.', outcome:'→ Clear forecast, zero guesswork' },
+    { name:'Lead Scoring', sub:'AI-ranked 1–100', id:'leads', angle:127, cardTitle:'AI Lead Scoring', cardDesc:'Every lead ranked 1 to 100 based on fit, engagement, and conversion signals. Your reps call the right people first — every time.', outcome:'→ Higher conversion, less wasted effort' },
+    { name:'Email', sub:'AI-drafted outreach', id:'email', angle:90, cardTitle:'AI Email Drafting', cardDesc:'Generate personalised outreach in seconds. Choose tone, context, and purpose. One click to send. Follow-ups queued automatically.', outcome:'→ 3× more outreach, same headcount' },
+    { name:'Calling', sub:'Record & transcribe', id:'calling', angle:164, cardTitle:'Outbound Calling', cardDesc:'Call leads directly from the CRM. Every call recorded, transcribed by AI, and turned into action items. No notes, no missed follow-ups.', outcome:'→ Full call history, automatic follow-up' },
+    { name:'Calendar', sub:'Smart scheduling', id:'calendar', angle:339, cardTitle:'Calendar & Booking', cardDesc:'Built-in calendar with Google Calendar sync. Share your booking link. Confirmations and reminders sent automatically. No scheduling ping-pong.', outcome:'→ Meetings booked without the back-and-forth' },
+    { name:'Research', sub:'Prospect intelligence', id:'research', angle:53, cardTitle:'Prospect Intelligence', cardDesc:'Real-time research on companies and contacts. Funding rounds, hiring signals, tech stack, recent news — all surfaced before the call.', outcome:'→ Walk into every call prepared' },
+    { name:'Analytics', sub:'Reports & forecasts', id:'analytics', angle:16, cardTitle:'Analytics & Reporting', cardDesc:"Real-time dashboards, custom reports, and predictive forecasts. See what's working, what's stalling, and where to intervene.", outcome:'→ Data-driven decisions, not gut feelings' },
+    { name:'Projects', sub:'Team task boards', id:'projects', angle:302, cardTitle:'Team Projects', cardDesc:'Group tasks under deals. Track progress across your team. Every project gets its own chat channel for real-time coordination.', outcome:'→ Nothing falls through the cracks' },
+  ],
+  de: [
+    { name:'Pipeline', sub:'Visueller Deal-Fluss', id:'pipeline', angle:201, cardTitle:'Pipeline-Management', cardDesc:'Deals per Drag & Drop zwischen Phasen verschieben. Kanban- und Listenansicht. Verlorene Deals automatisch aus Prognosen ausgeschlossen.', outcome:'→ Klare Prognose, keine Ungewissheit' },
+    { name:'Lead-Scoring', sub:'KI-Ranking 1–100', id:'leads', angle:127, cardTitle:'KI-Lead-Scoring', cardDesc:'Jeder Lead wird auf einer Skala von 1 bis 100 bewertet — basierend auf Fit, Engagement und Conversion-Signalen. Ihre Vertriebsmitarbeiter rufen zuerst die richtigen Personen an.', outcome:'→ Höhere Conversion, weniger Streuverlust' },
+    { name:'E-Mail', sub:'KI-verfasste Ansprache', id:'email', angle:90, cardTitle:'KI-E-Mail-Erstellung', cardDesc:'Personalisierte Ansprachen in Sekunden generieren. Ton, Kontext und Zweck wählen. Ein Klick zum Senden. Follow-ups automatisch in der Warteschlange.', outcome:'→ 3× mehr Outreach, gleiche Kapazität' },
+    { name:'Anrufen', sub:'Aufzeichnen & transkribieren', id:'calling', angle:164, cardTitle:'Outbound-Telefonie', cardDesc:'Leads direkt aus dem CRM anrufen. Jeder Anruf wird aufgezeichnet, von KI transkribiert und in To-dos umgewandelt. Keine Notizen, keine verpassten Follow-ups.', outcome:'→ Vollständige Anrufhistorie, automatisches Follow-up' },
+    { name:'Kalender', sub:'Intelligente Terminplanung', id:'calendar', angle:339, cardTitle:'Kalender & Buchung', cardDesc:'Integrierter Kalender mit Google-Calendar-Sync. Buchungslink teilen. Bestätigungen und Erinnerungen werden automatisch versendet.', outcome:'→ Meetings ohne Hin-und-her buchen' },
+    { name:'Recherche', sub:'Interessenten-Insights', id:'research', angle:53, cardTitle:'Interessenten-Intelligenz', cardDesc:'Echtzeit-Recherche zu Unternehmen und Kontakten. Finanzierungsrunden, Einstellungssignale, Tech-Stack, aktuelle Nachrichten — alles vor dem Anruf verfügbar.', outcome:'→ Bestens vorbereitet in jeden Anruf' },
+    { name:'Analytics', sub:'Berichte & Prognosen', id:'analytics', angle:16, cardTitle:'Analytics & Reporting', cardDesc:'Echtzeit-Dashboards, benutzerdefinierte Berichte und prädiktive Prognosen. Sehen Sie, was funktioniert, was stockt und wo Sie eingreifen müssen.', outcome:'→ Datenbasierte Entscheidungen statt Bauchgefühl' },
+    { name:'Projekte', sub:'Team-Aufgabenboards', id:'projects', angle:302, cardTitle:'Team-Projekte', cardDesc:'Aufgaben unter Deals gruppieren. Fortschritt im gesamten Team verfolgen. Jedes Projekt bekommt einen eigenen Chat-Kanal für die Abstimmung in Echtzeit.', outcome:'→ Nichts geht mehr verloren' },
+  ],
+};
+
+const OUTCOMES_I18N = {
+  en: [
+    { number: '8', stat: 'AI agents per user', desc: 'Each handles a different part of your sales process — from prospecting to closing.' },
+    { number: '3×', stat: 'More outreach capacity', desc: 'AI drafts emails, scores leads, and books meetings. Your reps sell more with the same hours.' },
+    { number: '100%', stat: 'Your data, your control', desc: 'EU-hosted or self-hosted. GDPR-native. No US cloud dependency.' },
+  ],
+  de: [
+    { number: '8', stat: 'KI-Agenten pro Nutzer', desc: 'Jeder übernimmt einen anderen Teil Ihres Vertriebsprozesses — von der Akquise bis zum Abschluss.' },
+    { number: '3×', stat: 'Mehr Outreach-Kapazität', desc: 'KI entwirft E-Mails, bewertet Leads und bucht Meetings. Ihre Vertriebsmitarbeiter verkaufen mehr in derselben Zeit.' },
+    { number: '100%', stat: 'Ihre Daten, Ihre Kontrolle', desc: 'EU-gehostet oder selbst gehostet. DSGVO-nativ. Keine US-Cloud-Abhängigkeit.' },
+  ],
+};
+
+const VALUE_I18N = {
+  en: [
+    { bold: 'Spend less time updating CRM', desc: '— agents log calls, emails, and deal changes as they happen.' },
+    { bold: 'Follow up faster', desc: '— AI queues the next action so nothing sits idle.' },
+    { bold: 'Prepare calls better', desc: '— prospect research is surfaced before you dial.' },
+    { bold: 'Keep pipeline cleaner', desc: '— stale deals flagged, stages updated, forecasts accurate.' },
+    { bold: 'Reduce dropped leads', desc: '— scoring and alerts ensure hot leads get attention immediately.' },
+    { bold: 'Work with more consistency', desc: '— every rep follows the same process, powered by the same agents.' },
+  ],
+  de: [
+    { bold: 'Weniger Zeit mit CRM-Pflege', desc: '— Agenten protokollieren Anrufe, E-Mails und Deal-Änderungen automatisch.' },
+    { bold: 'Schneller nachfassen', desc: '— KI stellt die nächste Aktion in die Warteschlange, damit nichts liegen bleibt.' },
+    { bold: 'Anrufe besser vorbereiten', desc: '— Interessenten-Recherche wird vor dem Wählen angezeigt.' },
+    { bold: 'Pipeline sauber halten', desc: '— veraltete Deals markiert, Phasen aktualisiert, Prognosen korrekt.' },
+    { bold: 'Weniger verlorene Leads', desc: '— Scoring und Benachrichtigungen sorgen dafür, dass heiße Leads sofort Aufmerksamkeit erhalten.' },
+    { bold: 'Konsistenter arbeiten', desc: '— jeder Vertriebsmitarbeiter folgt demselben Prozess, unterstützt von denselben Agenten.' },
+  ],
+};
+
+const PROOF_I18N = {
+  en: [
+    { quote: '"We replaced three tools with TAKO. Pipeline visibility went from guesswork to real time."', name: 'Marcus W.', role: 'Head of Sales, SaaS (Berlin)' },
+    { quote: '"The AI scoring saves us hours every week. We only call leads that actually convert."', name: 'Sophie L.', role: 'Sales Director, Agency (Paris)' },
+    { quote: '"Finally a CRM that doesn\'t feel like it was built for a Fortune 500 IT department."', name: 'James R.', role: 'Founder, Consulting (London)' },
+  ],
+  de: [
+    { quote: '"Wir haben drei Tools durch TAKO ersetzt. Die Pipeline-Transparenz wurde von Rätselraten zu Echtzeit."', name: 'Marcus W.', role: 'Head of Sales, SaaS (Berlin)' },
+    { quote: '"Das KI-Scoring spart uns jede Woche Stunden. Wir rufen nur noch Leads an, die wirklich konvertieren."', name: 'Sophie L.', role: 'Sales Director, Agency (Paris)' },
+    { quote: '"Endlich ein CRM, das sich nicht anfühlt, als wäre es für eine Fortune-500-IT-Abteilung gebaut worden."', name: 'James R.', role: 'Founder, Consulting (London)' },
+  ],
+};
+
+const EU_I18N = {
+  en: [
+    { title: 'EU Infrastructure', desc: 'Your data lives in Frankfurt. Enterprise-grade hosting with daily backups and 99.99% uptime SLA. No transatlantic data transfers.' },
+    { title: 'GDPR Native', desc: 'Built for compliance from day one. Data Processing Agreements, right to erasure, full audit logs, and transparent data handling — not bolted on.' },
+    { title: 'Self-Hostable', desc: 'Deploy TAKO on your own infrastructure. Docker, Kubernetes, or traditional VMs. Your data never leaves your servers if you don\'t want it to.' },
+  ],
+  de: [
+    { title: 'EU-Infrastruktur', desc: 'Ihre Daten liegen in Frankfurt. Enterprise-Hosting mit täglichen Backups und 99,99 % Uptime-SLA. Keine transatlantischen Datenübertragungen.' },
+    { title: 'DSGVO-nativ', desc: 'Von Anfang an für Compliance gebaut. Datenverarbeitungsverträge, Recht auf Löschung, vollständige Audit-Logs und transparente Datenverarbeitung — nicht nachträglich hinzugefügt.' },
+    { title: 'Selbst hostbar', desc: 'Deployen Sie TAKO auf Ihrer eigenen Infrastruktur. Docker, Kubernetes oder klassische VMs. Ihre Daten verlassen Ihre Server nie, wenn Sie das nicht möchten.' },
+  ],
+};
+
+const LAUNCH_TAGS_I18N = {
+  en: ['Full source code', 'Unlimited users', 'Self-hosted', 'One-time payment', 'Production-tested'],
+  de: ['Vollständiger Quellcode', 'Unbegrenzte Nutzer', 'Selbst gehostet', 'Einmalige Zahlung', 'Produktionserprobt'],
+};
+
+const I18N_EN = {
+  navFeatures: 'Features',
+  navPricing: 'Pricing',
+  navSupport: 'Support',
+  navAgents: 'Agents',
+  signIn: 'Sign in',
+  startFree: 'Start free',
+  heroBadge: 'The AI-first CRM for European sales teams',
+  heroTitle: 'Eight agents.\nOne CRM.\nNo busywork.',
+  heroDesc: 'TAKO gives every sales rep a team of eight AI agents — handling pipeline, emails, calls, scoring, research and scheduling. Your team just closes.',
+  heroCtaPrimary: 'Start free trial',
+  heroCtaSecondary: 'See how it works',
+  trustGdpr: 'GDPR compliant',
+  trustEu: 'EU hosted · Frankfurt',
+  trustSoc: 'SOC 2 in progress',
+  trustStripe: 'Stripe payments',
+  trustUptime: '99.99% uptime SLA',
+  outcomesTag: 'By the numbers',
+  outcomesTitle: 'Results that move the needle',
+  valueTag: 'What changes',
+  valueTitle: 'What your team stops doing manually',
+  valueDesc: 'TAKO agents run in the background. Your reps stay focused on conversations that close.',
+  agentsTag: 'The eight agents',
+  agentsTitle: 'Every agent. One platform.',
+  archTag: 'Architecture',
+  archTitle: 'One brain. Eight arms.',
+  archDesc: 'TAKO\'s agent model is designed around how sales actually works — parallel, contextual, and always connected. The octopus isn\'t a metaphor. It\'s the architecture.',
+  proofTag: 'Social proof',
+  proofTitle: 'Built for teams that sell across Europe',
+  euTag: 'Data sovereignty',
+  euTitle: 'Your data stays in Europe',
+  euDesc: 'We built TAKO for European privacy standards — not as an afterthought, but as a foundation.',
+  pricingTag: 'Pricing',
+  pricingTitle: 'Simple, transparent pricing',
+  pricingDesc: 'Start free. Scale as you grow. No hidden fees.',
+  launchTag: 'Limited offer',
+  launchBadge: '75% OFF',
+  launchTitle: 'Launch Edition',
+  launchPrice: 'EUR 4,999',
+  launchPriceNote: 'one-time',
+  launchOrigPrice: 'EUR 19,999',
+  launchDesc: 'Get the full TAKO app with unlimited users and deploy it on your own hosting.',
+  launchDesc2: 'Save 2 to 3 months of setup and iteration. Launch faster with a proven CRM foundation.',
+  launchExpires: 'Offer expires in',
+  launchEnds: 'Ends June 30, 2026 at 23:59 BST',
+  launchCta: 'Book a Setup Call',
+  finalTitle: 'Ready to sell smarter?',
+  finalDesc: 'Join hundreds of European sales teams using TAKO to close more deals with less effort.',
+  finalCtaPrimary: 'Start free trial',
+  finalCtaSecondary: 'Sign in',
+  footerTagline: 'The CRM that runs your marketing and sales. Built for European teams that want results, not complexity.',
+  footerCompany: 'Fintery Ltd.',
+  footerAddress1: 'Canbury Works, Units 6 and 7, Canbury Business Park',
+  footerAddress2: 'Kingston upon Thames, Surrey, KT2 6HJ, UK',
+  footerProduct: 'Product',
+  footerFeatures: 'Features',
+  footerPricing: 'Pricing',
+  footerSupport: 'Support',
+  footerLegal: 'Legal',
+  footerPrivacy: 'Privacy Policy',
+  footerTerms: 'Terms of Service',
+  footerRights: `${new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.`,
+};
+
+const I18N_DE = {
+  navFeatures: 'Funktionen',
+  navPricing: 'Preise',
+  navSupport: 'Support',
+  navAgents: 'Agenten',
+  signIn: 'Anmelden',
+  startFree: 'Kostenlos starten',
+  heroBadge: 'Das KI-first CRM für europäische Vertriebsteams',
+  heroTitle: 'Acht Agenten.\nEin CRM.\nKein Leerlauf.',
+  heroDesc: 'TAKO gibt jedem Vertriebsmitarbeiter ein Team aus acht KI-Agenten — für Pipeline, E-Mails, Anrufe, Scoring, Recherche und Terminplanung. Ihr Team schließt nur noch ab.',
+  heroCtaPrimary: 'Kostenlos testen',
+  heroCtaSecondary: 'So funktioniert es',
+  trustGdpr: 'DSGVO-konform',
+  trustEu: 'EU-gehostet · Frankfurt',
+  trustSoc: 'SOC 2 in Vorbereitung',
+  trustStripe: 'Stripe-Zahlungen',
+  trustUptime: '99,99 % Uptime-SLA',
+  outcomesTag: 'Zahlen, die überzeugen',
+  outcomesTitle: 'Ergebnisse, die wirklich etwas bewegen',
+  valueTag: 'Was sich ändert',
+  valueTitle: 'Was Ihr Team nicht mehr manuell erledigt',
+  valueDesc: 'TAKO-Agenten laufen im Hintergrund. Ihre Vertriebsmitarbeiter konzentrieren sich auf Gespräche, die abschließen.',
+  agentsTag: 'Die acht Agenten',
+  agentsTitle: 'Jeder Agent. Eine Plattform.',
+  archTag: 'Architektur',
+  archTitle: 'Ein Gehirn. Acht Arme.',
+  archDesc: 'TAKOs Agenten-Modell ist so konzipiert, wie Vertrieb wirklich funktioniert — parallel, kontextuell und immer verbunden. Der Oktopus ist keine Metapher. Es ist die Architektur.',
+  proofTag: 'Referenzen',
+  proofTitle: 'Für Teams gebaut, die in ganz Europa verkaufen',
+  euTag: 'Datensouveränität',
+  euTitle: 'Ihre Daten bleiben in Europa',
+  euDesc: 'Wir haben TAKO für europäische Datenschutzstandards entwickelt — nicht als Nachgedanke, sondern als Grundlage.',
+  pricingTag: 'Preise',
+  pricingTitle: 'Einfache, transparente Preise',
+  pricingDesc: 'Kostenlos starten. Mit Ihrem Wachstum skalieren. Keine versteckten Gebühren.',
+  launchTag: 'Limitiertes Angebot',
+  launchBadge: '75% RABATT',
+  launchTitle: 'Launch Edition',
+  launchPrice: 'EUR 4.999',
+  launchPriceNote: 'einmalig',
+  launchOrigPrice: 'EUR 19.999',
+  launchDesc: 'Erhalten Sie die vollständige TAKO-App mit unbegrenzt vielen Nutzern und deployen Sie sie auf Ihrem eigenen Hosting.',
+  launchDesc2: '2 bis 3 Monate Setup und Iteration einsparen. Schneller starten mit einer bewährten CRM-Grundlage.',
+  launchExpires: 'Angebot läuft ab in',
+  launchEnds: 'Endet am 30. Juni 2026 um 23:59 Uhr BST',
+  launchCta: 'Setup-Call buchen',
+  finalTitle: 'Bereit, smarter zu verkaufen?',
+  finalDesc: 'Schließen Sie sich hunderten europäischer Vertriebsteams an, die TAKO nutzen, um mehr Deals mit weniger Aufwand abzuschließen.',
+  finalCtaPrimary: 'Kostenlos testen',
+  finalCtaSecondary: 'Anmelden',
+  footerTagline: 'Das CRM, das Ihr Marketing und Ihren Vertrieb steuert. Für europäische Teams, die Ergebnisse wollen, keine Komplexität.',
+  footerCompany: 'Fintery Ltd.',
+  footerAddress1: 'Canbury Works, Units 6 and 7, Canbury Business Park',
+  footerAddress2: 'Kingston upon Thames, Surrey, KT2 6HJ, UK',
+  footerProduct: 'Produkt',
+  footerFeatures: 'Funktionen',
+  footerPricing: 'Preise',
+  footerSupport: 'Support',
+  footerLegal: 'Rechtliches',
+  footerPrivacy: 'Datenschutz',
+  footerTerms: 'Nutzungsbedingungen',
+  footerRights: `${new Date().getFullYear()} TAKO by Fintery Ltd. Alle Rechte vorbehalten.`,
+};
+
+// ─── Canvas helpers ───────────────────────────────────────────────────────────
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function degToRad(d) { return d * Math.PI / 180; }
+function rgba(c, a) { return `rgba(${c.r},${c.g},${c.b},${a})`; }
+
+const C_INK     = { r:12,  g:16,  b:36  };
+const C_TEAL    = { r:14,  g:165, b:160 };
+const C_SURFACE = { r:245, g:243, b:238 };
+
+function getScrollVis(el) {
+  const r = el.getBoundingClientRect(), vh = window.innerHeight;
+  return Math.max(0.05, Math.min(1, 1 - (r.top + r.height / 2 - vh * 0.45) / (vh * 0.8)));
+}
+
+function getArmCurve(cx, cy, headR, agent, armLen, time) {
+  const a  = degToRad(agent.angle);
+  const sx = cx + Math.cos(a) * headR * 0.82;
+  const sy = cy + Math.sin(a) * headR * 0.82;
+  const ex = cx + Math.cos(a) * armLen;
+  const ey = cy + Math.sin(a) * armLen;
+  const pa = a + Math.PI / 2;
+  const w  = Math.sin(time * 0.7  + agent.angle * 0.04) * 25;
+  const w2 = Math.cos(time * 0.45 + agent.angle * 0.06) * 12;
+  return {
+    sx, sy,
+    midX: (sx + ex) / 2 + Math.cos(pa) * w + Math.sin(pa) * w2,
+    midY: (sy + ey) / 2 + Math.sin(pa) * w + Math.cos(pa) * w2,
+    ex, ey,
+  };
+}
+
+function bezierPt(sx, sy, mx, my, ex, ey, t) {
+  return {
+    x: (1-t)*(1-t)*sx + 2*(1-t)*t*mx + t*t*ex,
+    y: (1-t)*(1-t)*sy + 2*(1-t)*t*my + t*t*ey,
+  };
+}
+
+function drawOctopus(ctx, cW, cH, vis, time) {
+  ctx.clearRect(0, 0, cW, cH);
+
+  const cx    = cW / 2;
+  const cy    = cH * 0.34;
+  const headR = Math.min(cW, cH) * 0.115;
+  const armLen = Math.min(cW, cH) * 0.39;
+
+  // ── Arms ──────────────────────────────────────────────────────────────────
+  AGENTS_DATA.forEach((agent) => {
+    const crv = getArmCurve(cx, cy, headR, agent, armLen, time);
+
+    // Layered glow
+    for (let g = 3; g >= 1; g--) {
+      ctx.beginPath();
+      ctx.moveTo(crv.sx, crv.sy);
+      ctx.quadraticCurveTo(crv.midX, crv.midY, crv.ex, crv.ey);
+      ctx.strokeStyle = rgba(C_TEAL, vis * 0.06 * g);
+      ctx.lineWidth   = g * 6;
+      ctx.lineCap     = 'round';
+      ctx.stroke();
+    }
+
+    // Main arm
+    ctx.beginPath();
+    ctx.moveTo(crv.sx, crv.sy);
+    ctx.quadraticCurveTo(crv.midX, crv.midY, crv.ex, crv.ey);
+    ctx.strokeStyle = rgba(C_INK, vis * 0.85);
+    ctx.lineWidth   = 3.5;
+    ctx.lineCap     = 'round';
+    ctx.stroke();
+
+    // Suction cups
+    const steps = 9;
+    for (let i = 1; i < steps; i++) {
+      const tp  = i / steps;
+      const pt  = bezierPt(crv.sx, crv.sy, crv.midX, crv.midY, crv.ex, crv.ey, tp);
+      const r   = lerp(3.5, 1.2, tp);
+      const off = lerp(5, 3, tp);
+      const a   = degToRad(agent.angle);
+      const pa  = a + Math.PI / 2;
+      const ox  = pt.x + Math.cos(pa) * off;
+      const oy  = pt.y + Math.sin(pa) * off;
+
+      ctx.beginPath();
+      ctx.arc(ox, oy, r, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(C_SURFACE, vis * 0.55);
+      ctx.fill();
+      ctx.strokeStyle = rgba(C_INK, vis * 0.3);
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+
+    // Glowing teal tip
+    const tip = bezierPt(crv.sx, crv.sy, crv.midX, crv.midY, crv.ex, crv.ey, 1);
+    const grd = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 14);
+    grd.addColorStop(0,   rgba(C_TEAL, vis * 0.9));
+    grd.addColorStop(0.4, rgba(C_TEAL, vis * 0.4));
+    grd.addColorStop(1,   rgba(C_TEAL, 0));
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(C_TEAL, vis * 0.95);
+    ctx.fill();
+  });
+
+  // ── Head body ─────────────────────────────────────────────────────────────
+  const bodyGrd = ctx.createRadialGradient(cx - headR * 0.15, cy - headR * 0.2, 0, cx, cy, headR * 1.1);
+  bodyGrd.addColorStop(0,   rgba({ r:28, g:34, b:64 }, vis));
+  bodyGrd.addColorStop(0.6, rgba(C_INK, vis));
+  bodyGrd.addColorStop(1,   rgba({ r:8, g:10, b:26 }, vis));
+
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, headR * 1.05, headR, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bodyGrd;
+  ctx.fill();
+
+  // Head lines
+  ctx.save();
+  ctx.clip();
+  for (let i = 0; i < 5; i++) {
+    const lx = cx - headR + (i / 4) * headR * 2 * 0.8 + headR * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(lx, cy - headR * 0.7);
+    ctx.lineTo(lx - headR * 0.1, cy + headR * 0.7);
+    ctx.strokeStyle = rgba(C_TEAL, vis * 0.06);
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Head outline
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, headR * 1.05, headR, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = rgba(C_TEAL, vis * 0.35);
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // ── Eyes ─────────────────────────────────────────────────────────────────
+  const eyeY  = cy - headR * 0.18;
+  const eyeOX = headR * 0.38;
+  [-1, 1].forEach(side => {
+    const ex2 = cx + side * eyeOX;
+    const pupilOffset = Math.sin(time * 0.3) * 1.5;
+
+    // Iris
+    ctx.beginPath();
+    ctx.arc(ex2, eyeY, headR * 0.15, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(C_TEAL, vis * 0.9);
+    ctx.fill();
+
+    // Pupil
+    ctx.beginPath();
+    ctx.ellipse(ex2 + pupilOffset * 0.4, eyeY + pupilOffset * 0.2, headR * 0.065, headR * 0.09, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba({ r:4, g:6, b:18 }, vis);
+    ctx.fill();
+
+    // Glint
+    ctx.beginPath();
+    ctx.arc(ex2 - headR * 0.05 + pupilOffset * 0.2, eyeY - headR * 0.04, headR * 0.035, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(C_SURFACE, vis * 0.85);
+    ctx.fill();
+  });
+
+  // ── Beak ─────────────────────────────────────────────────────────────────
+  const bkY = cy + headR * 0.22;
+  ctx.beginPath();
+  ctx.moveTo(cx - headR * 0.1, bkY);
+  ctx.quadraticCurveTo(cx, bkY + headR * 0.18, cx + headR * 0.1, bkY);
+  ctx.quadraticCurveTo(cx, bkY + headR * 0.06, cx - headR * 0.1, bkY);
+  ctx.fillStyle   = rgba(C_SURFACE, vis * 0.7);
+  ctx.strokeStyle = rgba(C_INK, vis * 0.5);
+  ctx.lineWidth   = 1;
+  ctx.fill();
+  ctx.stroke();
+}
+
+// ─── Label positioning ────────────────────────────────────────────────────────
+
+function positionLabels(wrapEl, labelsEl, cW, cH, vis) {
+  const cx     = cW / 2;
+  const cy     = cH * 0.34;
+  const headR  = Math.min(cW, cH) * 0.115;
+  const armLen = Math.min(cW, cH) * 0.39;
+  const dpr    = window.devicePixelRatio || 1;
+  const wR     = wrapEl.getBoundingClientRect();
+  const ds     = wR.width / (cW / dpr);
+
+  AGENTS_DATA.forEach((agent, i) => {
+    const a  = degToRad(agent.angle);
+    const ex = cx + Math.cos(a) * armLen;
+    const ey = cy + Math.sin(a) * armLen;
+    const el = labelsEl.children[i];
+    if (!el) return;
+    el.style.left      = `${(ex / dpr) * ds}px`;
+    el.style.top       = `${(ey / dpr) * ds}px`;
+    el.style.transform = 'translate(-50%,-50%)';
+    vis > 0.35 ? el.classList.add('visible') : el.classList.remove('visible');
+  });
+
+  const bk = document.getElementById('beak-hover');
+  if (bk) {
+    const bx = (cx / dpr) * ds;
+    const by = ((cy + Math.min(cW, cH) * 0.115 * 0.22) / dpr) * ds;
+    bk.style.left = `${bx - 18}px`;
+    bk.style.top  = `${by - 18}px`;
+    vis > 0.5 ? bk.classList.add('visible') : bk.classList.remove('visible');
+  }
+}
+
+function rebuildOctoLabels(labelsEl, agentsData) {
+  labelsEl.innerHTML = '';
+  agentsData.forEach(agent => {
+    const el      = document.createElement('a');
+    el.href       = `#${agent.id}`;
+    el.className  = 'agent-label';
+    el.innerHTML  = `<div class="al-dot"></div><span class="al-name">${agent.name}</span><span class="al-sub">${agent.sub}</span>`;
+    labelsEl.appendChild(el);
+  });
+}
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+
+const LP_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+
+.tako-lp {
+  --lp-ink:     #0c1024;
+  --lp-teal:    #0ea5a0;
+  --lp-gold:    #d4a853;
+  --lp-surface: #f5f3ee;
+  --lp-muted:   rgba(12,16,36,0.55);
+  font-family: 'Inter', sans-serif;
+  background: var(--lp-surface);
+  color: var(--lp-ink);
+  overflow-x: hidden;
+}
+
+/* Progress bar */
+.tako-lp .progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--lp-teal), var(--lp-gold));
+  z-index: 9999;
+  transition: width 0.1s linear;
+}
+
+/* Nav */
+.tako-lp nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(245,243,238,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(12,16,36,0.07);
+}
+.tako-lp .nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tako-lp .nav-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+.tako-lp .nav-logo img { height: 28px; }
+.tako-lp .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  list-style: none;
+  margin: 0; padding: 0;
+}
+.tako-lp .nav-links a {
+  font-size: 0.875rem;
+  color: var(--lp-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.tako-lp .nav-links a:hover { color: var(--lp-ink); }
+.tako-lp .nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.tako-lp .lang-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 6px;
+  border: 1px solid rgba(12,16,36,0.12);
+  background: transparent;
+  color: var(--lp-muted);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tako-lp .lang-btn:hover { background: rgba(12,16,36,0.06); }
+.tako-lp .btn-ghost {
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  color: var(--lp-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.tako-lp .btn-ghost:hover { color: var(--lp-ink); }
+.tako-lp .btn-p {
+  padding: 0.55rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--lp-teal);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+.tako-lp .btn-p:hover { background: #0b8c88; }
+.tako-lp .btn-outline {
+  padding: 0.55rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--lp-ink);
+  border: 1.5px solid rgba(12,16,36,0.18);
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+.tako-lp .btn-outline:hover { border-color: rgba(12,16,36,0.4); }
+.tako-lp .hamburger {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--lp-ink);
+}
+@media (max-width: 768px) {
+  .tako-lp .nav-links,
+  .tako-lp .nav-actions { display: none; }
+  .tako-lp .nav-links.active {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 62px; left: 0; right: 0;
+    background: var(--lp-surface);
+    padding: 1rem 1.5rem 1.5rem;
+    gap: 1.2rem;
+    border-bottom: 1px solid rgba(12,16,36,0.07);
+    z-index: 199;
+    align-items: flex-start;
+  }
+  .tako-lp .nav-actions.active {
+    display: flex;
+    position: fixed;
+    top: 62px; left: 0; right: 0;
+    padding: 0 1.5rem 1.5rem;
+    gap: 0.75rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    z-index: 198;
+    margin-top: calc(62px + 3rem);
+  }
+  .tako-lp .hamburger { display: block; }
+}
+
+/* Fixed octopus canvas */
+#octo-fixed {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -40%);
+  width: min(780px, 85vw);
+  height: min(780px, 85vw);
+  pointer-events: none;
+  z-index: 1;
+}
+.tako-lp .octo-labels-wrapper {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -40%);
+  width: min(780px, 85vw);
+  height: min(780px, 85vw);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Agent labels */
+.agent-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: auto;
+}
+.agent-label.visible { opacity: 1; }
+.agent-label .al-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--lp-teal);
+  margin-bottom: 4px;
+  box-shadow: 0 0 8px rgba(14,165,160,0.7);
+}
+.agent-label .al-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.agent-label .al-sub {
+  font-size: 0.62rem;
+  color: var(--lp-muted);
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Beak hover */
+.beak-hover-zone {
+  position: absolute;
+  width: 36px; height: 36px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.beak-hover {
+  position: absolute;
+  width: 36px; height: 36px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.beak-hover.visible { opacity: 1; }
+.beak-tooltip {
+  position: absolute;
+  top: -2.8rem; left: 50%;
+  transform: translateX(-50%);
+  background: var(--lp-ink);
+  color: #fff;
+  font-size: 0.65rem;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.beak-hover:hover .beak-tooltip { opacity: 1; }
+
+/* Hero */
+.tako-lp .hero {
+  position: relative;
+  z-index: 4;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 120px 1.5rem 80px;
+}
+.tako-lp .hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(12,16,36,0.05);
+  border: 1px solid rgba(12,16,36,0.1);
+  border-radius: 99px;
+  padding: 0.35rem 1rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-muted);
+  font-weight: 500;
+  margin-bottom: 2rem;
+}
+.tako-lp .hero-badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--lp-gold);
+}
+.tako-lp .hero h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--lp-ink);
+  margin-bottom: 1.5rem;
+  max-width: 780px;
+  white-space: pre-line;
+}
+.tako-lp .hero h1 em {
+  color: var(--lp-teal);
+  font-style: normal;
+}
+.tako-lp .hero p {
+  font-size: 1.125rem;
+  color: var(--lp-muted);
+  max-width: 560px;
+  line-height: 1.7;
+  margin-bottom: 2.5rem;
+}
+.tako-lp .hero-ctas {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Trust strip */
+.tako-lp .trust-strip {
+  position: relative;
+  z-index: 4;
+  border-top: 1px solid rgba(12,16,36,0.07);
+  border-bottom: 1px solid rgba(12,16,36,0.07);
+  padding: 1.25rem 1.5rem;
+  background: rgba(245,243,238,0.7);
+}
+.tako-lp .trust-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem 2rem;
+}
+.tako-lp .trust-item {
+  font-size: 0.78rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: rgba(12,16,36,0.38);
+  white-space: nowrap;
+}
+.tako-lp .trust-sep {
+  width: 1px; height: 14px;
+  background: rgba(12,16,36,0.1);
+}
+
+/* Sections shared */
+.tako-lp section {
+  position: relative;
+  z-index: 4;
+}
+.tako-lp .section-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.tako-lp .section-tag {
+  font-size: 0.7rem;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lp-teal);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+.tako-lp .section-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--lp-ink);
+  margin-bottom: 1rem;
+}
+.tako-lp .section-desc {
+  font-size: 1.05rem;
+  color: var(--lp-muted);
+  line-height: 1.7;
+  max-width: 580px;
+}
+
+/* Outcomes */
+.tako-lp .outcomes { padding: 6rem 1.5rem; background: var(--lp-surface); }
+.tako-lp .outcomes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+.tako-lp .outcome-card {
+  background: #fff;
+  border: 1px solid rgba(12,16,36,0.07);
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+}
+.tako-lp .outcome-number {
+  font-family: 'DM Serif Display', serif;
+  font-size: 3rem;
+  color: var(--lp-teal);
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+.tako-lp .outcome-stat {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--lp-ink);
+  margin-bottom: 0.5rem;
+}
+.tako-lp .outcome-desc {
+  font-size: 0.85rem;
+  color: var(--lp-muted);
+  line-height: 1.6;
+}
+
+/* Value block */
+.tako-lp .value-block { padding: 6rem 1.5rem; background: var(--lp-ink); }
+.tako-lp .value-block .section-tag { color: var(--lp-gold); }
+.tako-lp .value-block .section-title { color: #fff; }
+.tako-lp .value-block .section-desc { color: rgba(255,255,255,0.55); }
+.tako-lp .value-list {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
+  gap: 1.25rem;
+}
+.tako-lp .value-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+.tako-lp .value-bullet {
+  width: 8px; height: 8px; min-width: 8px;
+  border-radius: 50%;
+  background: var(--lp-teal);
+  margin-top: 6px;
+}
+.tako-lp .value-text { font-size: 0.875rem; line-height: 1.6; color: rgba(255,255,255,0.75); }
+.tako-lp .value-text strong { color: #fff; font-weight: 600; }
+
+/* Agents grid */
+.tako-lp .agents { padding: 6rem 1.5rem; background: var(--lp-surface); }
+.tako-lp .agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+.tako-lp .agent-card {
+  background: #fff;
+  border: 1px solid rgba(12,16,36,0.07);
+  border-radius: 16px;
+  padding: 1.75rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.tako-lp .agent-card:hover {
+  box-shadow: 0 8px 32px rgba(12,16,36,0.09);
+  transform: translateY(-2px);
+}
+.tako-lp .agent-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.tako-lp .agent-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--lp-teal);
+  box-shadow: 0 0 8px rgba(14,165,160,0.5);
+}
+.tako-lp .agent-card-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.1rem;
+  color: var(--lp-ink);
+}
+.tako-lp .agent-card-desc {
+  font-size: 0.85rem;
+  color: var(--lp-muted);
+  line-height: 1.65;
+  margin-bottom: 1rem;
+}
+.tako-lp .agent-outcome {
+  font-size: 0.78rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--lp-teal);
+  font-weight: 500;
+}
+
+/* Architecture */
+.tako-lp .architecture { padding: 6rem 1.5rem; background: var(--lp-ink); text-align: center; }
+.tako-lp .architecture .section-tag { color: var(--lp-teal); }
+.tako-lp .architecture .section-title { color: #fff; margin: 0 auto 1rem; }
+.tako-lp .architecture .section-desc { color: rgba(255,255,255,0.55); margin: 0 auto; }
+
+/* Proof */
+.tako-lp .proof { padding: 6rem 1.5rem; background: var(--lp-surface); }
+.tako-lp .proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+.tako-lp .proof-card {
+  background: #fff;
+  border: 1px solid rgba(12,16,36,0.07);
+  border-radius: 16px;
+  padding: 2rem;
+}
+.tako-lp .proof-quote {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--lp-ink);
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+.tako-lp .proof-name { font-size: 0.85rem; font-weight: 700; color: var(--lp-ink); }
+.tako-lp .proof-role { font-size: 0.78rem; color: var(--lp-muted); margin-top: 0.2rem; }
+
+/* Europe */
+.tako-lp .europe { padding: 6rem 1.5rem; background: var(--lp-ink); }
+.tako-lp .europe .section-tag { color: var(--lp-teal); }
+.tako-lp .europe .section-title { color: #fff; }
+.tako-lp .europe .section-desc { color: rgba(255,255,255,0.55); margin-top: 0.75rem; }
+.tako-lp .eu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+.tako-lp .eu-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 2rem;
+}
+.tako-lp .eu-card-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 0.6rem; }
+.tako-lp .eu-card-desc { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.65; }
+
+/* Pricing */
+.tako-lp .pricing { padding: 6rem 1.5rem; background: var(--lp-surface); }
+
+/* Launch Edition */
+.tako-lp .launch-edition { padding: 5rem 1.5rem; background: var(--lp-surface); }
+.tako-lp .launch-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  border-radius: 24px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  background: radial-gradient(circle at top right, rgba(99,102,241,0.12), transparent 28%),
+              linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.22);
+}
+@media (max-width: 640px) {
+  .tako-lp .launch-inner { grid-template-columns: 1fr; }
+}
+.tako-lp .launch-left { padding: 2.5rem 2rem 2.5rem 2.5rem; }
+.tako-lp .launch-right {
+  padding: 2.5rem 2.5rem 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 1px solid rgba(255,255,255,0.07);
+}
+@media (max-width: 640px) {
+  .tako-lp .launch-right { border-left: none; border-top: 1px solid rgba(255,255,255,0.07); }
+}
+.tako-lp .launch-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+.tako-lp .launch-badge-limited {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.9);
+}
+.tako-lp .launch-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--lp-gold); }
+.tako-lp .launch-badge-pct {
+  background: var(--lp-gold);
+  border-radius: 99px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #0f172a;
+}
+.tako-lp .launch-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.4rem;
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 0.3rem;
+}
+.tako-lp .launch-pricing {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.tako-lp .launch-price { color: #fff; font-size: 1.2rem; font-weight: 700; }
+.tako-lp .launch-price-note { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
+.tako-lp .launch-orig-price { color: rgba(255,255,255,0.35); font-size: 0.95rem; text-decoration: line-through; }
+.tako-lp .launch-desc { color: rgba(255,255,255,0.85); font-size: 0.9rem; line-height: 1.65; margin-bottom: 0.5rem; }
+.tako-lp .launch-desc2 { color: rgba(255,255,255,0.6); font-size: 0.85rem; line-height: 1.65; margin-bottom: 1.25rem; }
+.tako-lp .launch-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.tako-lp .launch-tag {
+  padding: 0.4rem 0.85rem;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.07);
+  font-size: 0.75rem; font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+.tako-lp .cd-expires {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  text-align: center;
+  margin-bottom: 0.9rem;
+}
+.tako-lp .cd-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.tako-lp .cd-box {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+  backdrop-filter: blur(4px);
+}
+.tako-lp .cd-val {
+  display: block;
+  font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em;
+  color: #fff;
+}
+.tako-lp .cd-unit {
+  display: block;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-top: 0.2rem;
+}
+.tako-lp .cd-ends {
+  font-size: 0.78rem; color: rgba(255,255,255,0.55);
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+.tako-lp .launch-cta {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.95rem; font-weight: 700;
+  border: none; border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.tako-lp .launch-cta:hover { opacity: 0.92; }
+
+/* Final CTA */
+.tako-lp .final-cta { padding: 7rem 1.5rem; background: var(--lp-ink); text-align: center; }
+.tako-lp .final-cta .section-title { color: #fff; margin: 0 auto 1rem; }
+.tako-lp .final-cta .section-desc { color: rgba(255,255,255,0.55); margin: 0 auto 2.5rem; }
+.tako-lp .final-cta-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+.tako-lp .btn-gold {
+  padding: 0.75rem 2rem;
+  font-size: 1rem; font-weight: 700;
+  background: var(--lp-gold);
+  color: var(--lp-ink);
+  border: none; border-radius: 10px;
+  cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center;
+  transition: opacity 0.2s;
+}
+.tako-lp .btn-gold:hover { opacity: 0.9; }
+.tako-lp .btn-outline-white {
+  padding: 0.75rem 2rem;
+  font-size: 1rem; font-weight: 600;
+  background: transparent;
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.22);
+  border-radius: 10px;
+  cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center;
+  transition: border-color 0.2s;
+}
+.tako-lp .btn-outline-white:hover { border-color: rgba(255,255,255,0.5); }
+
+/* Footer */
+.tako-lp footer {
+  background: #080b1a;
+  padding: 4rem 1.5rem 2rem;
+}
+.tako-lp .footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.tako-lp .footer-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 3rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 2rem;
+}
+@media (max-width: 640px) {
+  .tako-lp .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+}
+.tako-lp .footer-tagline { font-size: 0.85rem; color: rgba(255,255,255,0.35); line-height: 1.6; margin: 0.75rem 0 1rem; max-width: 320px; }
+.tako-lp .footer-address { font-size: 0.75rem; color: rgba(255,255,255,0.25); line-height: 1.7; }
+.tako-lp .footer-address strong { color: rgba(255,255,255,0.4); }
+.tako-lp .footer-col-title { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 600; margin-bottom: 1rem; }
+.tako-lp .footer-links { display: flex; flex-direction: column; gap: 0.6rem; }
+.tako-lp .footer-links a, .tako-lp .footer-links span {
+  font-size: 0.85rem; color: rgba(255,255,255,0.35);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.tako-lp .footer-links a:hover { color: rgba(255,255,255,0.7); }
+.tako-lp .footer-bottom { text-align: center; font-size: 0.75rem; color: rgba(255,255,255,0.2); }
+
+/* Reveal animations */
+.tako-lp .tl-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+.tako-lp .tl-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+`;
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const LandingPage = () => {
+  const [lang, setLang] = useState(() => localStorage.getItem('tako_lang') || 'en');
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  const t = lang === 'de' ? I18N_DE : I18N_EN;
+  const agents  = AGENTS_I18N[lang];
+  const outcomes= OUTCOMES_I18N[lang];
+  const values  = VALUE_I18N[lang];
+  const proofs  = PROOF_I18N[lang];
+  const euItems = EU_I18N[lang];
+  const launchTags = LAUNCH_TAGS_I18N[lang];
+
+  const canvasRef     = useRef(null);
+  const labelsContRef = useRef(null);
+  const progBarRef    = useRef(null);
+  const rafRef        = useRef(null);
+  const timeRef       = useRef(0);
+
+  const toggleLang = () => {
+    const nl = lang === 'en' ? 'de' : 'en';
+    localStorage.setItem('tako_lang', nl);
+    setLang(nl);
+  };
+
+  // ── Inject CSS & Google Fonts ───────────────────────────────────────────────
   useEffect(() => {
-    const end = new Date("2026-06-30T22:59:59Z").getTime();
-    const update = () => {
+    const style = document.createElement('style');
+    style.id    = 'tako-lp-styles';
+    style.textContent = LP_CSS;
+    document.head.appendChild(style);
+
+    const font = document.createElement('link');
+    font.id   = 'tako-lp-fonts';
+    font.rel  = 'stylesheet';
+    font.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap';
+    document.head.appendChild(font);
+
+    return () => {
+      document.getElementById('tako-lp-styles')?.remove();
+      document.getElementById('tako-lp-fonts')?.remove();
+    };
+  }, []);
+
+  // ── Progress bar ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const onScroll = () => {
+      if (!progBarRef.current) return;
+      const total  = document.documentElement.scrollHeight - window.innerHeight;
+      const pct    = total > 0 ? (window.scrollY / total) * 100 : 0;
+      progBarRef.current.style.width = `${pct}%`;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // ── Smooth-scroll for hash anchors ─────────────────────────────────────────
+  const handleHashClick = (e) => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) {
+      e.preventDefault();
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // ── Intersection observer (reveal) ─────────────────────────────────────────
+  useEffect(() => {
+    const els = document.querySelectorAll('.tako-lp .tl-reveal');
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add('visible'); obs.unobserve(en.target); }
+      }),
+      { threshold: 0.12 }
+    );
+    els.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, [lang]);
+
+  // ── Rebuild agent labels when lang changes ──────────────────────────────────
+  useEffect(() => {
+    if (!labelsContRef.current) return;
+    rebuildOctoLabels(labelsContRef.current, agents);
+  }, [lang, agents]);
+
+  // ── Canvas animation loop ───────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    const resize = () => {
+      const size = Math.min(780, window.innerWidth * 0.85);
+      canvas.style.width  = `${size}px`;
+      canvas.style.height = `${size}px`;
+      canvas.width  = size * dpr;
+      canvas.height = size * dpr;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const ctx = canvas.getContext('2d');
+
+    const loop = (ts) => {
+      timeRef.current = ts / 1000;
+      const vis = getScrollVis(canvas);
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      drawOctopus(ctx, canvas.width, canvas.height, vis, timeRef.current);
+      ctx.restore();
+
+      if (labelsContRef.current) {
+        positionLabels(canvas, labelsContRef.current, canvas.width, canvas.height, vis);
+      }
+
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  // ── Countdown ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const end = new Date('2026-06-30T22:59:59Z').getTime();
+    const tick = () => {
       const diff = Math.max(0, end - Date.now());
-      setTime({
-        days: Math.floor(diff / 86400000),
-        hours: Math.floor((diff / 3600000) % 24),
+      setCountdown({
+        days:    Math.floor(diff / 86400000),
+        hours:   Math.floor((diff / 3600000) % 24),
         minutes: Math.floor((diff / 60000) % 60),
-        seconds: Math.floor((diff / 1000) % 60)
+        seconds: Math.floor((diff / 1000) % 60),
       });
     };
-    update();
-    const id = setInterval(update, 1000);
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 
   const pad = (n) => String(n).padStart(2, '0');
 
-  const handleCheckout = async () => {
-    if (!form.email) { toast.error('Please enter your email'); return; }
-    setLoading(true);
-    
-    if (payMethod === 'unyt') {
-      try {
-        if (!window.ethereum) { toast.error('Please install MetaMask or another Web3 wallet'); setLoading(false); return; }
-        
-        const { ethers } = await import('ethers');
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        
-        // Switch to Arbitrum
-        try {
-          await provider.send('wallet_switchEthereumChain', [{ chainId: '0xa4b1' }]);
-        } catch (switchErr) {
-          if (switchErr.code === 4902) {
-            await provider.send('wallet_addEthereumChain', [{
-              chainId: '0xa4b1', chainName: 'Arbitrum One',
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['https://arb1.arbitrum.io/rpc'], blockExplorerUrls: ['https://arbiscan.io']
-            }]);
-          }
-        }
-        
-        const signer = provider.getSigner();
-        const wallet = await signer.getAddress();
-        
-        // Create order
-        const orderRes = await axios.post(`${API}/checkout/launch-edition/unyt`, { name: form.name, email: form.email, wallet });
-        const order = orderRes.data;
-        
-        setUnytStatus(`Sending ${order.unyt_amount.toLocaleString()} UNYT...`);
-        
-        // Send ERC-20 transfer
-        const erc20Abi = ['function transfer(address to, uint256 amount) returns (bool)'];
-        const contract = new ethers.Contract(order.contract, erc20Abi, signer);
-        const tx = await contract.transfer(order.receiver, order.unyt_amount_wei);
-        
-        setUnytStatus('Transaction sent. Waiting for confirmation...');
-        await tx.wait();
-        
-        // Confirm with backend
-        await axios.post(`${API}/checkout/launch-edition/unyt/confirm?deal_id=${order.deal_id}&tx_hash=${tx.hash}`);
-        toast.success('Payment confirmed! We will be in touch about your Launch Edition setup.');
-        setUnytStatus('');
-        setShowForm(false);
-      } catch (err) {
-        console.error(err);
-        toast.error(err.reason || err.message || 'Transaction failed');
-        setUnytStatus('');
-      }
-      setLoading(false);
-      return;
-    }
-    
-    // Stripe checkout
-    try {
-      const res = await axios.post(`${API}/checkout/launch-edition`, {
-        origin_url: window.location.origin, name: form.name, email: form.email
-      });
-      window.location.href = res.data.checkout_url;
-    } catch (e) { toast.error(e.response?.data?.detail || 'Checkout failed'); setLoading(false); }
-  };
-
+  // ─── JSX ────────────────────────────────────────────────────────────────────
   return (
-    <section className="py-16 px-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="rounded-3xl overflow-hidden" style={{ background: 'radial-gradient(circle at top right, rgba(99,102,241,0.12), transparent 28%), linear-gradient(180deg, #0f172a 0%, #111827 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 50px rgba(2,6,23,0.22)' }}>
-          <div className="grid md:grid-cols-[1.5fr_0.95fr] gap-8 p-8 md:p-10">
-            {/* Left */}
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-6">
-                <div className="inline-flex items-center gap-2 bg-white/[0.08] rounded-full px-3 py-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
-                  <span className="text-xs font-bold tracking-wider uppercase text-white/90">Limited time offer</span>
-                </div>
-                <div className="inline-flex items-center bg-[#D4A853] rounded-full px-3 py-1.5">
-                  <span className="text-xs font-extrabold tracking-wider uppercase text-[#0f172a]">75% OFF</span>
-                </div>
-              </div>
-              <h3 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-1" style={{ fontFamily: "'Syne'" }}>Launch Edition</h3>
-              <div className="flex items-baseline gap-3 mb-4">
-                <p className="text-white text-xl font-bold">EUR 4,999 <span className="text-white/70 font-medium text-base ml-1">one-time</span></p>
-                <p className="text-white/40 text-base line-through">EUR 19,999</p>
-              </div>
-              <p className="text-white/90 text-base leading-relaxed mb-3">
-                Get the existing TAKO app with <strong>unlimited users</strong> and deploy it on <strong>your own hosting</strong>.
-              </p>
-              <p className="text-white/70 text-sm leading-relaxed mb-5">
-                Save 2 to 3 months of setup and iteration, reduce unnecessary AI credit spend, and launch faster with a proven CRM foundation shaped by real implementation experience.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {['Unlimited users', 'Self-hosted', 'One-time payment', 'Proven CRM foundation'].map(h => (
-                  <span key={h} className="inline-flex items-center px-3 py-2 rounded-full bg-white/[0.07] text-white/90 text-sm font-semibold border border-white/[0.06]">{h}</span>
-                ))}
-              </div>
-            </div>
-            {/* Right */}
-            <div className="flex flex-col justify-center">
-              <p className="text-white/70 text-xs font-bold tracking-wider uppercase text-center mb-3">Offer expires in</p>
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                {[['days', time.days], ['hours', time.hours], ['minutes', time.minutes], ['seconds', time.seconds]].map(([label, val]) => (
-                  <div key={label} className="bg-white/[0.07] border border-white/[0.08] rounded-2xl p-3 text-center backdrop-blur-sm">
-                    <span className="block text-white text-2xl font-extrabold tracking-tight">{pad(val)}</span>
-                    <small className="block text-white/60 text-[0.68rem] font-bold tracking-wider uppercase mt-1">{label}</small>
-                  </div>
-                ))}
-              </div>
-              <p className="text-white/70 text-sm text-center mb-4">Ends June 30, 2026 at 23:59 BST</p>
-              {!showForm ? (
-                <button onClick={() => setShowForm(true)} className="w-full min-h-[52px] rounded-xl bg-white text-[#0f172a] font-bold text-base py-3 hover:opacity-95 transition-opacity shadow-lg" data-testid="launch-edition-cta">
-                  Book a Setup Call
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Your name" className="bg-white/10 border-white/10 text-white placeholder:text-white/40" />
-                  <Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="Your email" required className="bg-white/10 border-white/10 text-white placeholder:text-white/40" />
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={() => setPayMethod('stripe')} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${payMethod === 'stripe' ? 'bg-white text-[#0f172a]' : 'bg-white/10 text-white/70 hover:bg-white/15'}`}>Card / Bank</button>
-                    <button onClick={() => setPayMethod('unyt')} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${payMethod === 'unyt' ? 'bg-[#D4A853] text-[#0f172a]' : 'bg-white/10 text-white/70 hover:bg-white/15'}`}>Pay with UNYT</button>
-                  </div>
-                  {payMethod === 'unyt' && <p className="text-xs text-white/50 text-center">9,998 UNYT at EUR 0.50 per token via Arbitrum</p>}
-                  {unytStatus && <p className="text-xs text-[#D4A853] text-center animate-pulse">{unytStatus}</p>}
-                  <button onClick={handleCheckout} disabled={loading} className={`w-full min-h-[52px] rounded-xl font-bold text-base py-3 hover:opacity-95 transition-opacity shadow-lg disabled:opacity-50 ${payMethod === 'unyt' ? 'bg-[#D4A853] text-[#0f172a]' : 'bg-white text-[#0f172a]'}`} data-testid="launch-checkout-btn">
-                    {loading ? 'Processing...' : payMethod === 'unyt' ? 'Connect Wallet and Pay' : 'Proceed to Checkout (EUR 4,999)'}
-                  </button>
-                </div>
-              )}
+    <div className="tako-lp" onClick={handleHashClick}>
+
+      {/* Progress bar */}
+      <div className="progress-bar" ref={progBarRef} />
+
+      {/* Fixed canvas */}
+      <canvas id="octo-fixed" ref={canvasRef} />
+
+      {/* Fixed label overlay */}
+      <div className="octo-labels-wrapper">
+        <div ref={labelsContRef} style={{ position:'relative', width:'100%', height:'100%' }}>
+          {/* Beak hover */}
+          <div id="beak-hover" className="beak-hover">
+            <div className="beak-hover-zone">
+              <div className="beak-tooltip">tako.software</div>
             </div>
           </div>
         </div>
       </div>
-    </section>
-  );
-};
 
-const LandingPage = () => {
-  const { t, lang } = useT();
-  const toggleLang = () => {
-    const nl = lang === 'en' ? 'de' : 'en';
-    localStorage.setItem('tako_lang', nl);
-    try { window.dispatchEvent(new Event('languagechange')); } catch {}
-    window.location.reload();
-  };
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showLeadMagnet, setShowLeadMagnet] = useState(false);
-  const [leadMagnetEmail, setLeadMagnetEmail] = useState('');
-  const [leadMagnetName, setLeadMagnetName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [downloadReady, setDownloadReady] = useState(false);
-
-  // Handle Launch Edition return from Stripe
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('launch') === 'success') {
-      const sessionId = params.get('session_id');
-      const dealId = params.get('deal_id');
-      if (sessionId && dealId) {
-        axios.get(`${API}/checkout/launch-edition/verify?session_id=${sessionId}&deal_id=${dealId}`)
-          .then(res => {
-            if (res.data.status === 'paid') toast.success('Payment confirmed! We will be in touch about your Launch Edition setup.');
-            else toast.info('Payment is being processed. We will confirm shortly.');
-          })
-          .catch(() => toast.info('We received your order. Confirmation coming soon.'));
-      }
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  const handleLeadMagnetSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const response = await axios.post(`${API}/lead-magnet/subscribe`, { email: leadMagnetEmail, first_name: leadMagnetName, source: 'linkedin_guide' });
-      if (response.data.success) { setDownloadReady(true); toast.success('Your guide is ready.'); }
-    } catch { toast.error('Something went wrong.'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleDownload = () => {
-    const a = document.createElement('a');
-    a.href = 'https://customer-assets.emergentagent.com/job_bf31783e-7e9c-47ad-b065-3e62a7895ee8/artifacts/7c9fmulw_TAKO_LinkedIn_Lead_Generation_Playbook_Agency_Edition.pdf';
-    a.download = 'TAKO_LinkedIn_Lead_Generation_Playbook.pdf';
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    toast.success('Guide downloaded.');
-    setShowLeadMagnet(false);
-    setDownloadReady(false);
-  };
-
-  const features = [
-    { title: t('landing.feat1Title'), desc: t('landing.feat1Desc'), accent: '#D4A853' },
-    { title: t('landing.feat2Title'), desc: t('landing.feat2Desc'), accent: '#0EA5A0' },
-    { title: t('landing.feat3Title'), desc: t('landing.feat3Desc'), accent: '#0C1024' },
-    { title: t('landing.feat4Title'), desc: t('landing.feat4Desc'), accent: '#D4A853' },
-    { title: t('landing.feat5Title'), desc: t('landing.feat5Desc'), accent: '#0EA5A0' },
-    { title: t('landing.feat6Title'), desc: t('landing.feat6Desc'), accent: '#0C1024' },
-  ];
-
-  return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif" }} className="bg-[#FAFAF8] text-[#0F0A1E]">
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAF8]/95 backdrop-blur-sm border-b border-[#0F0A1E]/5">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center">
-            <img src="/logo-horizontal.svg" alt="TAKO" className="h-7" data-testid="nav-logo" />
+      {/* ── Nav ────────────────────────────────────────────────────────────── */}
+      <nav>
+        <div className="nav-inner">
+          <Link to="/" className="nav-logo">
+            <img src="/logo-horizontal.svg" alt="TAKO" />
           </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerFeatures')}</a>
-            <a href="#product" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerProduct')}</a>
-            <a href="/pricing" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerPricing')}</a>
-            <Link to="/support" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('common.support')}</Link>
+
+          <ul className={`nav-links${mobileOpen ? ' active' : ''}`}>
+            <li><a href="#outcomes" onClick={() => setMobileOpen(false)}>{t.navFeatures}</a></li>
+            <li><a href="#agents"   onClick={() => setMobileOpen(false)}>{t.navAgents}</a></li>
+            <li><Link to="/pricing" onClick={() => setMobileOpen(false)}>{t.navPricing}</Link></li>
+            <li><Link to="/support" onClick={() => setMobileOpen(false)}>{t.navSupport}</Link></li>
+          </ul>
+
+          <div className="nav-actions">
+            <button className="lang-btn" onClick={toggleLang} data-testid="landing-lang-toggle">
+              {lang === 'en' ? 'DE' : 'EN'}
+            </button>
+            <Link to="/login" className="btn-ghost">{t.signIn}</Link>
+            <Link to="/signup" className="btn-p" data-testid="nav-cta">{t.startFree}</Link>
           </div>
-          <div className="hidden md:flex items-center gap-3">
-            <button onClick={toggleLang} className="px-2 py-1 text-xs font-semibold rounded bg-[#0F0A1E]/5 hover:bg-[#0F0A1E]/10 text-[#0F0A1E]/60" data-testid="landing-lang-toggle">{lang === 'en' ? 'DE' : 'EN'}</button>
-            <Link to="/login"><Button variant="ghost" className="text-sm h-9 text-[#0F0A1E]/70 hover:text-[#0F0A1E]">{t('common.signIn')}</Button></Link>
-            <Link to="/signup"><Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white text-sm h-9 px-5 rounded-lg" data-testid="nav-cta">{t('common.startFree')}</Button></Link>
-          </div>
-          <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} data-testid="mobile-menu-btn">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeWidth={2} d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
+
+          <button className="hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Menu">
+            {mobileOpen ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            )}
           </button>
         </div>
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-[#FAFAF8] border-t border-[#0F0A1E]/5 p-4 space-y-3">
-            <a href="#features" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="/pricing" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
-            <Link to="/login" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
-            <Link to="/signup"><Button className="w-full bg-[#0EA5A0] text-white rounded-lg">Start free</Button></Link>
-          </div>
-        )}
       </nav>
 
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-[#0C1024]/5 border border-[#0C1024]/10 rounded-full px-4 py-1.5 mb-8">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
-              <span className="text-xs tracking-widest uppercase text-[#0C1024]/70 font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{t('landing.badge')}</span>
-            </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" style={{ fontFamily: "'Syne', sans-serif" }} data-testid="hero-title">
-              {t('landing.heroTitle1')}<br />
-              <span className="text-[#0EA5A0]">{t('landing.heroTitle2')}</span>
-            </h1>
-            <p className="text-lg md:text-xl text-[#0F0A1E]/60 leading-relaxed max-w-xl mb-10" data-testid="hero-description">
-              {t('landing.heroDesc')}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link to="/signup">
-                <Button className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white h-12 px-8 rounded-lg text-base font-medium" data-testid="hero-cta-primary">
-                  {t('landing.startTrial')}
-                </Button>
-              </Link>
-              <Button variant="outline" className="h-12 px-8 rounded-lg text-base border-[#0F0A1E]/15 text-[#0F0A1E]/70 hover:border-[#0F0A1E]/30" onClick={() => setShowLeadMagnet(true)} data-testid="hero-cta-guide">
-                {t('landing.getPlaybook')}
-              </Button>
-            </div>
-          </div>
-
-          {/* Product Preview */}
-          <div className="mt-16 scroll-mt-24 bg-[#0F0A1E] rounded-2xl p-2 shadow-2xl shadow-[#0C1024]/10" id="product" data-testid="hero-image">
-            <div className="bg-[#1a1230] rounded-xl p-6 md:p-8">
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {[{ label: 'Active Leads', value: '284', change: '+12%' }, { label: 'Pipeline Value', value: '428,500', change: '+8%', prefix: '\u20AC' }, { label: 'Win Rate', value: '34%', change: '+3pp' }, { label: 'Avg. Deal Size', value: '18,200', prefix: '\u20AC', change: '+5%' }].map((s, i) => (
-                  <div key={i} className="bg-[#0F0A1E]/50 rounded-lg p-4 border border-white/5">
-                    <p className="text-white/40 text-xs mb-1" style={{ fontFamily: "'DM Sans'" }}>{s.label}</p>
-                    <p className="text-white text-xl font-semibold" style={{ fontFamily: "'Syne'" }}>{s.prefix || ''}{s.value}</p>
-                    <span className="text-[#D4A853] text-xs font-medium">{s.change}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-6 gap-3">
-                {['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won'].map((stage, i) => (
-                  <div key={i} className="bg-[#0F0A1E]/40 rounded-lg p-3 border border-white/5">
-                    <p className="text-white/50 text-xs mb-2">{stage}</p>
-                    {[1, 2].map(j => (
-                      <div key={j} className="bg-white/5 rounded p-2 mb-2">
-                        <div className="h-2 bg-white/20 rounded w-3/4 mb-1" />
-                        <div className="h-1.5 bg-white/10 rounded w-1/2" />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-                <div className="bg-[#D4A853]/10 rounded-lg p-3 border border-[#D4A853]/20">
-                  <p className="text-[#D4A853] text-xs mb-2 font-medium">Revenue</p>
-                  <p className="text-[#D4A853] text-lg font-bold" style={{ fontFamily: "'Syne'" }}>{'€'}186k</p>
-                  <p className="text-[#D4A853]/60 text-xs">this quarter</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+      <section className="hero">
+        <div className="hero-badge">
+          <span className="hero-badge-dot" />
+          {t.heroBadge}
+        </div>
+        <h1 data-testid="hero-title">
+          {t.heroTitle.split('\n').map((line, i, arr) => (
+            <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+          ))}
+        </h1>
+        <p data-testid="hero-description">{t.heroDesc}</p>
+        <div className="hero-ctas">
+          <Link to="/signup" className="btn-p" style={{ fontSize:'1rem', padding:'0.75rem 2rem' }} data-testid="hero-cta-primary">
+            {t.heroCtaPrimary}
+          </Link>
+          <a href="#outcomes" className="btn-outline" style={{ fontSize:'1rem', padding:'0.75rem 2rem' }}>
+            {t.heroCtaSecondary}
+          </a>
         </div>
       </section>
 
-      {/* Trust Strip */}
-      <section className="py-12 border-y border-[#0F0A1E]/5">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-[#0F0A1E]/30 text-sm">
-            <span>{t('landing.trustGdpr')}</span>
-            <span className="w-px h-4 bg-[#0F0A1E]/10" />
-            <span>{t('landing.trustEu')}</span>
-            <span className="w-px h-4 bg-[#0F0A1E]/10" />
-            <span>{t('landing.trustSoc')}</span>
-            <span className="w-px h-4 bg-[#0F0A1E]/10" />
-            <span>{t('landing.trustStripe')}</span>
-            <span className="w-px h-4 bg-[#0F0A1E]/10" />
-            <span>{t('landing.trustUptime')}</span>
-          </div>
+      {/* ── Trust strip ────────────────────────────────────────────────────── */}
+      <div className="trust-strip">
+        <div className="trust-inner">
+          <span className="trust-item">{t.trustGdpr}</span>
+          <span className="trust-sep" />
+          <span className="trust-item">{t.trustEu}</span>
+          <span className="trust-sep" />
+          <span className="trust-item">{t.trustSoc}</span>
+          <span className="trust-sep" />
+          <span className="trust-item">{t.trustStripe}</span>
+          <span className="trust-sep" />
+          <span className="trust-item">{t.trustUptime}</span>
         </div>
-      </section>
+      </div>
 
-      {/* Features */}
-      <section className="py-24 px-6 scroll-mt-20" id="features">
-        <div className="max-w-5xl mx-auto">
-          <div className="max-w-2xl mb-16">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#0EA5A0] mb-4">{t('landing.featuresTag')}</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ fontFamily: "'Syne'" }}>
-              Everything a sales team needs. Nothing it does not.
-            </h2>
-            <p className="text-[#0F0A1E]/60 text-lg">
-              {t('landing.featuresDesc')}
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f, i) => (
-              <div key={i} className="bg-white rounded-xl p-6 border border-[#0F0A1E]/5 hover:border-[#0F0A1E]/10 transition-colors" data-testid={`feature-${i}`}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-4" style={{ backgroundColor: f.accent + '15' }}>
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: f.accent }} />
-                </div>
-                <h3 className="text-base font-semibold mb-2" style={{ fontFamily: "'Syne'" }}>{f.title}</h3>
-                <p className="text-sm text-[#0F0A1E]/60 leading-relaxed">{f.desc}</p>
+      {/* ── Outcomes ───────────────────────────────────────────────────────── */}
+      <section className="outcomes" id="outcomes">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.outcomesTag}</p>
+          <h2 className="section-title tl-reveal">{t.outcomesTitle}</h2>
+          <div className="outcomes-grid">
+            {outcomes.map((o, i) => (
+              <div key={i} className="outcome-card tl-reveal" style={{ transitionDelay: `${i * 0.08}s` }}>
+                <div className="outcome-number">{o.number}</div>
+                <div className="outcome-stat">{o.stat}</div>
+                <div className="outcome-desc">{o.desc}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="py-24 px-6 bg-[#0F0A1E]">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs tracking-[0.2em] uppercase font-semibold text-[#D4A853] mb-4">{t('landing.proofTag')}</p>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-12" style={{ fontFamily: "'Syne'" }}>
-            Built for teams that sell across Europe
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { quote: "We replaced three tools with TAKO. Pipeline visibility went from guesswork to real time.", name: "Marcus W.", role: "Head of Sales, SaaS (Berlin)" },
-              { quote: "The AI scoring saves us hours every week. We only call leads that actually convert.", name: "Sophie L.", role: "Sales Director, Agency (Paris)" },
-              { quote: "Finally a CRM that does not feel like it was built for a Fortune 500 IT department.", name: "James R.", role: "Founder, Consulting (London)" }
-            ].map((t, i) => (
-              <div key={i} className="bg-white/5 rounded-xl p-6 border border-white/5">
-                <p className="text-white/80 text-sm leading-relaxed mb-6">"{t.quote}"</p>
-                <div>
-                  <p className="text-white text-sm font-medium">{t.name}</p>
-                  <p className="text-white/40 text-xs">{t.role}</p>
-                </div>
+      {/* ── Value block ────────────────────────────────────────────────────── */}
+      <section className="value-block">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.valueTag}</p>
+          <h2 className="section-title tl-reveal">{t.valueTitle}</h2>
+          <p className="section-desc tl-reveal">{t.valueDesc}</p>
+          <div className="value-list">
+            {values.map((v, i) => (
+              <div key={i} className="value-item tl-reveal" style={{ transitionDelay: `${i * 0.06}s` }}>
+                <span className="value-bullet" />
+                <span className="value-text">
+                  <strong>{v.bold}</strong> {v.desc}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Launch Edition */}
-      <LaunchEdition />
+      {/* ── Agents grid ────────────────────────────────────────────────────── */}
+      <section className="agents" id="agents">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.agentsTag}</p>
+          <h2 className="section-title tl-reveal">{t.agentsTitle}</h2>
+          <div className="agents-grid">
+            {agents.map((agent, i) => (
+              <div key={agent.id} id={agent.id} className="agent-card tl-reveal" style={{ transitionDelay: `${i * 0.055}s` }}>
+                <div className="agent-card-top">
+                  <span className="agent-dot" />
+                  <span className="agent-card-title">{agent.cardTitle}</span>
+                </div>
+                <p className="agent-card-desc">{agent.cardDesc}</p>
+                <span className="agent-outcome">{agent.outcome}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* Final CTA */}
-      <section className="py-24 px-6 bg-[#0C1024]">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-4" style={{ fontFamily: "'Syne'" }}>
-            Ready to sell smarter?
-          </h2>
-          <p className="text-white/60 text-lg mb-8 max-w-xl mx-auto">
-            Join hundreds of European sales teams using TAKO to close more deals with less effort.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/signup">
-              <Button className="bg-[#D4A853] hover:bg-[#c49a48] text-[#0F0A1E] h-12 px-8 rounded-lg text-base font-medium">
-                Start free trial
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" className="h-12 px-8 rounded-lg text-base border-white/20 text-white hover:bg-white/5">
-                Sign in
-              </Button>
+      {/* ── Architecture ───────────────────────────────────────────────────── */}
+      <section className="architecture">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.archTag}</p>
+          <h2 className="section-title tl-reveal">{t.archTitle}</h2>
+          <p className="section-desc tl-reveal">{t.archDesc}</p>
+        </div>
+      </section>
+
+      {/* ── Proof / Testimonials ───────────────────────────────────────────── */}
+      <section className="proof">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.proofTag}</p>
+          <h2 className="section-title tl-reveal">{t.proofTitle}</h2>
+          <div className="proof-grid">
+            {proofs.map((p, i) => (
+              <div key={i} className="proof-card tl-reveal" style={{ transitionDelay: `${i * 0.1}s` }}>
+                <p className="proof-quote">{p.quote}</p>
+                <p className="proof-name">{p.name}</p>
+                <p className="proof-role">{p.role}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Europe / GDPR ──────────────────────────────────────────────────── */}
+      <section className="europe">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.euTag}</p>
+          <h2 className="section-title tl-reveal">{t.euTitle}</h2>
+          <p className="section-desc tl-reveal">{t.euDesc}</p>
+          <div className="eu-grid">
+            {euItems.map((eu, i) => (
+              <div key={i} className="eu-card tl-reveal" style={{ transitionDelay: `${i * 0.1}s` }}>
+                <p className="eu-card-title">{eu.title}</p>
+                <p className="eu-card-desc">{eu.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      <section className="pricing">
+        <div className="section-inner">
+          <p className="section-tag tl-reveal">{t.pricingTag}</p>
+          <h2 className="section-title tl-reveal">{t.pricingTitle}</h2>
+          <p className="section-desc tl-reveal">{t.pricingDesc}</p>
+          <div style={{ textAlign:'center', padding:'2rem 0' }} className="tl-reveal">
+            <Link to="/pricing" className="btn-p" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem', padding:'0.75rem 2rem' }}>
+              See full pricing — plans from £0 →
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 bg-[#0F0A1E]">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div className="md:col-span-2">
-              <img src="/logo-horizontal-reversed.svg" alt="TAKO" className="h-6 mb-4" />
-              <p className="text-white/40 text-sm mb-4 max-w-xs">
-                The CRM that runs your marketing and sales. Built for European teams that want results, not complexity.
-              </p>
-              <div className="text-xs text-white/30">
-                <p className="font-medium text-white/40">Fintery Ltd.</p>
-                <p>Canbury Works, Units 6 and 7, Canbury Business Park</p>
-                <p>Kingston upon Thames, Surrey, KT2 6HJ, UK</p>
+      {/* ── Launch Edition ─────────────────────────────────────────────────── */}
+      <section className="launch-edition">
+        <div className="launch-inner tl-reveal">
+
+          {/* Left */}
+          <div className="launch-left">
+            <div className="launch-badges">
+              <div className="launch-badge-limited">
+                <span className="launch-badge-dot" />
+                {t.launchTag}
+              </div>
+              <div className="launch-badge-pct">{t.launchBadge}</div>
+            </div>
+            <h3 className="launch-title">{t.launchTitle}</h3>
+            <div className="launch-pricing">
+              <span className="launch-price">{t.launchPrice} <span className="launch-price-note">{t.launchPriceNote}</span></span>
+              <span className="launch-orig-price">{t.launchOrigPrice}</span>
+            </div>
+            <p className="launch-desc">{t.launchDesc}</p>
+            <p className="launch-desc2">{t.launchDesc2}</p>
+            <div className="launch-tags">
+              {launchTags.map(tag => (
+                <span key={tag} className="launch-tag">{tag}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — countdown */}
+          <div className="launch-right">
+            <p className="cd-expires">{t.launchExpires}</p>
+            <div className="cd-grid">
+              {[
+                [pad(countdown.days),    lang === 'de' ? 'Tage'    : 'Days'   ],
+                [pad(countdown.hours),   lang === 'de' ? 'Stunden' : 'Hours'  ],
+                [pad(countdown.minutes), lang === 'de' ? 'Minuten' : 'Minutes'],
+                [pad(countdown.seconds), lang === 'de' ? 'Sek.'    : 'Seconds'],
+              ].map(([val, unit]) => (
+                <div key={unit} className="cd-box">
+                  <span className="cd-val">{val}</span>
+                  <small className="cd-unit">{unit}</small>
+                </div>
+              ))}
+            </div>
+            <p className="cd-ends">{t.launchEnds}</p>
+            <button
+              className="launch-cta"
+              data-testid="launch-edition-cta"
+              onClick={() => { window.location.href = 'mailto:support@tako.software?subject=TAKO%20Launch%20Edition%20%E2%80%93%20Setup%20Call'; }}
+            >
+              {t.launchCta}
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── Final CTA ──────────────────────────────────────────────────────── */}
+      <section className="final-cta">
+        <div className="section-inner">
+          <h2 className="section-title tl-reveal">{t.finalTitle}</h2>
+          <p className="section-desc tl-reveal">{t.finalDesc}</p>
+          <div className="final-cta-btns tl-reveal">
+            <Link to="/signup" className="btn-gold">{t.finalCtaPrimary}</Link>
+            <Link to="/login"  className="btn-outline-white">{t.finalCtaSecondary}</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <footer>
+        <div className="footer-inner">
+          <div className="footer-top">
+            <div>
+              <img src="/logo-horizontal-reversed.svg" alt="TAKO" style={{ height:'26px' }} />
+              <p className="footer-tagline">{t.footerTagline}</p>
+              <div className="footer-address">
+                <strong>{t.footerCompany}</strong><br />
+                {t.footerAddress1}<br />
+                {t.footerAddress2}
               </div>
             </div>
+
             <div>
-              <h4 className="text-white/60 text-xs tracking-[0.15em] uppercase font-medium mb-4">Product</h4>
-              <div className="space-y-2 text-sm">
-                <a href="#features" className="block text-white/40 hover:text-white/70 transition-colors">Features</a>
-                <a href="/pricing" className="block text-white/40 hover:text-white/70 transition-colors">Pricing</a>
-                <Link to="/support" className="block text-white/40 hover:text-white/70 transition-colors">Support</Link>
-                <button onClick={() => setShowLeadMagnet(true)} className="block text-white/40 hover:text-white/70 transition-colors text-left">Free Guide</button>
+              <p className="footer-col-title">{t.footerProduct}</p>
+              <div className="footer-links">
+                <a href="#agents">{t.footerFeatures}</a>
+                <Link to="/pricing">{t.footerPricing}</Link>
+                <Link to="/support">{t.footerSupport}</Link>
               </div>
             </div>
+
             <div>
-              <h4 className="text-white/60 text-xs tracking-[0.15em] uppercase font-medium mb-4">Legal</h4>
-              <div className="space-y-2 text-sm">
-                <Link to="/privacy" className="block text-white/40 hover:text-white/70 transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="block text-white/40 hover:text-white/70 transition-colors">Terms of Service</Link>
-                <a href="mailto:support@tako.software" className="block text-white/40 hover:text-white/70 transition-colors">support@tako.software</a>
+              <p className="footer-col-title">{t.footerLegal}</p>
+              <div className="footer-links">
+                <Link to="/privacy">{t.footerPrivacy}</Link>
+                <Link to="/terms">{t.footerTerms}</Link>
+                <a href="mailto:support@tako.software">support@tako.software</a>
               </div>
             </div>
           </div>
-          <div className="border-t border-white/5 pt-6 text-center">
-            <p className="text-white/30 text-xs">{new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.</p>
+
+          <div className="footer-bottom">
+            <p>{t.footerRights}</p>
           </div>
         </div>
       </footer>
 
-      {/* Lead Magnet Dialog */}
-      <Dialog open={showLeadMagnet} onOpenChange={setShowLeadMagnet}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'Syne'" }}>Get the LinkedIn Lead Generation Playbook</DialogTitle>
-          </DialogHeader>
-          {downloadReady ? (
-            <div className="text-center py-4">
-              <p className="text-[#0F0A1E]/70 mb-4">Your guide is ready to download.</p>
-              <Button onClick={handleDownload} className="bg-[#0EA5A0] hover:bg-[#0B8C88] text-white rounded-lg">Download PDF</Button>
-            </div>
-          ) : (
-            <form onSubmit={handleLeadMagnetSubmit} className="space-y-4 pt-2">
-              <div>
-                <label className="text-sm text-[#0F0A1E]/60 mb-1 block">First name</label>
-                <Input value={leadMagnetName} onChange={(e) => setLeadMagnetName(e.target.value)} required placeholder="Your name" />
-              </div>
-              <div>
-                <label className="text-sm text-[#0F0A1E]/60 mb-1 block">Work email</label>
-                <Input type="email" value={leadMagnetEmail} onChange={(e) => setLeadMagnetEmail(e.target.value)} required placeholder="you@company.com" />
-              </div>
-              <Button type="submit" disabled={submitting} className="w-full bg-[#0EA5A0] hover:bg-[#0B8C88] text-white rounded-lg">
-                {submitting ? 'Sending...' : 'Get the playbook'}
-              </Button>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
