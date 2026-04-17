@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { SmartSearch, AIEmailComposer } from '../components/AIAssistant';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import AITrialBanner from '../components/AITrialBanner';
 import {
   Users,
   Target,
@@ -143,6 +144,9 @@ const DashboardPage = () => {
             </Link>
           </div>
         </div>
+
+        {/* AI Trial / Token wall banner */}
+        <AITrialBanner />
 
         {/* Onboarding Checklist — auto-hides when dismissed */}
         <OnboardingChecklist />

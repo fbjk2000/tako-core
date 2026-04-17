@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../App';
+import { useTokenUsage } from '../../hooks/useTokenUsage';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import {
@@ -30,13 +31,15 @@ import {
   CalendarClock,
   FolderOpen,
   FolderKanban,
-  FileText
+  FileText,
+  Zap
 } from 'lucide-react';
 
 const ICONS = { LayoutDashboard, Users, Target, CheckSquare, Building, Mail, Megaphone, Settings, Shield, MessageSquare, Phone, BarChart3, HelpCircle, Radio, UserCircle, ContactIcon, Briefcase, Camera, CalendarDays, CalendarClock, FolderOpen, FolderKanban, FileText };
 
 const DashboardLayout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
+  const { usage } = useTokenUsage(token);
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -223,6 +226,32 @@ const DashboardLayout = ({ children }) => {
 
         {/* User Section (sticky bottom inside sidebar) */}
         <div className="shrink-0 p-4 border-t border-slate-100 bg-white">
+          {usage && usage.tier !== 'enterprise' && usage.monthly_limit && (
+            <div className="mb-3 px-1">
+              {/* Trial banner — show from day 21 onwards */}
+              {usage.is_trial && usage.trial_days_remaining != null && usage.trial_days_remaining <= 9 && (
+                <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                  <span className="font-semibold">AI trial ends in {usage.trial_days_remaining} day{usage.trial_days_remaining !== 1 ? 's' : ''}.</span>{' '}
+                  <a href="/pricing" className="underline font-medium">Upgrade to Pro →</a>
+                </div>
+              )}
+              {/* Token usage bar — show from 80% usage */}
+              {usage.pct_used >= 80 && (
+                <div>
+                  <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                    <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500" />{usage.tokens_used} / {usage.monthly_limit} tokens</span>
+                    <a href="/pricing" className="text-[#0EA5A0] hover:underline">Upgrade</a>
+                  </div>
+                  <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${usage.pct_used >= 100 ? 'bg-red-500' : 'bg-amber-400'}`}
+                      style={{ width: `${Math.min(usage.pct_used, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-3">
             {user?.picture ? (
               <img

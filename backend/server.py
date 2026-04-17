@@ -145,24 +145,66 @@ class StripeCheckout:
             payment_status=payment_status,
         )
 
-# Subscription Plans (amounts in EUR)
 SUBSCRIPTION_PLANS = {
-    "monthly": {
-        "id": "monthly",
-        "name": "Pro Monthly",
-        "price": 15.00,
-        "currency": "eur",
-        "interval": "month",
-        "description": "€15 per user per month"
+    # ── Solo (free) ─────────────────────────────────────────────
+    "tako_free": {
+        "id": "tako_free", "name": "Solo", "tier": "free",
+        "prices": {
+            "gbp": {"monthly": 0, "annual": 0},
+            "eur": {"monthly": 0, "annual": 0},
+            "usd": {"monthly": 0, "annual": 0},
+        },
+        "limits": {"users": 1, "pipelines": 1, "contacts": 500},
+        "ai_tokens_monthly": 250,
+        "ai_tokens_trial": 5000,
+        "description": "One user. One pipeline. All 8 AI agents for 30 days.",
     },
-    "annual": {
-        "id": "annual", 
-        "name": "Pro Annual",
-        "price": 144.00,  # €12/month * 12 = €144/year (20% discount)
-        "currency": "eur",
+    # ── Pro ─────────────────────────────────────────────────────
+    "tako_pro_monthly": {
+        "id": "tako_pro_monthly", "name": "Pro", "tier": "pro",
+        "prices": {
+            "gbp": {"monthly": 25, "annual": None},
+            "eur": {"monthly": 29, "annual": None},
+            "usd": {"monthly": 29, "annual": None},
+        },
+        "interval": "month",
+        "ai_tokens_monthly": 5000,
+        "description": "Your full sales team. 5,000 AI tokens per rep, per month.",
+    },
+    "tako_pro_annual": {
+        "id": "tako_pro_annual", "name": "Pro", "tier": "pro",
+        "prices": {
+            "gbp": {"monthly": 22, "annual": 264},
+            "eur": {"monthly": 25, "annual": 300},
+            "usd": {"monthly": 25, "annual": 300},
+        },
         "interval": "year",
-        "description": "€12 per user per month (20% discount)"
-    }
+        "ai_tokens_monthly": 5000,
+        "description": "Your full sales team. 5,000 AI tokens per rep, per month.",
+    },
+    # ── Enterprise ───────────────────────────────────────────────
+    "tako_ent_monthly": {
+        "id": "tako_ent_monthly", "name": "Enterprise", "tier": "enterprise",
+        "prices": {
+            "gbp": {"monthly": 45, "annual": None},
+            "eur": {"monthly": 49, "annual": None},
+            "usd": {"monthly": 55, "annual": None},
+        },
+        "interval": "month",
+        "ai_tokens_monthly": None,  # unlimited
+        "description": "Unlimited AI. SSO. SLAs. A team that knows your name.",
+    },
+    "tako_ent_annual": {
+        "id": "tako_ent_annual", "name": "Enterprise", "tier": "enterprise",
+        "prices": {
+            "gbp": {"monthly": 39, "annual": 468},
+            "eur": {"monthly": 45, "annual": 540},
+            "usd": {"monthly": 49, "annual": 588},
+        },
+        "interval": "year",
+        "ai_tokens_monthly": None,  # unlimited
+        "description": "Unlimited AI. SSO. SLAs. A team that knows your name.",
+    },
 }
 
 # Create the main app
@@ -509,11 +551,13 @@ class PlatformSettings(BaseModel):
 # ==================== PAYMENT & INVOICE MODELS ====================
 
 class SubscriptionRequest(BaseModel):
-    plan_id: str  # "monthly" or "annual"
+    plan_id: str  # e.g. "tako_pro_monthly"
     user_count: int = 1
     discount_code: Optional[str] = None
+    coupon_code: Optional[str] = None
     use_crypto: bool = False  # If true, apply 5% crypto discount
     origin_url: str  # Frontend origin for success/cancel URLs
+    currency: str = "gbp"
 
 class PaymentTransaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -694,6 +738,93 @@ async def _ai_trial_info(org_id: str | None) -> dict:
     return {"active": active, "ends_at": ends_iso, "days_remaining": days_remaining}
 
 
+# Token costs per action (approximate, tunable)
+AI_TOKEN_COSTS = {
+    "lead_score": 1,
+    "email_draft": 5,
+    "call_transcription_per_min": 3,
+    "followup_suggestion": 2,
+    "prospect_research": 10,
+    "pipeline_insight": 5,
+    "meeting_prep": 8,
+    "custom_prompt": 8,  # midpoint of 5-15
+}
+
+async def _get_token_budget(user_id: str, org_id: Optional[str]) -> dict:
+    """Return token budget info for a user. Returns dict with:
+       monthly_limit (int|None), tokens_used (int), can_use (bool),
+       is_trial (bool), trial_days_remaining (int|None), tier (str)
+    """
+    now = datetime.now(timezone.utc)
+    month_key = now.strftime("%Y-%m")
+
+    # Determine tier from org subscription_plan
+    tier = "free"
+    if org_id:
+        org = await db.organizations.find_one({"organization_id": org_id}, {"subscription_plan": 1, "_id": 0})
+        if org:
+            plan_id = org.get("subscription_plan", "tako_free")
+            if "ent" in (plan_id or ""):
+                tier = "enterprise"
+            elif "pro" in (plan_id or ""):
+                tier = "pro"
+
+    # Enterprise: unlimited, no tracking needed
+    if tier == "enterprise":
+        return {"monthly_limit": None, "tokens_used": 0, "can_use": True,
+                "is_trial": False, "trial_days_remaining": None, "tier": tier}
+
+    # Check AI trial for free tier
+    is_trial = False
+    trial_days_remaining = None
+    if tier == "free":
+        trial = await _ai_trial_info(org_id)
+        if trial.get("active"):
+            is_trial = True
+            ends_at = trial.get("ends_at")
+            if ends_at:
+                try:
+                    ends_dt = datetime.fromisoformat(ends_at.replace("Z", "+00:00"))
+                    trial_days_remaining = max(0, (ends_dt - now).days)
+                except Exception:
+                    pass
+
+    monthly_limit = 5000 if (tier == "pro" or is_trial) else 250
+
+    # Get usage from db
+    usage_doc = await db.ai_token_usage.find_one(
+        {"user_id": user_id, "month_key": month_key}, {"_id": 0}
+    )
+    tokens_used = usage_doc.get("tokens_used", 0) if usage_doc else 0
+
+    can_use = tokens_used < monthly_limit
+
+    return {
+        "monthly_limit": monthly_limit,
+        "tokens_used": tokens_used,
+        "can_use": can_use,
+        "is_trial": is_trial,
+        "trial_days_remaining": trial_days_remaining,
+        "tier": tier,
+        "month_key": month_key,
+        "pct_used": round((tokens_used / monthly_limit) * 100) if monthly_limit else 0,
+    }
+
+
+async def _consume_tokens(user_id: str, amount: int, month_key: str):
+    """Increment token usage for a user for the current month."""
+    now = datetime.now(timezone.utc)
+    await db.ai_token_usage.update_one(
+        {"user_id": user_id, "month_key": month_key},
+        {
+            "$inc": {"tokens_used": amount},
+            "$setOnInsert": {"user_id": user_id, "month_key": month_key, "created_at": now.isoformat()},
+            "$set": {"updated_at": now.isoformat()},
+        },
+        upsert=True,
+    )
+
+
 async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
     """Determine the Anthropic API key to use.
     Priority:
@@ -735,6 +866,31 @@ async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
                 "support_url": "/support",
             },
         )
+
+    # Token budget check
+    try:
+        _user_doc = await db.users.find_one({"email": user_email}, {"user_id": 1, "_id": 0})
+        if _user_doc:
+            budget = await _get_token_budget(_user_doc["user_id"], org_id)
+            if not budget["can_use"]:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "code": "token_limit_reached",
+                        "message": f"You've used your {budget['monthly_limit']} AI tokens this month.",
+                        "action": "Upgrade to Pro for 5,000 tokens/month →",
+                        "message_de": f"Du hast deine {budget['monthly_limit']} KI-Token diesen Monat aufgebraucht.",
+                        "action_de": "Upgrade auf Pro fuer 5.000 Token/Monat →",
+                        "tokens_used": budget["tokens_used"],
+                        "monthly_limit": budget["monthly_limit"],
+                        "settings_url": "/pricing",
+                    }
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # Never block AI on a token lookup failure
+
     raise HTTPException(
         status_code=403,
         detail={
@@ -5423,10 +5579,84 @@ async def get_team_pipeline_summary(current_user: dict = Depends(get_current_use
 
 # ==================== SUBSCRIPTION & PAYMENT ROUTES ====================
 
+@api_router.get("/ai/token-usage")
+async def get_token_usage(current_user: dict = Depends(get_current_user)):
+    """Return current month's AI token usage for the authenticated user."""
+    budget = await _get_token_budget(
+        current_user["user_id"],
+        current_user.get("organization_id")
+    )
+    return budget
+
 @api_router.get("/subscriptions/plans")
 async def get_subscription_plans():
     """Get available subscription plans"""
     return {"plans": list(SUBSCRIPTION_PLANS.values())}
+
+class CouponValidateRequest(BaseModel):
+    code: str
+    plan_id: str
+    currency: str = "gbp"
+
+@api_router.post("/validate-coupon")
+async def validate_coupon(request: CouponValidateRequest):
+    """Validate a Stripe coupon code and return discount details"""
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=500, detail="Payment system not configured")
+    import stripe as _stripe
+    _stripe.api_key = STRIPE_API_KEY
+    code = request.code.upper().strip()
+    try:
+        coupon = _stripe.Coupon.retrieve(code)
+    except _stripe.error.InvalidRequestError:
+        raise HTTPException(status_code=404, detail="Code not recognised")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not validate coupon")
+
+    if not coupon.get("valid"):
+        raise HTTPException(status_code=400, detail="This code has expired or is no longer valid")
+
+    # Build human-readable duration string
+    dur = coupon.get("duration", "once")
+    dur_months = coupon.get("duration_in_months")
+    if dur == "forever":
+        duration_label = "forever"
+    elif dur == "once":
+        duration_label = "first month only"
+    else:
+        duration_label = f"{dur_months} months" if dur_months else "repeating"
+
+    # Calculate discounted price for display
+    plan = SUBSCRIPTION_PLANS.get(request.plan_id, {})
+    currency = request.currency.lower()
+    prices = plan.get("prices", {}).get(currency, {})
+    interval = "annual" if "annual" in request.plan_id else "monthly"
+    base_price = prices.get(interval) or prices.get("monthly", 0)
+
+    if coupon.get("percent_off"):
+        pct = coupon["percent_off"]
+        discounted = round(base_price * (1 - pct / 100), 2)
+        discount_label = f"{int(pct)}% off"
+    elif coupon.get("amount_off"):
+        amount_off = coupon["amount_off"] / 100  # Stripe stores in pence/cents
+        discounted = max(0, base_price - amount_off)
+        discount_label = f"{currency.upper()} {amount_off:.0f} off"
+    else:
+        discounted = base_price
+        discount_label = "Applied"
+
+    return {
+        "valid": True,
+        "code": code,
+        "discount_label": discount_label,
+        "duration_label": duration_label,
+        "base_price": base_price,
+        "discounted_price": discounted,
+        "currency": currency,
+        "percent_off": coupon.get("percent_off"),
+        "amount_off": coupon.get("amount_off"),
+        "stripe_coupon_id": code,
+    }
 
 @api_router.post("/subscriptions/checkout")
 async def create_subscription_checkout(
@@ -5443,9 +5673,13 @@ async def create_subscription_checkout(
         raise HTTPException(status_code=400, detail="Invalid subscription plan")
     
     plan = SUBSCRIPTION_PLANS[request.plan_id]
-    
+
     # Calculate pricing
-    base_price = plan["price"] * request.user_count
+    currency = request.currency.lower()
+    prices = plan.get("prices", {}).get(currency, {})
+    interval = "annual" if "annual" in request.plan_id else "monthly"
+    unit_price = prices.get(interval) or prices.get("monthly", 0) or 0
+    base_price = unit_price * request.user_count
     discount_amount = 0.0
     discount_info = None
     
@@ -5497,20 +5731,24 @@ async def create_subscription_checkout(
     }
     
     payment_methods = ["card", "crypto"] if request.use_crypto else ["card"]
-    currency = "usd" if request.use_crypto else "eur"
-    
+    checkout_currency = "usd" if request.use_crypto else currency
+
     # Convert to USD if using crypto (required by Stripe)
     if request.use_crypto:
         total_amount = total_amount * 1.08  # Approximate EUR to USD conversion
-    
-    checkout_request = CheckoutSessionRequest(
+
+    checkout_kwargs = dict(
         amount=round(total_amount, 2),
-        currency=currency,
+        currency=checkout_currency,
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata,
-        payment_methods=payment_methods
+        payment_methods=payment_methods,
     )
+    if request.coupon_code:
+        checkout_kwargs["discounts"] = [{"coupon": request.coupon_code.upper()}]
+
+    checkout_request = CheckoutSessionRequest(**checkout_kwargs)
     
     session = await stripe_checkout.create_checkout_session(checkout_request)
     
@@ -5522,7 +5760,7 @@ async def create_subscription_checkout(
         "user_id": current_user["user_id"],
         "email": current_user["email"],
         "amount": base_price,
-        "currency": plan["currency"],
+        "currency": currency,
         "plan_id": request.plan_id,
         "user_count": request.user_count,
         "discount_code": request.discount_code,
@@ -5548,7 +5786,7 @@ async def create_subscription_checkout(
             "vat_rate": vat_rate,
             "vat_amount": vat_amount,
             "total_amount": total_amount,
-            "currency": currency.upper()
+            "currency": checkout_currency.upper()
         }
     }
 

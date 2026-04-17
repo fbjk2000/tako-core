@@ -1,518 +1,584 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth, API } from '../App';
+import { useT } from '../useT';
+import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { Input } from '../components/ui/input';
 import {
   Check,
-  ArrowLeft,
-  CreditCard,
-  Shield,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Info,
   Zap,
-  Tag,
+  Shield,
   Users,
-  Percent,
-  Bitcoin
+  Sparkles,
 } from 'lucide-react';
 
+// ─── Pricing constants (mirrors SUBSCRIPTION_PLANS in backend) ───────────────
+const PRICES = {
+  tako_pro_monthly:  { gbp: 25, eur: 29, usd: 29 },
+  tako_pro_annual:   { gbp: 22, eur: 25, usd: 25 },   // per month
+  tako_ent_monthly:  { gbp: 45, eur: 49, usd: 55 },
+  tako_ent_annual:   { gbp: 39, eur: 45, usd: 49 },   // per month
+};
+const ANNUAL_TOTAL = {
+  tako_pro_annual:   { gbp: 264, eur: 300, usd: 300 },
+  tako_ent_annual:   { gbp: 468, eur: 540, usd: 588 },
+};
+const CURRENCY_SYMBOL = { gbp: '£', eur: '€', usd: '$' };
+
+function detectCurrency() {
+  const saved = localStorage.getItem('tako_currency');
+  if (saved && ['gbp', 'eur', 'usd'].includes(saved)) return saved;
+  const lang = (navigator.language || '').toLowerCase();
+  if (lang.startsWith('en-gb')) return 'gbp';
+  if (/^(de|fr|it|es|nl|pt|pl|sv|fi|da|nb|el|cs|sk|hu|ro)/.test(lang)) return 'eur';
+  return 'usd';
+}
+
+// ─── Comparison table data ────────────────────────────────────────────────────
+const COMPARISON_ROWS = [
+  { label: 'Users',               solo: '1',                    pro: 'Unlimited',          ent: 'Unlimited' },
+  { label: 'Pipelines',           solo: '1',                    pro: 'Unlimited',          ent: 'Unlimited' },
+  { label: 'Contacts',            solo: '500',                  pro: '10,000',             ent: 'Unlimited' },
+  { label: 'AI agents',           solo: 'All 8',                pro: 'All 8',              ent: 'All 8' },
+  { label: 'AI tokens/month',     solo: '250 (5,000 trial)',    pro: '5,000/user',         ent: 'Unlimited' },
+  { label: 'Token top-ups',       solo: false,                  pro: '£5/1,000',           ent: 'Not needed' },
+  { label: 'Call recording',      solo: false,                  pro: true,                 ent: true },
+  { label: 'Email sequences',     solo: false,                  pro: true,                 ent: true },
+  { label: 'Booking links',       solo: true,                   pro: true,                 ent: true },
+  { label: 'Team projects',       solo: false,                  pro: true,                 ent: true },
+  { label: 'Reporting',           solo: 'Basic',                pro: 'Full',               ent: 'Full + custom' },
+  { label: 'EU data hosting',     solo: true,                   pro: true,                 ent: true },
+  { label: 'SSO / SAML',          solo: false,                  pro: false,                ent: true },
+  { label: 'Priority support',    solo: false,                  pro: false,                ent: '✓ (4hr SLA)' },
+  { label: 'API access',          solo: false,                  pro: 'Standard',           ent: 'Elevated' },
+  { label: 'Audit logs',          solo: false,                  pro: false,                ent: true },
+  { label: 'Dedicated onboarding',solo: false,                  pro: false,                ent: true },
+];
+
+function CellValue({ value }) {
+  if (value === true)  return <Check className="w-4 h-4 text-[#0EA5A0] mx-auto" />;
+  if (value === false) return <span className="text-slate-300 text-lg leading-none">—</span>;
+  return <span className="text-slate-700 text-sm">{value}</span>;
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
 const PricingPage = () => {
-  const navigate = useNavigate();
   const { user, token } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const [userCount, setUserCount] = useState(0);
-  const [discountCode, setDiscountCode] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState(null);
-  const [useCrypto, setUseCrypto] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [validatingCode, setValidatingCode] = useState(false);
-  const [unytStatus, setUnytStatus] = useState('');
+  const { t } = useT();
+  const location = useLocation();
 
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const [billing, setBilling]               = useState('annual');
+  const [currency, setCurrency]             = useState(detectCurrency);
+  const [couponCode, setCouponCode]         = useState('');
+  const [appliedCoupon, setAppliedCoupon]   = useState(null);
+  const [couponError, setCouponError]       = useState(null);
+  const [couponLoading, setCouponLoading]   = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [couponOpen, setCouponOpen]         = useState({ pro: false, ent: false });
 
-  const plans = {
-    monthly: {
-      id: 'monthly',
-      name: 'Pro Monthly',
-      price: 15,
-      interval: 'month',
-      description: 'Pay monthly, cancel anytime'
-    },
-    annual: {
-      id: 'annual',
-      name: 'Pro Annual',
-      price: 144,
-      pricePerMonth: 12,
-      interval: 'year',
-      description: 'Save 20% with annual billing',
-      discount: 20
+  // Persist currency choice
+  useEffect(() => {
+    localStorage.setItem('tako_currency', currency);
+  }, [currency]);
+
+  // Read ?code= param on mount → auto-populate & validate for Pro
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    if (code) {
+      setCouponCode(code.toUpperCase());
+      const planId = billing === 'annual' ? 'tako_pro_annual' : 'tako_pro_monthly';
+      validateCoupon(code, planId);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const calculatePricing = () => {
-    const plan = plans[selectedPlan];
-    const basePrice = plan.price * userCount;
-    
-    let discountAmount = 0;
-    if (appliedDiscount) {
-      discountAmount = basePrice * (appliedDiscount.discount_percentage / 100);
-    }
-    
-    let cryptoDiscount = 0;
-    if (useCrypto) {
-      cryptoDiscount = (basePrice - discountAmount) * 0.05;
-    }
-    
-    const netAmount = basePrice - discountAmount - cryptoDiscount;
-    const vatRate = 20;
-    const vatAmount = netAmount * (vatRate / 100);
-    const totalAmount = netAmount + vatAmount;
-    
-    return {
-      basePrice,
-      discountAmount,
-      cryptoDiscount,
-      netAmount,
-      vatRate,
-      vatAmount,
-      totalAmount,
-      currency: useCrypto ? 'USD' : 'EUR'
-    };
-  };
-
-  const validateDiscountCode = async () => {
-    if (!discountCode.trim()) return;
-    
-    setValidatingCode(true);
+  const validateCoupon = async (code, planId) => {
+    setCouponLoading(true);
+    setCouponError(null);
     try {
-      const response = await axios.post(`${API}/discount-codes/validate`, {
-        code: discountCode.toUpperCase()
+      const res = await axios.post(`${API}/validate-coupon`, {
+        code: code.toUpperCase(),
+        plan_id: planId,
+        currency,
       });
-      
-      if (response.data.valid) {
-        setAppliedDiscount(response.data.discount);
-        toast.success(`Discount code applied: ${response.data.discount.discount_percentage}% off!`);
-      } else {
-        setAppliedDiscount(null);
-        toast.error('Invalid or expired discount code');
-      }
-    } catch (error) {
-      setAppliedDiscount(null);
-      toast.error('Invalid discount code');
+      setAppliedCoupon(res.data);
+    } catch (err) {
+      setCouponError(err?.response?.data?.detail || 'Code not recognised');
+      setAppliedCoupon(null);
     } finally {
-      setValidatingCode(false);
+      setCouponLoading(false);
     }
   };
 
-  const handleCheckout = async () => {
+  // Derived plan IDs
+  const proPlanId = billing === 'annual' ? 'tako_pro_annual' : 'tako_pro_monthly';
+  const entPlanId = billing === 'annual' ? 'tako_ent_annual' : 'tako_ent_monthly';
+
+  const proPrice  = PRICES[proPlanId][currency];
+  const entPrice  = PRICES[entPlanId][currency];
+  const sym       = CURRENCY_SYMBOL[currency];
+
+  const handleCheckout = (planId) => {
     if (!user) {
-      toast.error('Please sign in to subscribe');
-      navigate('/login');
+      window.location.href = '/signup';
       return;
     }
-
-    setLoading(true);
-    
-    if (useCrypto) {
-      // UNYT wallet payment
-      try {
-        if (!window.ethereum) { toast.error('Please install MetaMask or another Web3 wallet'); setLoading(false); return; }
-        
-        const { ethers } = await import('ethers');
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        
-        try {
-          await provider.send('wallet_switchEthereumChain', [{ chainId: '0xa4b1' }]);
-        } catch (switchErr) {
-          if (switchErr.code === 4902) {
-            await provider.send('wallet_addEthereumChain', [{
-              chainId: '0xa4b1', chainName: 'Arbitrum One',
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['https://arb1.arbitrum.io/rpc'], blockExplorerUrls: ['https://arbiscan.io']
-            }]);
-          }
-        }
-        
-        const signer = provider.getSigner();
-        const wallet = await signer.getAddress();
-        const pricing = calculatePricing();
-        const unytAmount = pricing.totalAmount / 0.50;
-        const unytWei = ethers.utils.parseUnits(unytAmount.toFixed(0), 18);
-        
-        setUnytStatus(`Sending ${unytAmount.toFixed(0)} UNYT...`);
-        
-        const erc20Abi = ['function transfer(address to, uint256 amount) returns (bool)'];
-        const contract = new ethers.Contract('0x5305bF91163D97D0d93188611433F86D1bb69898', erc20Abi, signer);
-        const tx = await contract.transfer('0xFf98458bEBA08e0a8967D45Ce216D9Ee5fdecD1A', unytWei);
-        
-        setUnytStatus('Transaction sent. Waiting for confirmation...');
-        await tx.wait();
-        
-        toast.success('UNYT payment confirmed! Your subscription is being activated.');
-        setUnytStatus('');
-        navigate('/settings?tab=billing');
-      } catch (err) {
-        console.error(err);
-        toast.error(err.reason || err.message || 'Transaction failed');
-        setUnytStatus('');
-      }
-      setLoading(false);
-      return;
-    }
-
-    // Stripe checkout
-    try {
-      const response = await axios.post(
-        `${API}/subscriptions/checkout`,
-        {
-          plan_id: selectedPlan,
-          user_count: userCount,
-          discount_code: appliedDiscount?.code || null,
-          use_crypto: false,
-          origin_url: window.location.origin
-        },
-        { headers, withCredentials: true }
-      );
-
-      window.location.href = response.data.checkout_url;
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create checkout session');
-      setLoading(false);
-    }
+    // Stripe checkout — redirect to backend session
+    window.location.href = `${API}/subscriptions/checkout?plan_id=${planId}&origin_url=${encodeURIComponent(window.location.origin)}`;
   };
-
-  const pricing = calculatePricing();
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="p-6">
-        <Link to="/" className="inline-flex items-center text-slate-600 hover:text-slate-900 transition-colors" data-testid="back-link">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to home
+
+      {/* ── Page header ── */}
+      <header className="py-4 px-6 border-b border-slate-100 bg-white">
+        <Link to="/" className="text-sm text-slate-500 hover:text-slate-800 transition-colors">
+          ← Back to home
         </Link>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-slate-900 mb-4" data-testid="pricing-title">
-            Simple, Transparent Pricing
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+
+        {/* ── Section heading ── */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-3">
+            One price. Every agent included.
           </h1>
-          <p className="text-lg text-slate-600">
-            Start free with up to 3 users. Pay only for additional team members.
+          <p className="text-lg text-slate-500 max-w-xl mx-auto">
+            No seat surprises. No AI credits to top up. No US data transfers.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Plan Selection */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Plans */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Your Plan</CardTitle>
-                <CardDescription>Choose between monthly or annual billing</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {Object.entries(plans).map(([key, plan]) => (
-                  <label
-                    key={key}
-                    htmlFor={`plan-${key}`}
-                    className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      selectedPlan === key
-                        ? 'border-[#0EA5A0] bg-teal-50'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                    data-testid={`plan-${key}`}
-                  >
-                    <input
-                      type="radio"
-                      id={`plan-${key}`}
-                      name="plan"
-                      value={key}
-                      checked={selectedPlan === key}
-                      onChange={() => setSelectedPlan(key)}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center gap-4">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedPlan === key ? 'border-[#0EA5A0]' : 'border-slate-300'
-                      }`}>
-                        {selectedPlan === key && (
-                          <div className="w-3 h-3 rounded-full bg-[#0EA5A0]" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-900">{plan.name}</p>
-                        <p className="text-sm text-slate-500">{plan.description}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900">
-                        €{plan.pricePerMonth || plan.price}
-                        <span className="text-sm font-normal text-slate-500">/user/month</span>
-                      </p>
-                      {plan.discount && (
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                          Save {plan.discount}%
-                        </Badge>
-                      )}
-                    </div>
-                  </label>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* User Count */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Team Size
-                </CardTitle>
-                <CardDescription>How many additional users do you need?</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setUserCount(Math.max(0, userCount - 1))}
-                    data-testid="decrease-users"
-                  >
-                    -
-                  </Button>
-                  <Input
-                    type="number"
-                    value={userCount}
-                    onChange={(e) => setUserCount(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-24 text-center text-lg font-semibold"
-                    min={0}
-                    data-testid="users-input"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setUserCount(userCount + 1)}
-                    data-testid="increase-users"
-                  >
-                    +
-                  </Button>
-                </div>
-                <p className="text-sm text-slate-500 mt-3">
-                  <Check className="w-4 h-4 inline text-emerald-500 mr-1" />
-                  First 3 users are always <strong>free</strong>.
-                  {userCount === 0
-                    ? ' Start free — add paid seats when your team grows past 3.'
-                    : ` You're adding ${userCount} paid user${userCount === 1 ? '' : 's'} (4th seat onward).`}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Discount Code */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Tag className="w-5 h-5" />
-                  Discount Code
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-3">
-                  <Input
-                    value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                    placeholder="Enter code"
-                    className="flex-1"
-                    data-testid="discount-code-input"
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={validateDiscountCode}
-                    disabled={validatingCode || !discountCode.trim()}
-                    data-testid="apply-discount-btn"
-                  >
-                    {validatingCode ? 'Checking...' : 'Apply'}
-                  </Button>
-                </div>
-                {appliedDiscount && (
-                  <div className="mt-3 p-3 bg-emerald-50 rounded-lg flex items-center justify-between">
-                    <span className="text-emerald-700 font-medium">
-                      <Percent className="w-4 h-4 inline mr-1" />
-                      {appliedDiscount.discount_percentage}% discount applied
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setAppliedDiscount(null);
-                        setDiscountCode('');
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* UNYT Token Payment Option */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bitcoin className="w-5 h-5" />
-                  Pay with UNYT Token
-                </CardTitle>
-                <CardDescription>Get an additional 5% discount when paying with UNYT on Arbitrum</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">Enable UNYT Payment</p>
-                    <p className="text-sm text-slate-500">Pay via MetaMask with UNYT tokens (Arbitrum)</p>
-                  </div>
-                  <Switch
-                    checked={useCrypto}
-                    onCheckedChange={setUseCrypto}
-                    data-testid="crypto-toggle"
-                  />
-                </div>
-                {useCrypto && (
-                  <div className="mt-3 space-y-2">
-                    <div className="p-3 bg-amber-50 rounded-lg">
-                      <p className="text-amber-700 text-sm font-medium">
-                        <Zap className="w-4 h-4 inline mr-1" />
-                        5% discount applied. You will pay {(calculatePricing().totalAmount / 0.50).toFixed(0)} UNYT at EUR 0.50 per token.
-                      </p>
-                    </div>
-                    <p className="text-xs text-slate-500">Requires MetaMask or a compatible Web3 wallet connected to Arbitrum One.</p>
-                    {unytStatus && <p className="text-sm text-[#0EA5A0] font-medium animate-pulse">{unytStatus}</p>}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Plan</span>
-                    <span className="font-medium">{plans[selectedPlan].name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Users</span>
-                    <span className="font-medium">{userCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Subtotal</span>
-                    <span className="font-medium">€{pricing.basePrice.toFixed(2)}</span>
-                  </div>
-                  
-                  {pricing.discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-600">
-                      <span>Discount ({appliedDiscount?.discount_percentage}%)</span>
-                      <span>-€{pricing.discountAmount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  
-                  {pricing.cryptoDiscount > 0 && (
-                    <div className="flex justify-between text-amber-600">
-                      <span>Crypto Discount (5%)</span>
-                      <span>-€{pricing.cryptoDiscount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between text-slate-500">
-                    <span>UK VAT ({pricing.vatRate}%)</span>
-                    <span>+€{pricing.vatAmount.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between text-lg">
-                      <span className="font-semibold">Total</span>
-                      <span className="font-bold text-[#0EA5A0]" data-testid="total-price">
-                        {useCrypto ? '$' : '€'}{pricing.totalAmount.toFixed(2)}
-                        <span className="text-xs font-normal text-slate-500 block text-right">
-                          /{selectedPlan === 'annual' ? 'year' : 'month'}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full h-12 bg-[#0EA5A0] hover:bg-teal-700"
-                  onClick={handleCheckout}
-                  disabled={loading}
-                  data-testid="checkout-btn"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <CreditCard className="w-5 h-5 mr-2" />
-                      {useCrypto ? 'Connect Wallet and Pay with UNYT' : 'Pay with Card'}
-                    </>
-                  )}
-                </Button>
-
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Shield className="w-4 h-4 text-emerald-500" />
-                    Secure payment via Stripe
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Check className="w-4 h-4 text-emerald-500" />
-                    30-day money-back guarantee
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Check className="w-4 h-4 text-emerald-500" />
-                    Cancel anytime
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* ── Billing toggle ── */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <button
+            onClick={() => setBilling('monthly')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              billing === 'monthly'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBilling('annual')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+              billing === 'annual'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
+            }`}
+          >
+            Annual
+            {billing === 'annual' && (
+              <span className="bg-[#0EA5A0] text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                Save up to 15%
+              </span>
+            )}
+          </button>
+          {billing === 'annual' && (
+            <span className="text-xs text-slate-400 italic">Save up to 15% vs monthly</span>
+          )}
         </div>
 
-        {/* Features */}
-        <Card className="mt-8">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-slate-900 mb-4">All plans include:</h3>
-            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+        {/* ── Currency toggle ── */}
+        <div className="flex items-center justify-center gap-2 mb-12">
+          {(['gbp', 'eur', 'usd']).map((c) => (
+            <button
+              key={c}
+              onClick={() => { setCurrency(c); setAppliedCoupon(null); setCouponError(null); }}
+              className={`w-9 h-9 rounded-full text-sm font-semibold border transition-colors ${
+                currency === c
+                  ? 'bg-[#0EA5A0] text-white border-[#0EA5A0]'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-[#0EA5A0]'
+              }`}
+            >
+              {CURRENCY_SYMBOL[c]}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Three pricing cards ── */}
+        <div className="grid md:grid-cols-3 gap-6 items-start">
+
+          {/* Solo */}
+          <Card className="border-slate-200 bg-white">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold text-slate-900">Solo</CardTitle>
+              <div className="mt-2">
+                <span className="text-3xl font-extrabold text-slate-900">{sym}0</span>
+                <span className="text-slate-500 text-sm ml-1">forever</span>
+              </div>
+              <CardDescription className="mt-2 text-slate-600">
+                One user. One pipeline. All 8 AI agents for 30 days.
+              </CardDescription>
+              <p className="text-xs text-slate-400 mt-1">
+                Then 250 AI tokens/mo — enough to keep exploring.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Link to="/signup">
+                <Button variant="outline" className="w-full border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]">
+                  Start free
+                </Button>
+              </Link>
+              <ul className="space-y-2 pt-2">
+                {[
+                  '1 user',
+                  '1 pipeline',
+                  '500 contacts',
+                  'All 8 AI agents (30-day trial)',
+                  'EU data hosting',
+                  'Booking links',
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
+                    <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Pro — elevated */}
+          <Card className="border-slate-200 bg-white ring-2 ring-[#0EA5A0] shadow-lg scale-[1.03] relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span className="bg-[#0F0A1E] text-white text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Most popular
+              </span>
+            </div>
+            <CardHeader className="pb-4 pt-6">
+              <CardTitle className="text-xl font-bold text-slate-900">Pro</CardTitle>
+              <div className="mt-2">
+                {appliedCoupon && appliedCoupon.plan_id === proPlanId ? (
+                  <div className="space-y-0.5">
+                    <div>
+                      <span className="text-xl text-slate-400 line-through mr-2">
+                        {sym}{proPrice}
+                      </span>
+                      <span className="text-3xl font-extrabold text-[#0EA5A0]">
+                        {sym}{appliedCoupon.discounted_price}
+                      </span>
+                      <span className="text-slate-500 text-sm ml-1">/user/mo</span>
+                    </div>
+                    <p className="text-xs text-emerald-600 font-medium">{appliedCoupon.discount_label}</p>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-3xl font-extrabold text-slate-900">{sym}{proPrice}</span>
+                    <span className="text-slate-500 text-sm ml-1">/user/mo</span>
+                  </>
+                )}
+                {billing === 'annual' && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    billed as {sym}{ANNUAL_TOTAL.tako_pro_annual[currency]}/year
+                  </p>
+                )}
+              </div>
+              <CardDescription className="mt-2 text-slate-600">
+                Your full sales team. 5,000 AI tokens per rep, per month.
+              </CardDescription>
+              <p className="text-xs text-slate-400 mt-1">
+                Unlimited pipelines. EU-hosted. Everything you need to close.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                className="w-full bg-[#0EA5A0] hover:bg-teal-700 text-white"
+                onClick={() => handleCheckout(proPlanId)}
+              >
+                Start with Pro
+              </Button>
+
+              {/* Coupon toggle */}
+              <button
+                className="text-xs text-[#0EA5A0] hover:underline w-full text-center"
+                onClick={() => setCouponOpen((prev) => ({ ...prev, pro: !prev.pro }))}
+              >
+                {couponOpen.pro ? 'Hide code field' : 'Have a code?'}
+              </button>
+
+              {couponOpen.pro && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="FOUNDER40"
+                      className="flex-1 h-9 text-sm uppercase"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 px-3 border-[#0EA5A0] text-[#0EA5A0] hover:bg-teal-50"
+                      disabled={couponLoading || !couponCode.trim()}
+                      onClick={() => validateCoupon(couponCode, proPlanId)}
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </Button>
+                  </div>
+                  {couponError && (
+                    <p className="text-red-500 text-xs">{couponError}</p>
+                  )}
+                  {appliedCoupon && appliedCoupon.plan_id === proPlanId && (
+                    <p className="text-emerald-600 text-xs font-medium">
+                      ✓ {appliedCoupon.code} — {appliedCoupon.discount_label}
+                      {appliedCoupon.duration_label ? ` · ${appliedCoupon.duration_label}` : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <ul className="space-y-2 pt-2">
+                {[
+                  'Unlimited users',
+                  'Unlimited pipelines',
+                  '10,000 contacts',
+                  'All 8 AI agents',
+                  '5,000 tokens/user/mo',
+                  'Call recording',
+                  'Email sequences',
+                  'Booking links',
+                  'Team projects',
+                  'Full reporting',
+                  'EU data hosting',
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
+                    <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Enterprise */}
+          <Card className="border-slate-200 bg-white">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold text-slate-900">Enterprise</CardTitle>
+              <div className="mt-2">
+                {appliedCoupon && appliedCoupon.plan_id === entPlanId ? (
+                  <div className="space-y-0.5">
+                    <div>
+                      <span className="text-xl text-slate-400 line-through mr-2">
+                        {sym}{entPrice}
+                      </span>
+                      <span className="text-3xl font-extrabold text-[#0EA5A0]">
+                        {sym}{appliedCoupon.discounted_price}
+                      </span>
+                      <span className="text-slate-500 text-sm ml-1">/user/mo</span>
+                    </div>
+                    <p className="text-xs text-emerald-600 font-medium">{appliedCoupon.discount_label}</p>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-3xl font-extrabold text-slate-900">{sym}{entPrice}</span>
+                    <span className="text-slate-500 text-sm ml-1">/user/mo</span>
+                  </>
+                )}
+                {billing === 'annual' && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    billed as {sym}{ANNUAL_TOTAL.tako_ent_annual[currency]}/year
+                  </p>
+                )}
+              </div>
+              <CardDescription className="mt-2 text-slate-600">
+                Unlimited AI. SSO. SLAs. A team that knows your name.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <a href="mailto:sales@tako.software">
+                <Button variant="outline" className="w-full border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]">
+                  Talk to sales
+                </Button>
+              </a>
+
+              {/* Coupon toggle */}
+              <button
+                className="text-xs text-[#0EA5A0] hover:underline w-full text-center"
+                onClick={() => setCouponOpen((prev) => ({ ...prev, ent: !prev.ent }))}
+              >
+                {couponOpen.ent ? 'Hide code field' : 'Have a code?'}
+              </button>
+
+              {couponOpen.ent && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="FOUNDER40"
+                      className="flex-1 h-9 text-sm uppercase"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 px-3 border-[#0EA5A0] text-[#0EA5A0] hover:bg-teal-50"
+                      disabled={couponLoading || !couponCode.trim()}
+                      onClick={() => validateCoupon(couponCode, entPlanId)}
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </Button>
+                  </div>
+                  {couponError && (
+                    <p className="text-red-500 text-xs">{couponError}</p>
+                  )}
+                  {appliedCoupon && appliedCoupon.plan_id === entPlanId && (
+                    <p className="text-emerald-600 text-xs font-medium">
+                      ✓ {appliedCoupon.code} — {appliedCoupon.discount_label}
+                      {appliedCoupon.duration_label ? ` · ${appliedCoupon.duration_label}` : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <ul className="space-y-2 pt-2">
+                {[
+                  'Everything in Pro',
+                  'Unlimited contacts',
+                  'Unlimited AI tokens',
+                  'SSO / SAML',
+                  'Advanced permissions',
+                  'Priority support (4hr SLA)',
+                  'Custom integrations',
+                  'Dedicated onboarding',
+                  'API rate limit uplift',
+                  'Audit logs',
+                  'Custom data retention',
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
+                    <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Social proof ── */}
+        <p className="text-center text-sm text-slate-400 italic mt-10">
+          "TAKO Pro for a 5-person team costs less per month than one Salesforce seat."
+        </p>
+
+        {/* ── Collapsible comparison table ── */}
+        <div className="mt-12">
+          <button
+            onClick={() => setShowComparison((v) => !v)}
+            className="flex items-center gap-2 mx-auto text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            Compare all plans
+            {showComparison ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          {showComparison && (
+            <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left px-4 py-3 text-slate-500 font-medium w-1/2">Feature</th>
+                    <th className="text-center px-4 py-3 text-slate-700 font-semibold">Solo</th>
+                    <th className="text-center px-4 py-3 text-[#0EA5A0] font-semibold">Pro</th>
+                    <th className="text-center px-4 py-3 text-slate-700 font-semibold">Enterprise</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON_ROWS.map((row, i) => (
+                    <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                      <td className="px-4 py-3 text-slate-600">{row.label}</td>
+                      <td className="px-4 py-3 text-center"><CellValue value={row.solo} /></td>
+                      <td className="px-4 py-3 text-center"><CellValue value={row.pro} /></td>
+                      <td className="px-4 py-3 text-center"><CellValue value={row.ent} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            LAUNCH EDITION
+            Early-access offer for TAKO's founding cohort.
+            Keep this section — it is referenced in launch campaign links.
+        ───────────────────────────────────────────────────────────────────── */}
+        <section id="launch-edition" className="mt-20 rounded-2xl bg-[#0F0A1E] text-white px-6 sm:px-10 py-12 relative overflow-hidden">
+          {/* Background glow */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0EA5A0]/20 to-transparent pointer-events-none" />
+
+          <div className="relative z-10 max-w-2xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 bg-[#0EA5A0]/20 text-[#0EA5A0] text-xs font-semibold px-3 py-1 rounded-full mb-4">
+              <Zap className="w-3 h-3" /> Limited availability
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+              Launch Edition — Founder Rate
+            </h2>
+            <p className="text-slate-300 mb-2">
+              The first 100 teams to sign up lock in <strong className="text-white">40% off Pro</strong> for life.
+              No contracts, no catch — just the best price this product will ever be.
+            </p>
+            <p className="text-slate-400 text-sm mb-8">
+              Use code <code className="bg-white/10 px-2 py-0.5 rounded font-mono text-white">FOUNDER40</code> at checkout.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link to="/signup">
+                <Button className="bg-[#0EA5A0] hover:bg-teal-600 text-white px-8 h-11">
+                  Claim founder rate
+                </Button>
+              </Link>
+              <button
+                className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
+                onClick={() => {
+                  setCouponCode('FOUNDER40');
+                  setCouponOpen({ pro: true, ent: false });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                Already have an account? Apply code above
+              </button>
+            </div>
+
+            <div className="mt-8 grid grid-cols-3 divide-x divide-white/10 border border-white/10 rounded-xl overflow-hidden">
               {[
-                'Unlimited leads & deals',
-                'Deal pipeline with stages',
-                'Task management',
-                'AI lead scoring',
-                'Email campaigns via Kit.com',
-                'LinkedIn data import',
-                'Team collaboration',
-                'Analytics dashboard',
-                'Pipeline reports',
-                'Discount codes system',
-                'Affiliate program',
-                'Priority support'
-              ].map((feature, index) => (
-                <div key={index} className="flex items-center gap-2 text-sm text-slate-600">
-                  <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  {feature}
+                { label: 'Discount', value: '40% off' },
+                { label: 'Duration', value: 'Forever' },
+                { label: 'Seats remaining', value: '< 100' },
+              ].map((item) => (
+                <div key={item.label} className="px-4 py-4 text-center">
+                  <p className="text-[#0EA5A0] font-bold text-lg">{item.value}</p>
+                  <p className="text-slate-400 text-xs mt-0.5">{item.label}</p>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+
+        {/* Trust strip */}
+        <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <Shield className="w-4 h-4 text-emerald-400" /> EU-hosted · GDPR compliant
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check className="w-4 h-4 text-emerald-400" /> 30-day money-back guarantee
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check className="w-4 h-4 text-emerald-400" /> Cancel anytime
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-emerald-400" /> Secure payment via Stripe
+          </span>
+        </div>
+
       </main>
     </div>
   );
