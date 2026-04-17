@@ -7152,10 +7152,13 @@ Return ONLY valid JSON, no markdown.""",
 async def create_api_key(name: str = "Default", current_user: dict = Depends(get_current_user)):
     """Generate an API key for programmatic access"""
     key = f"tako_{secrets.token_hex(24)}"
+    # Store first 20 chars as a searchable prefix (no ellipsis) so lookup can
+    # pre-filter by prefix before doing the expensive bcrypt verify.
+    key_prefix = key[:20]
     doc = {
         "key_id": f"key_{uuid.uuid4().hex[:12]}",
         "key_hash": hash_password(key),
-        "key_prefix": key[:16] + "...",
+        "key_prefix": key_prefix,
         "name": name,
         "organization_id": current_user.get("organization_id"),
         "user_id": current_user["user_id"],
@@ -7165,7 +7168,9 @@ async def create_api_key(name: str = "Default", current_user: dict = Depends(get
     }
     await db.api_keys.insert_one(doc)
     doc.pop('_id', None)
-    return {"key": key, "key_id": doc["key_id"], "name": name, "message": "Save this key - it won't be shown again"}
+    # Show display prefix with ellipsis in the response
+    doc["key_prefix"] = key_prefix + "..."
+    return {"key": key, "key_id": doc["key_id"], "name": name, "key_prefix": key_prefix + "...", "message": "Save this key - it won't be shown again"}
 
 @api_router.get("/api-keys")
 async def list_api_keys(current_user: dict = Depends(get_current_user)):
@@ -7189,18 +7194,47 @@ async def revoke_api_key(key_id: str, current_user: dict = Depends(get_current_u
 
 # API key auth middleware for external integrations
 async def get_api_key_user(request: Request):
-    """Authenticate via API key (for n8n, Notion, etc.)"""
+    """Authenticate via API key (for n8n, Notion, webforms, etc.)
+
+    Lookup strategy:
+    1. Extract the first 20-char prefix from the incoming key.
+    2. Query only keys whose stored prefix matches — avoids bcrypt-checking
+       every key in the database on every request.
+    3. bcrypt-verify the single candidate (or the rare 2-3 with same prefix).
+    4. Return the owning user (which carries organization_id for data scoping).
+
+    This means each org's API key only ever touches that org's data — full
+    isolation across Fintery, Unyted, and any other TAKO client org.
+    """
     auth = request.headers.get("X-API-Key") or request.headers.get("Authorization", "").replace("Bearer ", "")
     if not auth or not auth.startswith("tako_"):
         raise HTTPException(status_code=401, detail="Valid API key required")
-    
-    keys = await db.api_keys.find({"is_active": True}, {"_id": 0}).to_list(100)
-    for k in keys:
+
+    # Pre-filter by prefix (cheap string match) before expensive bcrypt verify
+    prefix = auth[:20]
+    candidates = await db.api_keys.find(
+        {"is_active": True, "key_prefix": prefix},
+        {"_id": 0}
+    ).to_list(5)
+
+    # Fallback: legacy keys stored with "..." suffix in key_prefix field
+    if not candidates:
+        legacy_display = auth[:16] + "..."
+        candidates = await db.api_keys.find(
+            {"is_active": True, "key_prefix": legacy_display},
+            {"_id": 0}
+        ).to_list(5)
+
+    for k in candidates:
         if verify_password(auth, k.get("key_hash", "")):
-            await db.api_keys.update_one({"key_id": k["key_id"]}, {"$set": {"last_used": datetime.now(timezone.utc).isoformat()}})
+            await db.api_keys.update_one(
+                {"key_id": k["key_id"]},
+                {"$set": {"last_used": datetime.now(timezone.utc).isoformat()}}
+            )
             user = await db.users.find_one({"user_id": k["user_id"]}, {"_id": 0})
             if user:
                 return user
+
     raise HTTPException(status_code=401, detail="Invalid API key")
 
 # ==================== EXTERNAL API (n8n, Notion, etc.) ====================
