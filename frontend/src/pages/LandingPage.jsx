@@ -240,7 +240,7 @@ const LandingPage = () => {
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerFeatures')}</a>
             <a href="#product" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerProduct')}</a>
-            <a href="#pricing" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerPricing')}</a>
+            <a href="/pricing" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('landing.footerPricing')}</a>
             <Link to="/support" className="text-sm text-[#0F0A1E]/60 hover:text-[#0F0A1E] transition-colors">{t('common.support')}</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
@@ -255,7 +255,7 @@ const LandingPage = () => {
         {mobileMenuOpen && (
           <div className="md:hidden bg-[#FAFAF8] border-t border-[#0F0A1E]/5 p-4 space-y-3">
             <a href="#features" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#pricing" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
+            <a href="/pricing" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
             <Link to="/login" className="block text-sm py-2" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
             <Link to="/signup"><Button className="w-full bg-[#0EA5A0] text-white rounded-lg">Start free</Button></Link>
           </div>
@@ -486,7 +486,7 @@ const LandingPage = () => {
               <h4 className="text-white/60 text-xs tracking-[0.15em] uppercase font-medium mb-4">Product</h4>
               <div className="space-y-2 text-sm">
                 <a href="#features" className="block text-white/40 hover:text-white/70 transition-colors">Features</a>
-                <a href="#pricing" className="block text-white/40 hover:text-white/70 transition-colors">Pricing</a>
+                <a href="/pricing" className="block text-white/40 hover:text-white/70 transition-colors">Pricing</a>
                 <Link to="/support" className="block text-white/40 hover:text-white/70 transition-colors">Support</Link>
                 <button onClick={() => setShowLeadMagnet(true)} className="block text-white/40 hover:text-white/70 transition-colors text-left">Free Guide</button>
               </div>
