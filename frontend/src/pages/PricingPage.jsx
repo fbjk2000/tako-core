@@ -83,6 +83,26 @@ const PricingPage = () => {
   const [couponLoading, setCouponLoading]   = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [couponOpen, setCouponOpen]         = useState({ pro: false, ent: false });
+  const [countdown, setCountdown]           = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  // Launch Edition countdown — expires 2026-06-30 23:59 BST
+  useEffect(() => {
+    const end = new Date('2026-06-30T22:59:59Z').getTime();
+    const tick = () => {
+      const diff = Math.max(0, end - Date.now());
+      setCountdown({
+        days:    Math.floor(diff / 86400000),
+        hours:   Math.floor((diff / 3600000) % 24),
+        minutes: Math.floor((diff / 60000) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const padT = (n) => String(n).padStart(2, '0');
 
   // Persist currency choice
   useEffect(() => {
@@ -515,63 +535,69 @@ const PricingPage = () => {
           {/* Background glow */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#0EA5A0]/20 to-transparent pointer-events-none" />
 
-          <div className="relative z-10 max-w-3xl mx-auto text-center">
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-              <div className="inline-flex items-center gap-2 bg-[#0EA5A0]/20 text-[#0EA5A0] text-xs font-semibold px-3 py-1 rounded-full">
-                <Zap className="w-3 h-3" /> Limited availability
-              </div>
-              <div className="inline-flex items-center bg-[#D4A853] text-[#0f172a] text-xs font-extrabold tracking-wider uppercase px-3 py-1 rounded-full">
-                75% OFF
-              </div>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-2">
-              Launch Edition — Self-Hosted
-            </h2>
-            <div className="flex items-baseline justify-center gap-3 mb-3">
-              <span className="text-3xl font-extrabold text-white">EUR 4,999</span>
-              <span className="text-slate-400 line-through text-lg">EUR 19,999</span>
-              <span className="text-slate-400 text-base">one-time</span>
-            </div>
-            <p className="text-slate-300 mb-2">
-              Get the full TAKO platform with <strong className="text-white">unlimited users</strong>, deployed on <strong className="text-white">your own hosting</strong>.
-              One payment. No subscriptions. Yours forever.
-            </p>
-            <p className="text-slate-400 text-sm mb-2">
-              Or lock in <strong className="text-white">40% off Pro</strong> for life — use code{' '}
-              <code className="bg-white/10 px-2 py-0.5 rounded font-mono text-white">FOUNDER40</code> at checkout.
-            </p>
-            <p className="text-slate-500 text-xs mb-8">Offer expires June 30, 2026</p>
-
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="/#launch-edition">
-                <Button className="bg-[#D4A853] hover:bg-[#c49a48] text-[#0f172a] font-bold px-8 h-11">
-                  Get Launch Edition — EUR 4,999
-                </Button>
-              </a>
-              <button
-                className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
-                onClick={() => {
-                  setCouponCode('FOUNDER40');
-                  setCouponOpen({ pro: true, ent: false });
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-              >
-                Apply FOUNDER40 to Pro instead
-              </button>
-            </div>
-
-            <div className="mt-8 grid grid-cols-4 divide-x divide-white/10 border border-white/10 rounded-xl overflow-hidden">
-              {[
-                { label: 'Discount', value: '75% off' },
-                { label: 'Payment', value: 'One-time' },
-                { label: 'Users', value: 'Unlimited' },
-                { label: 'Slots left', value: '< 50' },
-              ].map((item) => (
-                <div key={item.label} className="px-4 py-4 text-center">
-                  <p className="text-[#D4A853] font-bold text-lg">{item.value}</p>
-                  <p className="text-slate-400 text-xs mt-0.5">{item.label}</p>
+          <div className="relative z-10 grid md:grid-cols-[1.5fr_1fr] gap-8 max-w-4xl mx-auto">
+            {/* Left — copy */}
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-5">
+                <div className="inline-flex items-center gap-1.5 bg-white/[0.08] rounded-full px-3 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
+                  <span className="text-xs font-bold tracking-wider uppercase text-white/90">Limited time offer</span>
                 </div>
-              ))}
+                <div className="inline-flex items-center bg-[#D4A853] text-[#0f172a] text-xs font-extrabold tracking-wider uppercase px-3 py-1.5 rounded-full">
+                  75% OFF
+                </div>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1">
+                Launch Edition
+              </h2>
+              <div className="flex items-baseline gap-3 mb-4">
+                <span className="text-2xl font-bold text-white">EUR 4,999</span>
+                <span className="text-slate-400 line-through">EUR 19,999</span>
+                <span className="text-slate-400 text-sm">one-time</span>
+              </div>
+              <p className="text-slate-300 text-sm leading-relaxed mb-2">
+                Get the full TAKO platform with <strong className="text-white">unlimited users</strong>, deployed on <strong className="text-white">your own infrastructure</strong>. One payment. Yours forever.
+              </p>
+              <p className="text-slate-400 text-sm mb-5">
+                Or lock in <strong className="text-white">40% off Pro</strong> for life — use code{' '}
+                <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono text-white text-xs">FOUNDER40</code> at checkout.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {['Full source code', 'Unlimited users', 'Self-hosted', 'One-time payment', 'Production-tested'].map(h => (
+                  <span key={h} className="inline-flex items-center px-3 py-1.5 rounded-full bg-white/[0.07] text-white/80 text-xs font-semibold border border-white/[0.06]">{h}</span>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a href="/#launch-edition">
+                  <Button className="bg-white text-[#0f172a] hover:bg-white/90 font-bold px-6 h-11">
+                    Book a Setup Call
+                  </Button>
+                </a>
+                <button
+                  className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
+                  onClick={() => {
+                    setCouponCode('FOUNDER40');
+                    setCouponOpen({ pro: true, ent: false });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  Apply FOUNDER40 to Pro instead
+                </button>
+              </div>
+            </div>
+
+            {/* Right — countdown */}
+            <div className="flex flex-col justify-center">
+              <p className="text-white/60 text-xs font-bold tracking-wider uppercase text-center mb-3">Offer expires in</p>
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {[['days', countdown.days], ['hrs', countdown.hours], ['min', countdown.minutes], ['sec', countdown.seconds]].map(([label, val]) => (
+                  <div key={label} className="bg-white/[0.07] border border-white/[0.08] rounded-2xl p-3 text-center backdrop-blur-sm">
+                    <span className="block text-white text-2xl font-extrabold tracking-tight">{padT(val)}</span>
+                    <small className="block text-white/60 text-[0.68rem] font-bold tracking-wider uppercase mt-1">{label}</small>
+                  </div>
+                ))}
+              </div>
+              <p className="text-white/50 text-xs text-center">Ends June 30, 2026 at 23:59 BST</p>
             </div>
           </div>
         </section>
