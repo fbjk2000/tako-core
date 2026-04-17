@@ -242,7 +242,9 @@ const C_SURFACE = { r:245, g:243, b:238 };
 
 function getScrollVis(el) {
   const r = el.getBoundingClientRect(), vh = window.innerHeight;
-  return Math.max(0.05, Math.min(1, 1 - (r.top + r.height / 2 - vh * 0.45) / (vh * 0.8)));
+  // Linear: 0 when section top is at viewport bottom, 1 when section top reaches viewport top.
+  // Stays clamped at 1 after scrolling past.
+  return Math.min(1, Math.max(0, 1 - r.top / vh));
 }
 
 function getArmCurve(cx, cy, headR, agent, armLen, time) {
@@ -620,7 +622,7 @@ const LP_CSS = `
   .tako-lp .hamburger { display: block; }
 }
 
-/* Fixed octopus canvas */
+/* Fixed octopus canvas — above all sections (z:4) but below hero (z:6) */
 #octo-fixed {
   position: fixed;
   top: 50%; left: 50%;
@@ -628,7 +630,7 @@ const LP_CSS = `
   width: min(780px, 85vw);
   height: min(780px, 85vw);
   pointer-events: none;
-  z-index: 3;
+  z-index: 5;
 }
 .tako-lp .octo-labels-wrapper {
   position: fixed;
@@ -637,7 +639,7 @@ const LP_CSS = `
   width: min(780px, 85vw);
   height: min(780px, 85vw);
   pointer-events: none;
-  z-index: 4;
+  z-index: 7;
 }
 
 /* Agent labels */
@@ -705,10 +707,10 @@ const LP_CSS = `
 }
 .beak-hover:hover .beak-tooltip { opacity: 1; }
 
-/* Hero */
+/* Hero — above canvas (z:5) so ghost octopus hides behind hero content */
 .tako-lp .hero {
   position: relative;
-  z-index: 4;
+  z-index: 6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
