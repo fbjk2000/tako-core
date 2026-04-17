@@ -1,0 +1,16 @@
+[build]
+  base    = "frontend"
+  command = "npm install && npm run build"
+  publish = "build"
+
+[build.environment]
+  # Prevents CRA from treating warnings as errors
+  CI = "false"
+  # Points the React app at the backend API on the VPS
+  REACT_APP_BACKEND_URL = "https://tako.software"
+
+[context.production.environment]
+  REACT_APP_BACKEND_URL = "https://tako.software"
+
+[context.deploy-preview.environment]
+  REACT_APP_BACKEND_URL = "https://tako.software"
