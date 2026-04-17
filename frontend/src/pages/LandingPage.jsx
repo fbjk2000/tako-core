@@ -990,10 +990,10 @@ const LP_CSS = `
 .tako-lp .eu-card-desc { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.65; }
 
 /* Pricing */
-.tako-lp .pricing { padding: 6rem 1.5rem; background: var(--lp-surface); }
+.tako-lp .pricing { padding: 5rem 1.5rem 2rem; background: var(--lp-surface); text-align: center; }
 
 /* Launch Edition */
-.tako-lp .launch-edition { padding: 5rem 1.5rem; background: var(--lp-surface); }
+.tako-lp .launch-edition { padding: 2rem 1.5rem 5rem; background: var(--lp-surface); }
 .tako-lp .launch-inner {
   max-width: 920px;
   margin: 0 auto;
@@ -1335,8 +1335,8 @@ const LandingPage = () => {
       timeRef.current = ts / 1000;
 
       // Visibility driven by how far the architecture section is in view.
-      // Minimum 0.05 gives a ghost on the hero; 1.0 when fully in view.
-      const vis = archRef.current ? getScrollVis(archRef.current) : 0.05;
+      // Math.max(0.05, ...) ensures a ghost at all times; 1.0 when fully in view.
+      const vis = Math.max(0.05, archRef.current ? getScrollVis(archRef.current) : 0.05);
 
       // Draw in CSS-pixel space (divide physical canvas dims by dpr).
       const cssW = canvas.width  / dpr;
@@ -1578,11 +1578,11 @@ const LandingPage = () => {
 
       {/* ── Pricing ────────────────────────────────────────────────────────── */}
       <section className="pricing">
-        <div className="section-inner">
+        <div className="section-inner" style={{ maxWidth: '720px' }}>
           <p className="section-tag tl-reveal">{t.pricingTag}</p>
           <h2 className="section-title tl-reveal">{t.pricingTitle}</h2>
-          <p className="section-desc tl-reveal">{t.pricingDesc}</p>
-          <div style={{ textAlign:'center', padding:'2rem 0' }} className="tl-reveal">
+          <p className="section-desc tl-reveal" style={{ margin:'0 auto 2rem' }}>{t.pricingDesc}</p>
+          <div className="tl-reveal">
             <Link to="/pricing" className="btn-p" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem', padding:'0.75rem 2rem' }}>
               See full pricing — plans from £0 →
             </Link>
