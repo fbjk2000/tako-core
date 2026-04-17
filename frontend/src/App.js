@@ -5,6 +5,7 @@ import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import enLocale from './locales/en.json';
 import deLocale from './locales/de.json';
+import { safeInternalPath } from './utils/safeRedirect';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -215,7 +216,10 @@ const AuthCallback = () => {
             headers: { Authorization: `Bearer ${token}` }
           });
           setUser(response.data);
-          navigate('/dashboard', { replace: true });
+          // safeInternalPath guards against any tampered return destination.
+          // The two candidates here are hardcoded constants so this is defence-in-depth.
+          const rawDest = localStorage.getItem('tako_checkout_intent') ? '/pricing' : '/dashboard';
+          navigate(safeInternalPath(rawDest, '/dashboard'), { replace: true });
         } catch (error) {
           console.error('Auth callback error:', error);
           localStorage.removeItem('token');

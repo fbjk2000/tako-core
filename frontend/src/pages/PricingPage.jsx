@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import { useT } from '../useT';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -70,10 +71,13 @@ function CellValue({ value }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
+const CHECKOUT_INTENT_KEY = 'tako_checkout_intent';
+
 const PricingPage = () => {
   const { user, token } = useAuth();
   const { t } = useT();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [billing, setBilling]               = useState('annual');
   const [currency, setCurrency]             = useState(detectCurrency);
@@ -84,6 +88,7 @@ const PricingPage = () => {
   const [showComparison, setShowComparison] = useState(false);
   const [couponOpen, setCouponOpen]         = useState({ pro: false, ent: false });
   const [countdown, setCountdown]           = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Launch Edition countdown — expires 2026-06-30 23:59 BST
   useEffect(() => {
@@ -147,13 +152,77 @@ const PricingPage = () => {
   const entPrice  = PRICES[entPlanId][currency];
   const sym       = CURRENCY_SYMBOL[currency];
 
+  /**
+   * POST to /api/subscriptions/checkout and redirect to the returned Stripe URL.
+   * opts: { currency?: string, couponCode?: string }
+   *   currency   — override currency (used when restoring from stored intent)
+   *   couponCode — TAKO discount code to apply (sent as discount_code in body)
+   */
+  const initiateCheckout = async (planId, opts = {}) => {
+    setCheckoutLoading(true);
+    const effectiveCurrency = opts.currency || currency;
+
+    // Prefer an explicit coupon from opts (intent restore), otherwise use validated state
+    const effectiveCoupon = opts.couponCode ||
+      (appliedCoupon && appliedCoupon.plan_id === planId ? couponCode : null);
+
+    const payload = {
+      plan_id: planId,
+      origin_url: window.location.origin,
+      currency: effectiveCurrency,
+      user_count: 1,
+    };
+    const normalizedCoupon = (effectiveCoupon || '').trim().toUpperCase();
+    if (normalizedCoupon) payload.discount_code = normalizedCoupon;
+
+    const config = { withCredentials: true };
+    if (token) config.headers = { Authorization: `Bearer ${token}` };
+
+    try {
+      const res = await axios.post(`${API}/subscriptions/checkout`, payload, config);
+      // Backend returns { checkout_url, session_id, ... }
+      window.location.href = res.data.checkout_url;
+      // No setCheckoutLoading(false) here — page navigates away on success
+    } catch (err) {
+      const msg = err?.response?.data?.detail || 'Could not start checkout. Please try again.';
+      toast.error(msg);
+      setCheckoutLoading(false);
+    }
+  };
+
+  // If the user just authenticated and we have a stored intent, trigger checkout.
+  useEffect(() => {
+    if (!user) return;
+    const raw = localStorage.getItem(CHECKOUT_INTENT_KEY);
+    if (!raw) return;
+    try {
+      const intent = JSON.parse(raw);
+      localStorage.removeItem(CHECKOUT_INTENT_KEY);
+      if (intent.billing) setBilling(intent.billing);
+      if (intent.currency) { setCurrency(intent.currency); localStorage.setItem('tako_currency', intent.currency); }
+      // couponCode is now forwarded via POST body — no longer a GET-only limitation
+      initiateCheckout(intent.planId, {
+        currency: intent.currency,
+        couponCode: intent.couponCode || null,
+      });
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const handleCheckout = (planId) => {
     if (!user) {
-      window.location.href = '/signup';
+      // Persist intent so it can be restored after the auth flow.
+      // couponCode is now included: sent as POST body `discount_code` after auth.
+      localStorage.setItem(CHECKOUT_INTENT_KEY, JSON.stringify({
+        planId,
+        billing,
+        currency,
+        couponCode: appliedCoupon && appliedCoupon.plan_id === planId ? couponCode : '',
+      }));
+      navigate('/signup');
       return;
     }
-    // Stripe checkout — redirect to backend session
-    window.location.href = `${API}/subscriptions/checkout?plan_id=${planId}&origin_url=${encodeURIComponent(window.location.origin)}`;
+    initiateCheckout(planId);
   };
 
   return (
@@ -179,10 +248,12 @@ const PricingPage = () => {
         </div>
 
         {/* ── Billing toggle ── */}
-        <div className="flex items-center justify-center gap-3 mb-6">
+        <div className="flex items-center justify-center gap-3 mb-6" role="group" aria-label="Billing period">
           <button
+            type="button"
+            aria-pressed={billing === 'monthly'}
             onClick={() => setBilling('monthly')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] ${
               billing === 'monthly'
                 ? 'bg-slate-900 text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
@@ -191,8 +262,10 @@ const PricingPage = () => {
             Monthly
           </button>
           <button
+            type="button"
+            aria-pressed={billing === 'annual'}
             onClick={() => setBilling('annual')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] ${
               billing === 'annual'
                 ? 'bg-slate-900 text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
@@ -211,12 +284,15 @@ const PricingPage = () => {
         </div>
 
         {/* ── Currency toggle ── */}
-        <div className="flex items-center justify-center gap-2 mb-12">
+        <div className="flex items-center justify-center gap-2 mb-12" role="group" aria-label="Currency">
           {(['gbp', 'eur', 'usd']).map((c) => (
             <button
+              type="button"
               key={c}
+              aria-pressed={currency === c}
+              aria-label={`${c.toUpperCase()} — ${c === 'gbp' ? 'British Pound' : c === 'eur' ? 'Euro' : 'US Dollar'}`}
               onClick={() => { setCurrency(c); setAppliedCoupon(null); setCouponError(null); }}
-              className={`w-9 h-9 rounded-full text-sm font-semibold border transition-colors ${
+              className={`w-9 h-9 rounded-full text-sm font-semibold border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] ${
                 currency === c
                   ? 'bg-[#0EA5A0] text-white border-[#0EA5A0]'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-[#0EA5A0]'
@@ -226,6 +302,11 @@ const PricingPage = () => {
             </button>
           ))}
         </div>
+
+        {/* ── VAT notice ── */}
+        <p className="text-center text-xs text-slate-400 mb-8 -mt-6">
+          All prices exclude VAT where applicable. VAT is calculated at checkout based on your billing country.
+        </p>
 
         {/* ── Three pricing cards ── */}
         <div className="grid md:grid-cols-3 gap-6 items-start">
@@ -315,14 +396,28 @@ const PricingPage = () => {
               <Button
                 className="w-full bg-[#0EA5A0] hover:bg-teal-700 text-white"
                 onClick={() => handleCheckout(proPlanId)}
+                disabled={checkoutLoading}
+                aria-label="Subscribe to Pro plan"
               >
-                Start with Pro
+                {checkoutLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                    Redirecting…
+                  </span>
+                ) : 'Start with Pro'}
               </Button>
+
+              {/* Trust microcopy */}
+              <p className="text-center text-xs text-slate-400 !mt-1.5">
+                Secure checkout via Stripe · Cancel anytime · <a href="mailto:support@tako.software" className="hover:text-slate-600 underline underline-offset-2">support@tako.software</a>
+              </p>
 
               {/* Coupon toggle */}
               <button
-                className="text-xs text-[#0EA5A0] hover:underline w-full text-center"
+                type="button"
+                className="text-xs text-[#0EA5A0] hover:underline w-full text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
                 onClick={() => setCouponOpen((prev) => ({ ...prev, pro: !prev.pro }))}
+                aria-expanded={couponOpen.pro}
               >
                 {couponOpen.pro ? 'Hide code field' : 'Have a code?'}
               </button>
@@ -335,6 +430,7 @@ const PricingPage = () => {
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="FOUNDER40"
                       className="flex-1 h-9 text-sm uppercase"
+                      aria-label="Discount code"
                     />
                     <Button
                       size="sm"
@@ -416,16 +512,18 @@ const PricingPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <a href="mailto:sales@tako.software">
+              <Link to="/support?tab=contact">
                 <Button variant="outline" className="w-full border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]">
                   Talk to sales
                 </Button>
-              </a>
+              </Link>
 
               {/* Coupon toggle */}
               <button
-                className="text-xs text-[#0EA5A0] hover:underline w-full text-center"
+                type="button"
+                className="text-xs text-[#0EA5A0] hover:underline w-full text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
                 onClick={() => setCouponOpen((prev) => ({ ...prev, ent: !prev.ent }))}
+                aria-expanded={couponOpen.ent}
               >
                 {couponOpen.ent ? 'Hide code field' : 'Have a code?'}
               </button>
@@ -438,6 +536,7 @@ const PricingPage = () => {
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="FOUNDER40"
                       className="flex-1 h-9 text-sm uppercase"
+                      aria-label="Discount code"
                     />
                     <Button
                       size="sm"
@@ -493,15 +592,18 @@ const PricingPage = () => {
         {/* ── Collapsible comparison table ── */}
         <div className="mt-12">
           <button
+            type="button"
+            aria-expanded={showComparison}
+            aria-controls="plan-comparison-table"
             onClick={() => setShowComparison((v) => !v)}
-            className="flex items-center gap-2 mx-auto text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-2 mx-auto text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
           >
             Compare all plans
             {showComparison ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {showComparison && (
-            <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <div id="plan-comparison-table" className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
@@ -524,6 +626,47 @@ const PricingPage = () => {
               </table>
             </div>
           )}
+        </div>
+
+        {/* ── Pricing FAQ ── */}
+        <div className="mt-16 max-w-3xl mx-auto">
+          <h2 className="text-xl font-bold text-slate-900 mb-5 text-center">Common questions</h2>
+          <div className="space-y-2">
+            {[
+              {
+                q: 'Is VAT included in the prices shown?',
+                a: 'No. All prices shown exclude VAT. VAT is calculated at checkout based on your billing country and displayed before you confirm payment.',
+              },
+              {
+                q: 'How does annual billing work?',
+                a: 'Annual plans are billed as a single payment covering 12 months — you pay upfront and save up to 15% versus monthly. Your access continues until the end of the paid period.',
+              },
+              {
+                q: 'Can I cancel at any time?',
+                a: 'Yes. Cancel from Settings at any time. Your access continues until the end of the current billing period with no cancellation fees.',
+              },
+              {
+                q: 'Is there a money-back guarantee?',
+                a: 'We offer a 30-day money-back guarantee on your first purchase. Email support@tako.software within 30 days of your first payment.',
+              },
+              {
+                q: 'Where is my data stored?',
+                a: 'Primary hosting is on EU-based servers. TAKO is GDPR-compliant. Where subprocessors operate outside the EU, appropriate safeguards (Standard Contractual Clauses or equivalent) are in place.',
+              },
+              {
+                q: 'What does Enterprise onboarding include?',
+                a: 'Dedicated onboarding with the TAKO team, priority support with a 4-hour SLA, assistance with custom integrations, and ongoing account management.',
+              },
+            ].map(({ q, a }) => (
+              <details key={q} className="group bg-white border border-slate-200 rounded-xl cursor-pointer open:border-[#0EA5A0]/40">
+                <summary className="flex items-center justify-between px-5 py-4 text-sm font-medium text-slate-900 list-none select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded-xl">
+                  {q}
+                  <ChevronDown className="w-4 h-4 text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0 ml-3" />
+                </summary>
+                <p className="px-5 pb-4 text-sm text-slate-600 leading-relaxed">{a}</p>
+              </details>
+            ))}
+          </div>
         </div>
 
         {/* ─────────────────────────────────────────────────────────────────────
@@ -568,13 +711,14 @@ const PricingPage = () => {
                 ))}
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <a href="/#launch-edition">
+                <Link to="/support?tab=contact">
                   <Button className="bg-white text-[#0f172a] hover:bg-white/90 font-bold px-6 h-11">
                     Book a Setup Call
                   </Button>
-                </a>
+                </Link>
                 <button
-                  className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
+                  type="button"
+                  className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
                   onClick={() => {
                     setCouponCode('FOUNDER40');
                     setCouponOpen({ pro: true, ent: false });

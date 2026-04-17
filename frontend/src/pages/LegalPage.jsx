@@ -155,7 +155,7 @@ const TermsOfService = () => (
     </Section>
 
     <Section title="6. Payment & Subscriptions">
-      <p>Free tier: up to 3 users at no cost. Paid plans are billed monthly or annually as selected at checkout. Prices are displayed in EUR (excl. VAT where applicable).</p>
+      <p>Free tier: 1 user at no cost (Solo plan). Paid plans are billed monthly or annually as selected at checkout. Prices are displayed excluding VAT where applicable; VAT is calculated at checkout based on your billing country.</p>
       <p>Refunds: we offer a 30-day money-back guarantee on first purchase. Contact <a href="mailto:support@tako.software" className="text-[#0EA5A0]">support@tako.software</a>.</p>
       <p>We reserve the right to change pricing with 30 days' written notice.</p>
     </Section>

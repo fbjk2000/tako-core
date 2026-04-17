@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // ─── i18n data ────────────────────────────────────────────────────────────────
 
@@ -1225,6 +1225,7 @@ const LP_CSS = `
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const LandingPage = () => {
+  const navigate = useNavigate();
   const [lang, setLang] = useState(() => localStorage.getItem('tako_lang') || 'en');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -1436,15 +1437,15 @@ const LandingPage = () => {
             <li><Link to="/support" onClick={() => setMobileOpen(false)}>{t.navSupport}</Link></li>
           </ul>
 
-          <div className="nav-actions">
+          <div className={`nav-actions${mobileOpen ? ' active' : ''}`}>
             <button className="lang-btn" onClick={toggleLang} data-testid="landing-lang-toggle">
               {lang === 'en' ? 'DE' : 'EN'}
             </button>
-            <Link to="/login" className="btn-ghost">{t.signIn}</Link>
-            <Link to="/signup" className="btn-p" data-testid="nav-cta">{t.startFree}</Link>
+            <Link to="/login" className="btn-ghost" onClick={() => setMobileOpen(false)}>{t.signIn}</Link>
+            <Link to="/signup" className="btn-p" data-testid="nav-cta" onClick={() => setMobileOpen(false)}>{t.startFree}</Link>
           </div>
 
-          <button className="hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Menu">
+          <button className="hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Menu" aria-expanded={mobileOpen}>
             {mobileOpen ? (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             ) : (
@@ -1655,7 +1656,7 @@ const LandingPage = () => {
             <button
               className="launch-cta"
               data-testid="launch-edition-cta"
-              onClick={() => { window.location.href = 'mailto:support@tako.software?subject=TAKO%20Launch%20Edition%20%E2%80%93%20Setup%20Call'; }}
+              onClick={() => navigate('/support?tab=contact')}
             >
               {t.launchCta}
             </button>

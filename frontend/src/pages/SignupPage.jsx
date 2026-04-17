@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth, API } from '../App';
+import { safeInternalPath } from '../utils/safeRedirect';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,8 +11,11 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { ArrowLeft, Mail, Lock, User, Building, Eye, EyeOff, Users } from 'lucide-react';
 
+const CHECKOUT_INTENT_KEY = 'tako_checkout_intent';
+
 const SignupPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { register, user, token } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -92,7 +96,14 @@ const SignupPage = () => {
       
       await register(registerData);
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      // Restore checkout intent if present, otherwise honour ProtectedRoute redirect or go to dashboard
+      if (localStorage.getItem(CHECKOUT_INTENT_KEY)) {
+        navigate('/pricing', { replace: true });
+      } else {
+        const rawFrom = location.state?.from?.pathname;
+        const from = safeInternalPath(rawFrom, '/dashboard');
+        navigate(from !== '/signup' ? from : '/dashboard', { replace: true });
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create account');
     } finally {

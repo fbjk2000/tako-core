@@ -1,7 +1,8 @@
 import { useT } from '../useT';
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, API } from '../App';
+import { safeInternalPath } from '../utils/safeRedirect';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,8 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { toast } from 'sonner';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
+const CHECKOUT_INTENT_KEY = 'tako_checkout_intent';
+
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const { t } = useT();
@@ -27,7 +31,14 @@ const LoginPage = () => {
     try {
       await login(formData.email, formData.password);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      // Restore checkout intent if present, otherwise honour ProtectedRoute redirect or go to dashboard
+      if (localStorage.getItem(CHECKOUT_INTENT_KEY)) {
+        navigate('/pricing', { replace: true });
+      } else {
+        const rawFrom = location.state?.from?.pathname;
+        const from = safeInternalPath(rawFrom, '/dashboard');
+        navigate(from !== '/login' ? from : '/dashboard', { replace: true });
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Invalid email or password');
     } finally {

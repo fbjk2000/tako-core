@@ -16,7 +16,7 @@ import {
   HelpCircle, BookOpen, Mail, FileText, ArrowLeft, Send,
   Users, Target, CheckSquare, BarChart3, Zap, Building, Shield,
   Clock, TrendingUp, Award, Lightbulb, Radio, Megaphone,
-  MapPin, Check, Circle, ChevronRight, FolderOpen, Calendar,
+  MapPin, Check, CheckCircle, Circle, ChevronRight, FolderOpen, Calendar,
   Phone, Key, Settings, ExternalLink
 } from 'lucide-react';
 
@@ -193,11 +193,21 @@ const buildSalesMethodologies = (t) => [
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
+const ALLOWED_TABS = ['onboarding', 'faq', 'training', 'contact', 'legal'];
+
 const SupportPage = () => {
   const { user } = useAuth();
   const { t } = useT();
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'onboarding';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Derive active tab from URL; reject unknown values so injected params can't
+  // surface arbitrary content — fall back to 'onboarding'.
+  const rawTab = searchParams.get('tab');
+  const activeTab = ALLOWED_TABS.includes(rawTab) ? rawTab : 'onboarding';
+
+  const handleTabChange = (tab) => {
+    setSearchParams({ tab }, { replace: true });
+  };
 
   const CHECKLIST = buildChecklist(t);
   const QUICK_START = buildQuickStart(t);
@@ -207,6 +217,7 @@ const SupportPage = () => {
 
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   // Checklist state — persisted in localStorage
   const [checked, setChecked] = useState(() => {
@@ -228,10 +239,13 @@ const SupportPage = () => {
     setSending(true);
     try {
       await axios.post(`${API}/support/contact`, contactForm);
-    } catch {}
-    toast.success(t('support.messageReceived'));
-    setContactForm({ name: '', email: '', subject: '', message: '' });
-    setSending(false);
+      setContactForm({ name: '', email: '', subject: '', message: '' });
+      setSent(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || t('support.messageFailed'));
+    } finally {
+      setSending(false);
+    }
   };
 
   const supportContent = (
@@ -264,7 +278,7 @@ const SupportPage = () => {
       </section>
 
       <main className="max-w-7xl mx-auto px-6 py-10">
-        <Tabs defaultValue={defaultTab} className="space-y-8">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
           <TabsList className="grid w-full grid-cols-5 max-w-2xl mx-auto" data-testid="support-tabs">
             <TabsTrigger value="onboarding" className="flex items-center gap-1.5 text-xs sm:text-sm"><CheckSquare className="w-4 h-4" />{t('support.tabStart')}</TabsTrigger>
             <TabsTrigger value="faq" className="flex items-center gap-1.5 text-xs sm:text-sm"><HelpCircle className="w-4 h-4" />{t('support.tabFaq')}</TabsTrigger>
@@ -448,15 +462,46 @@ const SupportPage = () => {
                   <CardDescription>{t('support.respondIn24h')}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleContactSubmit} className="space-y-4">
-                    <div className="space-y-1.5"><Label>{t('support.contactNameLabel')}</Label><Input value={contactForm.name} onChange={e => setContactForm({ ...contactForm, name: e.target.value })} required data-testid="contact-name" /></div>
-                    <div className="space-y-1.5"><Label>{t('support.contactEmailLabel')}</Label><Input type="email" value={contactForm.email} onChange={e => setContactForm({ ...contactForm, email: e.target.value })} required data-testid="contact-email" /></div>
-                    <div className="space-y-1.5"><Label>{t('support.contactSubjectLabel')}</Label><Input value={contactForm.subject} onChange={e => setContactForm({ ...contactForm, subject: e.target.value })} required data-testid="contact-subject" /></div>
-                    <div className="space-y-1.5"><Label>{t('support.contactMessageLabel')}</Label><Textarea value={contactForm.message} onChange={e => setContactForm({ ...contactForm, message: e.target.value })} rows={5} required data-testid="contact-message" /></div>
-                    <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" disabled={sending} data-testid="contact-submit">
-                      {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send className="w-4 h-4 mr-2" />{t('support.sendMessage')}</>}
-                    </Button>
-                  </form>
+                  {sent ? (
+                    <div className="text-center py-8 space-y-4" data-testid="contact-sent">
+                      <div className="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center mx-auto">
+                        <CheckCircle className="w-7 h-7 text-[#0EA5A0]" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900">{t('support.messageReceived')}</p>
+                        <p className="text-sm text-slate-500 mt-1">{t('support.respondIn24h')}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-sm text-[#0EA5A0] hover:text-teal-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
+                        onClick={() => setSent(false)}
+                      >
+                        {t('support.sendAnother')}
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleContactSubmit} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="contact-name">{t('support.contactNameLabel')}</Label>
+                        <Input id="contact-name" value={contactForm.name} onChange={e => setContactForm({ ...contactForm, name: e.target.value })} required data-testid="contact-name" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="contact-email">{t('support.contactEmailLabel')}</Label>
+                        <Input id="contact-email" type="email" value={contactForm.email} onChange={e => setContactForm({ ...contactForm, email: e.target.value })} required data-testid="contact-email" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="contact-subject">{t('support.contactSubjectLabel')}</Label>
+                        <Input id="contact-subject" value={contactForm.subject} onChange={e => setContactForm({ ...contactForm, subject: e.target.value })} required data-testid="contact-subject" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="contact-message">{t('support.contactMessageLabel')}</Label>
+                        <Textarea id="contact-message" value={contactForm.message} onChange={e => setContactForm({ ...contactForm, message: e.target.value })} rows={5} required data-testid="contact-message" />
+                      </div>
+                      <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" disabled={sending} data-testid="contact-submit">
+                        {sending ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send className="w-4 h-4 mr-2" />{t('support.sendMessage')}</>}
+                      </Button>
+                    </form>
+                  )}
                 </CardContent>
               </Card>
 

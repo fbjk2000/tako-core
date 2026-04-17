@@ -1602,6 +1602,8 @@
     "contactMessageLabel": "Message *",
     "sendMessage": "Send Message",
     "messageReceived": "Message received! We'll respond within 24 hours.",
+    "messageFailed": "Failed to send message. Please try again or email support@tako.software.",
+    "sendAnother": "Send another message",
     "contactInfo": "Contact Information",
     "emailLabel": "Email",
     "addressLabel": "Address",

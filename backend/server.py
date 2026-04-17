@@ -5683,13 +5683,16 @@ async def create_subscription_checkout(
     discount_amount = 0.0
     discount_info = None
     
+    # Normalize discount code once — strips whitespace, uppercases, treats blank as absent
+    discount_code = (request.discount_code or '').strip().upper() or None
+
     # Apply discount code if provided
-    if request.discount_code:
+    if discount_code:
         discount = await db.discount_codes.find_one({
-            "code": request.discount_code.upper(),
+            "code": discount_code,
             "is_active": True
         }, {"_id": 0})
-        
+
         if discount:
             discount_amount = base_price * (discount["discount_percent"] / 100)
             discount_info = {
@@ -5726,7 +5729,7 @@ async def create_subscription_checkout(
         "email": current_user["email"],
         "plan_id": request.plan_id,
         "user_count": str(request.user_count),
-        "discount_code": request.discount_code or "",
+        "discount_code": discount_code or "",
         "vat_rate": str(vat_rate)
     }
     
@@ -5763,7 +5766,7 @@ async def create_subscription_checkout(
         "currency": currency,
         "plan_id": request.plan_id,
         "user_count": request.user_count,
-        "discount_code": request.discount_code,
+        "discount_code": discount_code,
         "discount_amount": discount_amount + crypto_discount,
         "vat_amount": vat_amount,
         "vat_rate": vat_rate,
