@@ -127,6 +127,7 @@ const I18N_EN = {
   archTag: 'Architecture',
   archTitle: 'One brain. Eight arms.',
   archDesc: 'TAKO\'s agent model is designed around how sales actually works — parallel, contextual, and always connected. The octopus isn\'t a metaphor. It\'s the architecture.',
+  archNote: 'Each agent learns from your data independently. The orchestration layer connects them — so a lead scored high by one agent gets prioritised in the pipeline, queued for a call, and drafted an email without you lifting a finger. Click any arm to explore that agent.',
   proofTag: 'Social proof',
   proofTitle: 'Built for teams that sell across Europe',
   euTag: 'Data sovereignty',
@@ -191,6 +192,7 @@ const I18N_DE = {
   archTag: 'Architektur',
   archTitle: 'Ein Gehirn. Acht Arme.',
   archDesc: 'TAKOs Agenten-Modell ist so konzipiert, wie Vertrieb wirklich funktioniert — parallel, kontextuell und immer verbunden. Der Oktopus ist keine Metapher. Es ist die Architektur.',
+  archNote: 'Jeder Agent lernt unabhängig aus Ihren Daten. Die Orchestrierungsschicht verbindet sie — ein hoch bewerteter Lead wird automatisch in der Pipeline priorisiert, für einen Anruf eingeplant und erhält einen E-Mail-Entwurf, ohne dass Sie einen Finger rühren. Klicken Sie auf einen Arm, um den jeweiligen Agenten zu erkunden.',
   proofTag: 'Referenzen',
   proofTitle: 'Für Teams gebaut, die in ganz Europa verkaufen',
   euTag: 'Datensouveränität',
@@ -410,14 +412,17 @@ function drawOctopus(ctx, cW, cH, vis, time) {
 
 // ─── Label positioning ────────────────────────────────────────────────────────
 
-function positionLabels(wrapEl, labelsEl, cW, cH, vis) {
-  const cx     = cW / 2;
-  const cy     = cH * 0.34;
-  const headR  = Math.min(cW, cH) * 0.115;
-  const armLen = Math.min(cW, cH) * 0.39;
-  const dpr    = window.devicePixelRatio || 1;
-  const wR     = wrapEl.getBoundingClientRect();
-  const ds     = wR.width / (cW / dpr);
+// cW / cH are CSS pixel dimensions (canvas.width / dpr, canvas.height / dpr).
+// Label positions are in that same coordinate space, matching drawOctopus exactly.
+function positionLabels(wrapEl, labelsEl, cssW, cssH, vis) {
+  const cx     = cssW / 2;
+  const cy     = cssH * 0.34;
+  const armLen = Math.min(cssW, cssH) * 0.39;
+
+  // The wrapper div has the same CSS size as the canvas. Scale factor = 1.
+  // (The division below keeps the formula robust if the wrapper ever differs.)
+  const wR = wrapEl.getBoundingClientRect();
+  const scale = cssW > 0 ? wR.width / cssW : 1;
 
   AGENTS_DATA.forEach((agent, i) => {
     const a  = degToRad(agent.angle);
@@ -425,18 +430,17 @@ function positionLabels(wrapEl, labelsEl, cW, cH, vis) {
     const ey = cy + Math.sin(a) * armLen;
     const el = labelsEl.children[i];
     if (!el) return;
-    el.style.left      = `${(ex / dpr) * ds}px`;
-    el.style.top       = `${(ey / dpr) * ds}px`;
+    el.style.left      = `${ex * scale}px`;
+    el.style.top       = `${ey * scale}px`;
     el.style.transform = 'translate(-50%,-50%)';
     vis > 0.35 ? el.classList.add('visible') : el.classList.remove('visible');
   });
 
   const bk = document.getElementById('beak-hover');
   if (bk) {
-    const bx = (cx / dpr) * ds;
-    const by = ((cy + Math.min(cW, cH) * 0.115 * 0.22) / dpr) * ds;
-    bk.style.left = `${bx - 18}px`;
-    bk.style.top  = `${by - 18}px`;
+    const headR = Math.min(cssW, cssH) * 0.115;
+    bk.style.left = `${(cx + headR * 0.05) * scale - 18}px`;
+    bk.style.top  = `${(cy + headR * 0.22) * scale - 18}px`;
     vis > 0.5 ? bk.classList.add('visible') : bk.classList.remove('visible');
   }
 }
@@ -1181,6 +1185,41 @@ const LP_CSS = `
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Architecture section spacer — keeps the fixed octopus in view while scrolling */
+.tako-lp .architecture {
+  padding-bottom: 5rem;
+}
+.tako-lp .arch-spacer {
+  height: min(680px, 70vw);
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .tako-lp .arch-spacer { display: none; }
+}
+.tako-lp .arch-note {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  color: var(--lp-muted);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  padding-top: 1rem;
+}
+
+/* Labels sit BELOW hero (z-index 4) — only visible when scrolled to arch section */
+.tako-lp .octo-labels-wrapper { z-index: 2; }
+
+/* Hero gets a subtle radial mask so the ghost octopus doesn't distract */
+.tako-lp .hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 65% 70% at 50% 55%, var(--lp-surface) 38%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.tako-lp .hero > * { position: relative; z-index: 1; }
 `;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -1201,6 +1240,7 @@ const LandingPage = () => {
   const canvasRef     = useRef(null);
   const labelsContRef = useRef(null);
   const progBarRef    = useRef(null);
+  const archRef       = useRef(null);   // architecture section — drives octopus visibility
   const rafRef        = useRef(null);
   const timeRef       = useRef(0);
 
@@ -1293,14 +1333,23 @@ const LandingPage = () => {
 
     const loop = (ts) => {
       timeRef.current = ts / 1000;
-      const vis = getScrollVis(canvas);
+
+      // Visibility driven by how far the architecture section is in view.
+      // Minimum 0.05 gives a ghost on the hero; 1.0 when fully in view.
+      const vis = archRef.current ? getScrollVis(archRef.current) : 0.05;
+
+      // Draw in CSS-pixel space (divide physical canvas dims by dpr).
+      const cssW = canvas.width  / dpr;
+      const cssH = canvas.height / dpr;
+
       ctx.save();
       ctx.scale(dpr, dpr);
-      drawOctopus(ctx, canvas.width, canvas.height, vis, timeRef.current);
+      drawOctopus(ctx, cssW, cssH, vis, timeRef.current);
       ctx.restore();
 
+      // Labels also receive CSS-pixel dimensions.
       if (labelsContRef.current) {
-        positionLabels(canvas, labelsContRef.current, canvas.width, canvas.height, vis);
+        positionLabels(canvas, labelsContRef.current, cssW, cssH, vis);
       }
 
       rafRef.current = requestAnimationFrame(loop);
@@ -1481,11 +1530,15 @@ const LandingPage = () => {
       </section>
 
       {/* ── Architecture ───────────────────────────────────────────────────── */}
-      <section className="architecture">
+      {/* archRef drives octopus scroll-visibility — keep this section tall   */}
+      <section className="architecture" id="architecture" ref={archRef}>
         <div className="section-inner">
           <p className="section-tag tl-reveal">{t.archTag}</p>
           <h2 className="section-title tl-reveal">{t.archTitle}</h2>
-          <p className="section-desc tl-reveal">{t.archDesc}</p>
+          <p className="section-desc tl-reveal" style={{ maxWidth: '680px', margin: '0 auto 2rem' }}>{t.archDesc}</p>
+          {/* Spacer that lets the fixed octopus be fully visible while scrolling */}
+          <div className="arch-spacer" />
+          <p className="arch-note tl-reveal">{t.archNote}</p>
         </div>
       </section>
 
