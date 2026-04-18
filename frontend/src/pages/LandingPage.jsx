@@ -1344,29 +1344,33 @@ const LandingPage = () => {
       const cssW = canvas.width  / dpr;
       const cssH = canvas.height / dpr;
 
-      // Measure the spacer's real viewport centre instead of using a magic
-      // constant. Fall back to the old arch-top + 660 estimate on mobile
-      // (where arch-spacer has display:none and offsetHeight === 0).
+      // Measure the spacer's real viewport position. Fade tracks the spacer
+      // centre (unchanged timing). Motion tracks a lower point in the spacer
+      // so the octopus sits low and only lifts near the note text.
+      const SPACER_TRACK_RATIO = 0.82;
       const spacerEl   = spacerRef.current;
       const spacerRect = (spacerEl && spacerEl.offsetHeight > 0)
         ? spacerEl.getBoundingClientRect()
         : null;
       const spacerVP = spacerRect
-        ? spacerRect.top + spacerRect.height / 2   // true measured centre
+        ? spacerRect.top + spacerRect.height / 2   // centre — drives fade
         : r ? r.top + 660 : vh;                    // mobile / pre-mount fallback
+      const spacerMotionVP = spacerRect
+        ? spacerRect.top + spacerRect.height * SPACER_TRACK_RATIO   // lower point — drives motion
+        : r ? r.top + 760 : vh;                                     // delayed-lift fallback
 
       // Fade: ghost (0.05) when spacer is below viewport, full (1.0) at vh/2.
       const vis = Math.max(0.05, Math.min(1, 2 - spacerVP / (vh * 0.5)));
 
-      // Head position: hold at vh/2 while spacer approaches, then track it out.
-      // CSS transform is translate(-50%, -50%) so `top` == visual centre.
-      // Lower boundary: viewport bottom guard, tightened by arch-note position
-      // so the octopus never overlaps the text block below the spacer.
+      // Head position: hold at vh/2 while spacer approaches, then track the
+      // lower anchor out. CSS transform is translate(-50%, -50%) so `top` ==
+      // visual centre. Lower boundary: viewport floor tightened by the note
+      // text so the octopus never overlaps the paragraph below the spacer.
       // No top clamp — upward travel must remain unconstrained.
-      const rawHead   = r ? Math.min(vh / 2, spacerVP) : vh / 2;
+      const rawHead   = r ? Math.min(vh / 2, spacerMotionVP) : vh / 2;
 
       const VIEWPORT_GAP = 8;   // px breathing room from viewport bottom
-      const NOTE_GAP     = 20;  // px gap between canvas bottom and note top
+      const NOTE_GAP     = 8;   // px gap between canvas bottom and note top
       let lowerLimit = vh - cssH / 2 - VIEWPORT_GAP;
       if (archNoteRef.current) {
         const noteRect  = archNoteRef.current.getBoundingClientRect();
