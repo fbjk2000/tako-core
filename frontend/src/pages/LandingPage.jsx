@@ -1242,6 +1242,7 @@ const LandingPage = () => {
   const labelsContRef = useRef(null);
   const progBarRef    = useRef(null);
   const archRef       = useRef(null);   // architecture section — drives octopus visibility
+  const archIntroRef  = useRef(null);   // architecture intro text — upper boundary for octopus
   const spacerRef     = useRef(null);   // arch-spacer div — measured for true centre position
   const archNoteRef   = useRef(null);   // arch-note text — lower boundary for octopus
   const rafRef        = useRef(null);
@@ -1298,12 +1299,23 @@ const LandingPage = () => {
     // footer, etc.) keep the default top-aligned smooth scroll.
     const agentIds = AGENTS_DATA.map(a => a.id);
     if (agentIds.includes(id)) {
-      const navEl   = document.querySelector('.tako-lp nav');
-      const navH    = navEl ? navEl.getBoundingClientRect().height : 72;
-      const rect    = el.getBoundingClientRect();
-      const visualCenter = navH + (window.innerHeight - navH) / 2;
-      const targetTop = window.scrollY + rect.top + rect.height / 2 - visualCenter;
-      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      const navEl = document.querySelector('.tako-lp nav');
+      const navBottom = navEl ? navEl.getBoundingClientRect().bottom : 72;
+      const VISUAL_TOP_GAP = 12;
+
+      const centerAgentCard = () => {
+        const rect = el.getBoundingClientRect();
+        const viewportTop = navBottom + VISUAL_TOP_GAP;
+        const visibleHeight = Math.max(1, window.innerHeight - viewportTop);
+        const desiredCenter = viewportTop + visibleHeight / 2;
+        const delta = rect.top + rect.height / 2 - desiredCenter;
+        window.scrollBy({ top: delta, behavior: 'smooth' });
+      };
+
+      // First smooth move + delayed corrections after reveal transforms settle.
+      centerAgentCard();
+      window.setTimeout(centerAgentCard, 420);
+      window.setTimeout(centerAgentCard, 900);
       return;
     }
 
@@ -1381,16 +1393,15 @@ const LandingPage = () => {
       // Fade: ghost (0.05) when spacer is below viewport, full (1.0) at vh/2.
       const vis = Math.max(0.05, Math.min(1, 2 - spacerVP / (vh * 0.5)));
 
-      // Head position: hold at the resting centre while spacer approaches,
+      // Head position: hold at a resting centre while spacer approaches,
       // then track the lower anchor out. CSS transform is translate(-50%, -50%)
-      // so `top` == visual centre. Lower boundary: viewport floor tightened by
-      // the note text. Upper boundary: nav bottom so the octopus never slides
-      // under the sticky header when scrolling further. The resting centre is
-      // computed dynamically from the corridor between topLimit and lowerLimit
-      // so it adapts to viewport size and surrounding layout.
+      // so `top` == visual centre. The octopus is clamped into a "landing box":
+      // top boundary is below architecture intro text, bottom boundary is above
+      // the note paragraph. This keeps the upper arms out of the heading area.
       const VIEWPORT_GAP = 8;   // px breathing room from viewport bottom
       const NOTE_GAP     = 8;   // px gap between silhouette and note top
       const TOP_GAP      = 10;  // px gap between nav bottom and silhouette top
+      const INTRO_GAP    = 26;  // px gap between intro text and silhouette top
 
       let lowerLimit = vh - visualHalf - VIEWPORT_GAP;
       if (archNoteRef.current) {
@@ -1401,16 +1412,22 @@ const LandingPage = () => {
 
       const navEl     = document.querySelector('.tako-lp nav');
       const navBottom = navEl ? navEl.getBoundingClientRect().bottom : 72;
-      const topLimit  = navBottom + visualHalf + TOP_GAP;
+      const navTopLimit = navBottom + visualHalf + TOP_GAP;
+      let topLimit = navTopLimit;
+      if (archIntroRef.current) {
+        const introRect = archIntroRef.current.getBoundingClientRect();
+        const introTopLimit = introRect.bottom + INTRO_GAP + visualHalf;
+        topLimit = Math.max(navTopLimit, introTopLimit);
+      }
 
-      // Dynamic resting centre: sit slightly below the midpoint of the safe
-      // corridor so the silhouette feels grounded without crowding the note.
+      // Resting point inside the landing box: slightly below midpoint so the
+      // silhouette sits in the empty architecture space before lifting out.
+      const safeTop = Math.min(topLimit, lowerLimit);
       const RESTING_BALANCE = 0.56;
-      const restingCenter   = topLimit + (lowerLimit - topLimit) * RESTING_BALANCE;
+      const restingCenter   = safeTop + (lowerLimit - safeTop) * RESTING_BALANCE;
       const rawHead         = r ? Math.min(restingCenter, spacerMotionVP) : restingCenter;
 
       const lowerBounded = Math.min(rawHead, lowerLimit);
-      const safeTop      = Math.min(topLimit, lowerLimit);
       const headPx       = Math.max(safeTop, lowerBounded);
 
       canvas.style.top = `${headPx}px`;
@@ -1610,7 +1627,7 @@ const LandingPage = () => {
         <div className="section-inner">
           <p className="section-tag tl-reveal">{t.archTag}</p>
           <h2 className="section-title tl-reveal">{t.archTitle}</h2>
-          <p className="section-desc tl-reveal" style={{ maxWidth: '680px', margin: '0 auto 2rem' }}>{t.archDesc}</p>
+          <p className="section-desc tl-reveal" ref={archIntroRef} style={{ maxWidth: '680px', margin: '0 auto 2rem' }}>{t.archDesc}</p>
           {/* Spacer that lets the fixed octopus be fully visible while scrolling */}
           <div className="arch-spacer" ref={spacerRef} />
           <p className="arch-note tl-reveal" ref={archNoteRef}>{t.archNote}</p>
