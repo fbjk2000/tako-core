@@ -1323,7 +1323,7 @@ const LandingPage = () => {
     const dpr = window.devicePixelRatio || 1;
 
     const resize = () => {
-      const size = Math.min(780, window.innerWidth * 0.85);
+      const size = Math.min(730, window.innerWidth * 0.80);
       canvas.style.width  = `${size}px`;
       canvas.style.height = `${size}px`;
       canvas.width  = size * dpr;
@@ -1372,7 +1372,9 @@ const LandingPage = () => {
       // visual centre. Lower boundary: viewport floor tightened by the note
       // text. Upper boundary: nav bottom so the octopus never slides under
       // the sticky header when scrolling further.
-      const rawHead   = r ? Math.min(vh / 2, spacerMotionVP) : vh / 2;
+      const START_CENTER_RATIO = 0.58;
+      const startCenter = vh * START_CENTER_RATIO;
+      const rawHead     = r ? Math.min(startCenter, spacerMotionVP) : startCenter;
 
       const VIEWPORT_GAP = 8;   // px breathing room from viewport bottom
       const NOTE_GAP     = 8;   // px gap between silhouette and note top
