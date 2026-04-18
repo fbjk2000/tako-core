@@ -1344,10 +1344,15 @@ const LandingPage = () => {
       const cssW = canvas.width  / dpr;
       const cssH = canvas.height / dpr;
 
+      // The canvas is a square but the drawn octopus + arm spread only fills
+      // the inner ~86% visually. Use visualHalf instead of cssH/2 so clamps
+      // hug the real silhouette, not empty canvas padding.
+      const visualHalf = Math.min(cssW, cssH) * 0.43;
+
       // Measure the spacer's real viewport position. Fade tracks the spacer
       // centre (unchanged timing). Motion tracks a lower point in the spacer
       // so the octopus sits low and only lifts near the note text.
-      const SPACER_TRACK_RATIO = 0.82;
+      const SPACER_TRACK_RATIO = 0.90;
       const spacerEl   = spacerRef.current;
       const spacerRect = (spacerEl && spacerEl.offsetHeight > 0)
         ? spacerEl.getBoundingClientRect()
@@ -1365,19 +1370,28 @@ const LandingPage = () => {
       // Head position: hold at vh/2 while spacer approaches, then track the
       // lower anchor out. CSS transform is translate(-50%, -50%) so `top` ==
       // visual centre. Lower boundary: viewport floor tightened by the note
-      // text so the octopus never overlaps the paragraph below the spacer.
-      // No top clamp — upward travel must remain unconstrained.
+      // text. Upper boundary: nav bottom so the octopus never slides under
+      // the sticky header when scrolling further.
       const rawHead   = r ? Math.min(vh / 2, spacerMotionVP) : vh / 2;
 
       const VIEWPORT_GAP = 8;   // px breathing room from viewport bottom
-      const NOTE_GAP     = 8;   // px gap between canvas bottom and note top
-      let lowerLimit = vh - cssH / 2 - VIEWPORT_GAP;
+      const NOTE_GAP     = 8;   // px gap between silhouette and note top
+      const TOP_GAP      = 10;  // px gap between nav bottom and silhouette top
+
+      let lowerLimit = vh - visualHalf - VIEWPORT_GAP;
       if (archNoteRef.current) {
         const noteRect  = archNoteRef.current.getBoundingClientRect();
-        const noteLimit = noteRect.top - NOTE_GAP - cssH / 2;
+        const noteLimit = noteRect.top - NOTE_GAP - visualHalf;
         lowerLimit = Math.min(lowerLimit, noteLimit);
       }
-      const headPx = Math.min(rawHead, lowerLimit);
+
+      const navEl     = document.querySelector('.tako-lp nav');
+      const navBottom = navEl ? navEl.getBoundingClientRect().bottom : 72;
+      const topLimit  = navBottom + visualHalf + TOP_GAP;
+
+      const lowerBounded = Math.min(rawHead, lowerLimit);
+      const safeTop      = Math.min(topLimit, lowerLimit);
+      const headPx       = Math.max(safeTop, lowerBounded);
 
       canvas.style.top = `${headPx}px`;
       const labelsWrap = labelsContRef.current?.parentElement;
