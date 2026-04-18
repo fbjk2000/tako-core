@@ -277,7 +277,7 @@ function drawOctopus(ctx, cW, cH, vis, time) {
   const cx    = cW / 2;
   const cy    = cH * 0.34;
   const headR = Math.min(cW, cH) * 0.115;
-  const armLen = Math.min(cW, cH) * 0.39;
+  const armLen = Math.min(cW, cH) * 0.36;
 
   // ── Arms ──────────────────────────────────────────────────────────────────
   AGENTS_DATA.forEach((agent) => {
@@ -419,7 +419,7 @@ function drawOctopus(ctx, cW, cH, vis, time) {
 function positionLabels(wrapEl, labelsEl, cssW, cssH, vis) {
   const cx     = cssW / 2;
   const cy     = cssH * 0.34;
-  const armLen = Math.min(cssW, cssH) * 0.39;
+  const armLen = Math.min(cssW, cssH) * 0.36;
 
   // The wrapper div has the same CSS size as the canvas. Scale factor = 1.
   // (The division below keeps the formula robust if the wrapper ever differs.)
@@ -1323,7 +1323,7 @@ const LandingPage = () => {
     const dpr = window.devicePixelRatio || 1;
 
     const resize = () => {
-      const size = Math.min(730, window.innerWidth * 0.80);
+      const size = Math.min(700, window.innerWidth * 0.76);
       canvas.style.width  = `${size}px`;
       canvas.style.height = `${size}px`;
       canvas.width  = size * dpr;
@@ -1372,7 +1372,7 @@ const LandingPage = () => {
       // visual centre. Lower boundary: viewport floor tightened by the note
       // text. Upper boundary: nav bottom so the octopus never slides under
       // the sticky header when scrolling further.
-      const START_CENTER_RATIO = 0.58;
+      const START_CENTER_RATIO = 0.62;
       const startCenter = vh * START_CENTER_RATIO;
       const rawHead     = r ? Math.min(startCenter, spacerMotionVP) : startCenter;
 
