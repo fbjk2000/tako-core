@@ -1290,10 +1290,24 @@ const LandingPage = () => {
     if (!a) return;
     const id = a.getAttribute('href').slice(1);
     const el = document.getElementById(id);
-    if (el) {
-      e.preventDefault();
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!el) return;
+    e.preventDefault();
+
+    // Agent cards are centred below the sticky nav so the clicked card sits
+    // in the optical middle of the viewport. Non-agent hash links (legal,
+    // footer, etc.) keep the default top-aligned smooth scroll.
+    const agentIds = AGENTS_DATA.map(a => a.id);
+    if (agentIds.includes(id)) {
+      const navEl   = document.querySelector('.tako-lp nav');
+      const navH    = navEl ? navEl.getBoundingClientRect().height : 72;
+      const rect    = el.getBoundingClientRect();
+      const visualCenter = navH + (window.innerHeight - navH) / 2;
+      const targetTop = window.scrollY + rect.top + rect.height / 2 - visualCenter;
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      return;
     }
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   // ── Intersection observer (reveal) ─────────────────────────────────────────
@@ -1367,15 +1381,13 @@ const LandingPage = () => {
       // Fade: ghost (0.05) when spacer is below viewport, full (1.0) at vh/2.
       const vis = Math.max(0.05, Math.min(1, 2 - spacerVP / (vh * 0.5)));
 
-      // Head position: hold at vh/2 while spacer approaches, then track the
-      // lower anchor out. CSS transform is translate(-50%, -50%) so `top` ==
-      // visual centre. Lower boundary: viewport floor tightened by the note
-      // text. Upper boundary: nav bottom so the octopus never slides under
-      // the sticky header when scrolling further.
-      const START_CENTER_RATIO = 0.62;
-      const startCenter = vh * START_CENTER_RATIO;
-      const rawHead     = r ? Math.min(startCenter, spacerMotionVP) : startCenter;
-
+      // Head position: hold at the resting centre while spacer approaches,
+      // then track the lower anchor out. CSS transform is translate(-50%, -50%)
+      // so `top` == visual centre. Lower boundary: viewport floor tightened by
+      // the note text. Upper boundary: nav bottom so the octopus never slides
+      // under the sticky header when scrolling further. The resting centre is
+      // computed dynamically from the corridor between topLimit and lowerLimit
+      // so it adapts to viewport size and surrounding layout.
       const VIEWPORT_GAP = 8;   // px breathing room from viewport bottom
       const NOTE_GAP     = 8;   // px gap between silhouette and note top
       const TOP_GAP      = 10;  // px gap between nav bottom and silhouette top
@@ -1390,6 +1402,12 @@ const LandingPage = () => {
       const navEl     = document.querySelector('.tako-lp nav');
       const navBottom = navEl ? navEl.getBoundingClientRect().bottom : 72;
       const topLimit  = navBottom + visualHalf + TOP_GAP;
+
+      // Dynamic resting centre: sit slightly below the midpoint of the safe
+      // corridor so the silhouette feels grounded without crowding the note.
+      const RESTING_BALANCE = 0.56;
+      const restingCenter   = topLimit + (lowerLimit - topLimit) * RESTING_BALANCE;
+      const rawHead         = r ? Math.min(restingCenter, spacerMotionVP) : restingCenter;
 
       const lowerBounded = Math.min(rawHead, lowerLimit);
       const safeTop      = Math.min(topLimit, lowerLimit);
