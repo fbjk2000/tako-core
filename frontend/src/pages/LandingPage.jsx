@@ -1370,10 +1370,18 @@ const LandingPage = () => {
       const cssW = canvas.width  / dpr;
       const cssH = canvas.height / dpr;
 
-      // The canvas is a square but the drawn octopus + arm spread only fills
-      // the inner ~86% visually. Use visualHalf instead of cssH/2 so clamps
-      // hug the real silhouette, not empty canvas padding.
-      const visualHalf = Math.min(cssW, cssH) * 0.40;
+      // True octopus/label reach from centre is asymmetric because the drawn
+      // head is above canvas centre (cy = 34%) and labels are pushed past arm tips.
+      // Use geometry-derived top/bottom reach so clamps are accurate.
+      const minDim = Math.min(cssW, cssH);
+      const cy = cssH * 0.34;
+      const armLen = minDim * 0.36;
+      const LABEL_PUSH = 28;
+      const LABEL_HALF_H = 22;
+      const upReach = AGENTS_DATA.reduce((m, a) => Math.max(m, Math.max(0, -Math.sin(degToRad(a.angle)))), 0);
+      const downReach = AGENTS_DATA.reduce((m, a) => Math.max(m, Math.max(0, Math.sin(degToRad(a.angle)))), 0);
+      const topReach = (cssH / 2 - cy) + upReach * (armLen + LABEL_PUSH) + LABEL_HALF_H;
+      const bottomReach = (-cssH / 2 + cy) + downReach * (armLen + LABEL_PUSH) + LABEL_HALF_H;
 
       // Measure the spacer's real viewport position. Fade tracks the spacer
       // centre (unchanged timing). Motion tracks a lower point in the spacer
@@ -1403,20 +1411,20 @@ const LandingPage = () => {
       const TOP_GAP      = 10;  // px gap between nav bottom and silhouette top
       const INTRO_GAP    = 26;  // px gap between intro text and silhouette top
 
-      let lowerLimit = vh - visualHalf - VIEWPORT_GAP;
+      let lowerLimit = vh - bottomReach - VIEWPORT_GAP;
       if (archNoteRef.current) {
         const noteRect  = archNoteRef.current.getBoundingClientRect();
-        const noteLimit = noteRect.top - NOTE_GAP - visualHalf;
+        const noteLimit = noteRect.top - NOTE_GAP - bottomReach;
         lowerLimit = Math.min(lowerLimit, noteLimit);
       }
 
       const navEl     = document.querySelector('.tako-lp nav');
       const navBottom = navEl ? navEl.getBoundingClientRect().bottom : 72;
-      const navTopLimit = navBottom + visualHalf + TOP_GAP;
+      const navTopLimit = navBottom + topReach + TOP_GAP;
       let topLimit = navTopLimit;
       if (archIntroRef.current) {
         const introRect = archIntroRef.current.getBoundingClientRect();
-        const introTopLimit = introRect.bottom + INTRO_GAP + visualHalf;
+        const introTopLimit = introRect.bottom + INTRO_GAP + topReach;
         topLimit = Math.max(navTopLimit, introTopLimit);
       }
 
