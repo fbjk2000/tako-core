@@ -1347,12 +1347,12 @@ const LandingPage = () => {
       // The canvas is a square but the drawn octopus + arm spread only fills
       // the inner ~86% visually. Use visualHalf instead of cssH/2 so clamps
       // hug the real silhouette, not empty canvas padding.
-      const visualHalf = Math.min(cssW, cssH) * 0.43;
+      const visualHalf = Math.min(cssW, cssH) * 0.40;
 
       // Measure the spacer's real viewport position. Fade tracks the spacer
       // centre (unchanged timing). Motion tracks a lower point in the spacer
       // so the octopus sits low and only lifts near the note text.
-      const SPACER_TRACK_RATIO = 0.90;
+      const SPACER_TRACK_RATIO = 0.93;
       const spacerEl   = spacerRef.current;
       const spacerRect = (spacerEl && spacerEl.offsetHeight > 0)
         ? spacerEl.getBoundingClientRect()
