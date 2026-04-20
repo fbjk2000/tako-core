@@ -29,6 +29,7 @@ import BookingPage, { PublicBookingPage } from './pages/BookingPage';
 import CapturePage from './pages/CapturePage';
 import FilesPage from './pages/FilesPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
+import DataDeletionPage from './pages/DataDeletionPage';
 
 import './App.css';
 
@@ -213,6 +214,9 @@ const AppRouter = () => {
       <Route path="/book/:userId" element={<PublicBookingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* Public Meta data-deletion status page — no auth, capability token in URL */}
+      <Route path="/data-deletion" element={<DataDeletionPage />} />
+      <Route path="/data-deletion/:confirmationCode" element={<DataDeletionPage />} />
       <Route
         path="/subscription/success"
         element={

@@ -45,4 +45,13 @@ async def ensure_indexes() -> None:
     await db.extension_tokens.create_index([("token", 1)], unique=True)
     await db.extension_tokens.create_index([("organization_id", 1)])
 
+    # Meta data-deletion audit
+    await db.data_deletion_requests.create_index(
+        [("confirmation_code", 1)], unique=True
+    )
+    await db.data_deletion_requests.create_index(
+        [("meta_user_id", 1), ("requested_at", -1)]
+    )
+    await db.data_deletion_requests.create_index([("status", 1)])
+
     logger.info("Listener indexes ensured")

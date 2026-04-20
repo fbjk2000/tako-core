@@ -14,6 +14,7 @@ Implementation of `docs/facebook-listener-spec.md` Phase 0 + Phase 1.
 | `pairing.py` | `bind_pairing(...)` → Chrome extension device-code pairing. |
 | `webhook_ingest.py` | `bind_webhook_router(...)` → `/api/webhooks/{provider}/{org_id}`. |
 | `oauth_routes.py` | `bind_oauth_router(...)` → Meta OAuth authorize + callback. |
+| `data_deletion.py` | `bind_data_deletion(...)` → Meta data-deletion webhook + public status lookup. |
 
 All `bind_*` functions are called from `server.py` at the bottom, right before
 `app.include_router`, so that `db`, `get_current_user`, `ensure_user_org`,

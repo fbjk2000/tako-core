@@ -7969,6 +7969,7 @@ from listeners.routes import bind_deps as _bind_listener_deps
 from listeners.pairing import bind_pairing as _bind_pairing
 from listeners.webhook_ingest import bind_webhook_router as _bind_webhook_router
 from listeners.oauth_routes import bind_oauth_router as _bind_oauth_router
+from listeners.data_deletion import bind_data_deletion as _bind_data_deletion
 
 app.include_router(
     _bind_listener_deps(
@@ -7981,6 +7982,7 @@ app.include_router(
 app.include_router(_bind_pairing(get_current_user=get_current_user, ensure_user_org=ensure_user_org, db=db))
 app.include_router(_bind_webhook_router(db=db))
 app.include_router(_bind_oauth_router(get_current_user=get_current_user, ensure_user_org=ensure_user_org, db=db))
+app.include_router(_bind_data_deletion(db=db))
 
 _cors_origins = [
     os.environ.get("FRONTEND_URL", "http://localhost:3000"),
