@@ -14,9 +14,11 @@ const AITrialBanner = () => {
 
   if (dismissed || !usage) return null;
 
-  // Show if: on trial AND within last 9 days, OR trial expired AND on free tier
+  // Show if: on trial AND within last 9 days, OR trial expired and AI is blocked.
+  // The banner only shows for non-paying/demo users — paid licences set can_use=true
+  // and have no trial, so both conditions below are false for them.
   const showTrialEnding = usage.is_trial && usage.trial_days_remaining != null && usage.trial_days_remaining <= 9;
-  const showTokenWall = !usage.can_use && usage.tier === 'free';
+  const showTokenWall = !usage.can_use && !usage.has_license;
 
   if (!showTrialEnding && !showTokenWall) return null;
 

@@ -509,14 +509,23 @@ const AdminPage = () => {
                       <thead>
                         <tr className="border-b border-slate-200">
                           <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colOrganization')}</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colPlan')}</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colLicence')}</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.users')}</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colCreated')}</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colActions')}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {organizations.map((org, index) => (
+                        {organizations.map((org, index) => {
+                          const licenceType = org.license_type;
+                          const licenceLabelKey = {
+                            onetime: 'admin.licenceOnetime',
+                            installment_12: 'admin.licence12mo',
+                            installment_24: 'admin.licence24mo',
+                            unyt: 'admin.licenceUnyt',
+                          }[licenceType];
+                          const hasLicence = !!licenceType || org.license_status === 'active' || org.license_status === 'completed';
+                          return (
                           <tr key={org.organization_id} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`org-row-${index}`}>
                             <td className="py-3 px-4">
                               <p className="font-medium text-slate-900">{org.name}</p>
@@ -524,28 +533,14 @@ const AdminPage = () => {
                               {org.email_domain && <p className="text-xs text-teal-600">@{org.email_domain}</p>}
                             </td>
                             <td className="py-3 px-4">
-                              <span className={`text-xs px-2 py-1 rounded-full capitalize ${
-                                org.plan === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                hasLicence ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'
                               }`}>
-                                {org.plan}
+                                {licenceLabelKey ? t(licenceLabelKey) : (hasLicence ? t('admin.licenceActive') : t('admin.licenceNone'))}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-slate-600">
-                              <span>{org.user_count}/</span>
-                              <input
-                                type="number"
-                                className="w-12 border border-slate-200 rounded px-1 py-0.5 text-center text-sm inline"
-                                defaultValue={org.max_users || org.max_free_users || 3}
-                                min={1}
-                                onBlur={async (e) => {
-                                  const val = parseInt(e.target.value);
-                                  if (val > 0) {
-                                    try { await axios.put(`${API}/admin/organizations/${org.organization_id}`, { max_users: val, max_free_users: val }, { headers, withCredentials: true }); toast.success(t('admin.licensesSet').replace('{count}', val)); } catch { toast.error(t('common.failed')); }
-                                  }
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                data-testid={`org-licenses-${index}`}
-                              />
+                            <td className="py-3 px-4 text-slate-600" data-testid={`org-users-${index}`}>
+                              {org.user_count}
                             </td>
                             <td className="py-3 px-4 text-sm text-slate-500">
                               {new Date(org.created_at).toLocaleDateString()}
@@ -557,7 +552,8 @@ const AdminPage = () => {
                               }} data-testid={`delete-org-${index}`}><Trash2 className="w-3.5 h-3.5" /></Button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

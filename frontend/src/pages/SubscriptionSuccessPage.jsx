@@ -50,7 +50,7 @@ const SubscriptionSuccessPage = () => {
 
       if (response.data.payment_status === 'paid') {
         setStatus('success');
-        toast.success('Payment successful! Welcome to TAKO Pro.');
+        toast.success('Payment confirmed. TAKO is yours.');
       } else if (response.data.status === 'expired') {
         setStatus('expired');
       } else {
@@ -84,7 +84,7 @@ const SubscriptionSuccessPage = () => {
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Payment Successful!</h2>
             <p className="text-slate-600 mb-8">
-              Thank you for subscribing to TAKO Pro. Your invoice has been sent to your email.
+              Thank you for purchasing TAKO. Your invoice has been sent to your email.
             </p>
 
             {paymentData && (

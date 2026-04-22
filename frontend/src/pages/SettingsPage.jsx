@@ -963,32 +963,9 @@ const SettingsPage = () => {
                     <div className="p-4 bg-slate-50 rounded-lg">
                       <p className="font-semibold text-slate-900" data-testid="org-name">{organization.name}</p>
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                        <span>{t('settings.orgPlan')} <span className="capitalize font-medium">{organization.subscription_plan || organization.plan || t('settings.orgFreePlan')}</span></span>
-                        <span>•</span>
-                        <span>{t('settings.orgUsers')} {organization.user_count}/{organization.max_users || organization.max_free_users || 3}</span>
+                        <span>{t('settings.orgUsers')} {organization.user_count}</span>
                       </div>
-                      {organization.subscription_status === 'active' && (
-                        <Badge className="mt-2 bg-emerald-100 text-emerald-700">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          {t('settings.orgActiveSubscription')}
-                        </Badge>
-                      )}
                     </div>
-                    {(!organization.subscription_status || organization.subscription_status !== 'active') && (
-                      <div className="p-4 bg-teal-50 border border-indigo-200 rounded-lg">
-                        <p className="text-sm text-teal-800 mb-3">
-                          {t('settings.orgUpgradePrompt')}
-                        </p>
-                        <Button
-                          className="bg-[#0EA5A0] hover:bg-teal-700"
-                          size="sm"
-                          onClick={() => navigate('/pricing')}
-                        >
-                          <Zap className="w-4 h-4 mr-2" />
-                          {t('settings.orgUpgrade')}
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1442,39 +1419,123 @@ const SettingsPage = () => {
           {/* Billing Tab */}
           <TabsContent value="billing">
             <div className="space-y-6">
-              {/* Subscription Status */}
+              {/* Licence Status */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <CreditCard className="w-5 h-5" />
-                    {t('settings.subscription')}
+                    {t('settings.licenceTitle')}
                   </CardTitle>
+                  <CardDescription>{t('settings.licenceDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {organization?.subscription_status === 'active' ? (
-                    <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-emerald-900">{t('settings.proPlanActive')}</p>
-                        <p className="text-sm text-emerald-700">
-                          {organization.subscription_plan === 'annual' ? t('settings.annualBilling') : t('settings.monthlyBilling')}
-                        </p>
+                  {(() => {
+                    const licenceType = organization?.license_type || null;
+                    const licenceStatus = organization?.license_status || (organization?.subscription_status === 'active' ? 'active' : null);
+                    const hasLicence = !!licenceType || licenceStatus === 'active' || licenceStatus === 'completed';
+                    const typeLabelKey = {
+                      onetime: 'settings.licenceTypeOnetime',
+                      installment_12: 'settings.licenceType12mo',
+                      installment_24: 'settings.licenceType24mo',
+                      unyt: 'settings.licenceTypeUnyt',
+                    }[licenceType];
+                    if (hasLicence) {
+                      return (
+                        <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg">
+                          <div>
+                            <p className="font-semibold text-emerald-900">{t('settings.licenceActiveTitle')}</p>
+                            <p className="text-sm text-emerald-700">
+                              {typeLabelKey ? t(typeLabelKey) : t('settings.licenceActiveSubtitle')}
+                            </p>
+                          </div>
+                          <Badge className="bg-emerald-600">{t('settings.active')}</Badge>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                        <div>
+                          <p className="font-semibold text-slate-900">{t('settings.licenceNoneTitle')}</p>
+                          <p className="text-sm text-slate-500">{t('settings.licenceNoneDesc')}</p>
+                        </div>
+                        <Button
+                          className="bg-[#0EA5A0] hover:bg-teal-700"
+                          onClick={() => navigate('/pricing')}
+                          data-testid="get-tako-cta"
+                        >
+                          {t('settings.getTako')}
+                        </Button>
                       </div>
-                      <Badge className="bg-emerald-600">{t('settings.active')}</Badge>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-slate-900">{t('settings.freePlan')}</p>
-                        <p className="text-sm text-slate-500">{t('settings.freePlanUsers')}</p>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Maintenance & Support */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    {t('settings.maintenanceTitle')}
+                  </CardTitle>
+                  <CardDescription>{t('settings.maintenanceDesc')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const expiresAt = organization?.maintenance_expires
+                      ? new Date(organization.maintenance_expires)
+                      : null;
+                    const now = new Date();
+                    const isExpired = expiresAt && expiresAt < now;
+                    const daysRemaining = expiresAt
+                      ? Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24))
+                      : null;
+                    const renewMaintenance = async () => {
+                      try {
+                        const response = await axios.post(
+                          `${API}/license/renew-maintenance`,
+                          {},
+                          { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+                        );
+                        if (response.data?.checkout_url) {
+                          window.location.href = response.data.checkout_url;
+                        } else {
+                          toast.error(t('settings.maintenanceRenewFailed'));
+                        }
+                      } catch (err) {
+                        toast.error(err?.response?.data?.detail || t('settings.maintenanceRenewFailed'));
+                      }
+                    };
+                    if (!expiresAt) {
+                      return (
+                        <p className="text-sm text-slate-500">{t('settings.maintenanceUnavailable')}</p>
+                      );
+                    }
+                    return (
+                      <div className={`flex items-center justify-between p-4 rounded-lg ${isExpired ? 'bg-amber-50' : 'bg-slate-50'}`}>
+                        <div>
+                          <p className={`font-semibold ${isExpired ? 'text-amber-900' : 'text-slate-900'}`}>
+                            {isExpired
+                              ? t('settings.maintenanceExpired')
+                              : `${t('settings.maintenanceActiveUntil')} ${expiresAt.toLocaleDateString()}`}
+                          </p>
+                          {!isExpired && daysRemaining != null && (
+                            <p className="text-sm text-slate-500">
+                              {t('settings.maintenanceDaysRemaining').replace('{days}', daysRemaining)}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant={isExpired ? 'default' : 'outline'}
+                          className={isExpired ? 'bg-[#0EA5A0] hover:bg-teal-700' : ''}
+                          onClick={renewMaintenance}
+                          data-testid="renew-maintenance"
+                        >
+                          {t('settings.renewMaintenance')}
+                        </Button>
                       </div>
-                      <Button
-                        className="bg-[#0EA5A0] hover:bg-teal-700"
-                        onClick={() => navigate('/pricing')}
-                      >
-                        {t('settings.upgrade')}
-                      </Button>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </CardContent>
               </Card>
 

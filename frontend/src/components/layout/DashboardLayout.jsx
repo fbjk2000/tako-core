@@ -226,7 +226,7 @@ const DashboardLayout = ({ children }) => {
 
         {/* User Section (sticky bottom inside sidebar) */}
         <div className="shrink-0 p-4 border-t border-slate-100 bg-white">
-          {usage && usage.tier !== 'enterprise' && usage.monthly_limit && (
+          {usage && usage.monthly_limit && (
             <div className="mb-3 px-1">
               {/* Trial banner — show from day 21 onwards */}
               {usage.is_trial && usage.trial_days_remaining != null && usage.trial_days_remaining <= 9 && (
