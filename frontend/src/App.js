@@ -333,6 +333,10 @@ const AppRouter = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      {/* /demo is a placeholder sandbox entry-point referenced from the landing
+          hero CTA. Until the dedicated sandbox lands we route visitors into the
+          signup flow with a demo flag so nobody sees a broken link. */}
+      <Route path="/demo" element={<Navigate to="/signup?demo=1" replace />} />
       <Route path="/support" element={<SupportPage />} />
       <Route path="/book/:userId" element={<PublicBookingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
