@@ -11,6 +11,7 @@
 <p align="center">
   <a href="https://tako.software">tako.software</a> •
   <a href="#features">Features</a> •
+  <a href="#pricing">Pricing</a> •
   <a href="#tech-stack">Tech Stack</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#environment-variables">Environment Variables</a> •
@@ -44,7 +45,7 @@
 - **File Analysis** — Auto-summary and follow-up task suggestions on uploaded documents
 - **Hit Classification** — Claude classifies social Listener hits in real time: category, confidence, sentiment, suggested reply
 - **Digest Reports** — AI-generated daily/weekly summaries of Listener activity with recommended actions
-- **Access Control** — Internal team (Fintery, TAKO, AIOS, Unyted, OpenClaw, floriankrueger.com) always use the platform key. New external organizations get a **30-day free AI trial** on the platform key; afterwards they supply their own Anthropic API key in Settings → Integrations. Trial length is configurable via `AI_TRIAL_DAYS`.
+- **Included AI** — Licensed TAKO instances ship with unlimited access to Claude via the platform key. Bring-your-own Anthropic key is also supported per organization (Settings → Integrations).
 
 ### Communication
 - **Outbound Calling** — Twilio integration for direct calls from the CRM
@@ -65,21 +66,43 @@
 - **Webhooks** — Generic receiver at `/api/webhooks/{provider}/{org_id}` for Meta and Chrome extension payloads
 
 ### Platform
-- **Multi-tenant Organizations** — Roles: member, admin, owner, deputy_admin, support, super_admin
+- **Organizations** — Roles: member, admin, owner. Self-hosted single-tenant or multi-tenant deployment
 - **Per-org Integrations** — Each org manages their own API keys (Resend, Kit, Twilio, Google, Anthropic, Meta)
 - **Customizable Stages** — Admins can add/remove/rename deal stages and task steps per org
-- **Auto Org Attribution** — Users with company emails auto-join matching organizations
-- **License Management** — Super admin can override max user limits per organization
-- **Team Invitations** — Invite via link, email, or CSV import
-- **Multi-level Affiliate Program** — 3 tiers (Partner/Ambassador/Advocate), 20% customer discount, up to 60% commission chain
-- **UNYT Token Payments** — Pay with UNYT on Arbitrum via MetaMask
+- **Team Invitations** — Invite via link, email, or CSV import — unlimited users on every licence
+- **Partner Programme** — Referral partners earn €500 per sale. Agency partners earn an additional €750 onboarding commission per customer. Two-tier, no MLM chains
+- **UNYT Token Payments** — Pay with UNYT on Arbitrum via MetaMask or via [UNYT.shop](https://unyt.shop)
+- **License & Billing** — One-time purchase or installment plans via Stripe. UNYT token payments via MetaMask or UNYT.shop. Optional annual maintenance renewal
 - **PWA** — Installable on iOS, Android, and desktop
 - **i18n** — English and German language support with toggle
 - **API Keys and Webhooks** — Programmatic access for n8n, Notion, Zapier, and custom integrations
-- **Data Explorer** — Super admin can browse all MongoDB collections
 - **Reporting Engine** — User performance, pipeline forecasts, activity logs, CSV export
-- **Subscription and Billing** — Stripe integration with discount codes and invoicing
 - **Onboarding & Support** — In-app onboarding checklist (localStorage-persisted), training modules, FAQ, contact form, legal docs
+
+---
+
+## Pricing
+
+TAKO is a self-hosted CRM. Purchase once, deploy on your own infrastructure, own your data forever.
+
+| Option | Price | Notes |
+|--------|-------|-------|
+| **One-time** | €5,000 | Single payment, perpetual licence |
+| **12-month installment** | €500 / month × 12 | €6,000 total, perpetual licence after final payment |
+| **24-month installment** | €300 / month × 24 | €7,200 total, perpetual licence after final payment |
+| **UNYT Token** | Pay in UNYT on Arbitrum | Perpetual licence, any plan (see [UNYT.shop](https://unyt.shop)) |
+
+**All licences include:**
+- Unlimited users
+- All CRM features (Leads, Contacts, Deals, Tasks, Projects, Campaigns, Listeners, Files, Calendar, Chat, Calls)
+- Unlimited AI via Claude (platform key included)
+- All integrations (Google, Resend, Kit, Twilio, Meta, Stripe)
+- API access + webhooks
+- First year of updates and maintenance
+
+**Maintenance renewal** — €999 per year (optional). Renewing keeps you on the latest version with priority support. If you skip renewal your instance keeps running — you simply stop receiving updates.
+
+**Partner Programme** — Agencies and consultants earn €500 per customer sale, plus €750 per agency onboarding. Apply at `/partners` on your TAKO instance.
 
 ---
 
@@ -137,9 +160,12 @@ REACT_APP_BACKEND_URL=http://localhost:8001 npm start
 
 ## Environment Variables
 
-**Backend** (`/backend/.env`):
+**Backend** (`/backend/.env`) — see [`backend/.env.example`](backend/.env.example) for the full template.
+
+**Required** (TAKO will not start without these):
 
 ```env
+# Database
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=tako_production
 
@@ -149,37 +175,42 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRY_HOURS=168
 
 # URLs
-FRONTEND_URL=https://tako.software
-PUBLIC_URL=https://tako.software
+FRONTEND_URL=https://yourdomain.com
+PUBLIC_URL=https://yourdomain.com
 
-# Google OAuth (login + calendar)
+# Google OAuth (login)
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-# AI (platform key — used by internal team + new orgs during their AI trial)
+# AI (platform key — all licensed orgs use this automatically)
 ANTHROPIC_API_KEY=sk-ant-...
-# Free AI trial duration (days) for new external orgs before they must add their own key
-AI_TRIAL_DAYS=30
+```
 
-# Social Listening (Meta / Facebook Listeners)
-META_APP_ID=your_meta_app_id
-META_APP_SECRET=your_meta_app_secret
+**Optional** — set only the integrations you actually use:
 
-# Email
+```env
+# Email (transactional + campaigns)
 RESEND_API_KEY=re_...
-SENDER_EMAIL=noreply@tako.software
-
-# Payments
-STRIPE_API_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
+SENDER_EMAIL=noreply@yourdomain.com
+KIT_API_KEY=
+KIT_API_SECRET=
 
 # Calling
 TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_PHONE_FROM=+44...
 
-# Admin
-SUPER_ADMIN_EMAIL=admin@yourdomain.com
+# Social Listening (Facebook / Instagram)
+META_APP_ID=your_meta_app_id
+META_APP_SECRET=your_meta_app_secret
+
+# Payments (only needed if you resell TAKO or accept Stripe payments)
+STRIPE_API_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ONETIME=price_...
+STRIPE_PRICE_12MO=price_...
+STRIPE_PRICE_24MO=price_...
+STRIPE_PRICE_MAINTENANCE=price_...
 ```
 
 **Frontend** (`/frontend/.env`):
@@ -205,8 +236,9 @@ REACT_APP_BACKEND_URL=https://tako.software
 
 TAKO uses **Anthropic Claude** for all AI features.
 
-- **Internal team**: Set `ANTHROPIC_API_KEY` in `.env`. Users whose email domain matches `fintery.com`, `tako.software`, `aios.dev`, `unyted.world`, `unyted.chat`, `openclaw.com`, or `floriankrueger.com` (plus explicit aliases) use the platform key automatically.
-- **External organizations**: Every new org gets a **30-day free AI trial** on the platform key (orgs created before the trial feature are back-filled from `created_at`). When the trial ends, admins go to **Settings → Integrations → AI / LLM** and enter their own Anthropic API key. The Settings panel shows trial state live; the backend returns structured `ai_trial_expired` / `ai_key_missing` errors that the frontend surfaces as actionable toasts. Trial length defaults to 30 days and can be overridden with `AI_TRIAL_DAYS`.
+Set `ANTHROPIC_API_KEY` in your `.env` file. All AI features are included in your TAKO licence — no token limits, no trial periods. Every licensed organization uses the platform key automatically.
+
+Admins can optionally switch an organization to its own Anthropic key in **Settings → Integrations → AI / LLM**.
 
 ---
 
@@ -326,7 +358,7 @@ X-API-Key: tako_live_...
 | **Meta (Facebook)** | Social Listeners | Meta Developer Portal → `META_APP_ID` + `META_APP_SECRET` in `.env` |
 | **Resend** | Transactional email + campaigns | Settings → Integrations |
 | **Twilio** | Outbound/inbound calling | Settings → Integrations |
-| **Stripe** | Subscriptions + billing | Admin panel |
+| **Stripe** | Licence purchase + installment billing | Admin panel (optional — only needed if you resell TAKO) |
 | **Kit.com** | Email marketing automation | Settings → Integrations (optional) |
 | **Google Calendar** | Two-way calendar sync | Settings → Integrations → Connect |
 
@@ -371,13 +403,12 @@ server {
 
 Tracked under the 25-item ship-readiness audit. Highlights:
 
-- **AI trial window** — 30-day platform-key grant on every new org, with back-fill for legacy orgs. Trial state surfaced in Settings → Integrations → AI; trial-expired and key-missing errors return structured payloads (`code`, `message`, `action`, `settings_url`, `support_url`) and render as actionable toasts with a one-click path to Settings.
+- **Self-hosted licence model** — one-time, 12-month, and 24-month installment plans via Stripe; UNYT token payments on Arbitrum; optional €999/year maintenance renewal. All licences unlock unlimited users and unlimited AI.
 - **Public booking page** — now renders host name, avatar, and welcome message from `GET /booking/{user_id}/info`.
 - **Profile editing** — `PUT /auth/me` lets users update name, avatar, and timezone from Settings → Profile. IANA timezone picker uses `Intl.supportedValuesOf('timeZone')` with a fallback list and a "use my current timezone" one-click.
 - **Password change** — `POST /auth/change-password` with bcrypt verification, 8-char minimum, plus a richer UI: strength meter, show/hide toggles, inline validation for mismatch / too-short / same-as-current, and post-save confirmation.
 - **Calendar time picker** — date + time split with 5-minute steps, duration quick-picks (15m/30m/45m/1h/90m/2h), auto-preserved duration when start changes, and a live duration readout.
 - **Landing page** — global `ScrollToTop` route listener disables browser scroll restoration and handles hash anchors; `#features`, `#pricing`, `#product` get `scroll-mt-20` so the fixed nav doesn't cover section headers.
-- **Stripe row gating** — the Stripe integration row in Settings is visible only to internal/affiliated domains (`unyted.world`, `fintery.com`, `floriankrueger.com`, `davidaltun.com`, `alakai.digital`, `aios.institute`) plus two personal gmail addresses.
 - **Admin View badge / Team Summary tab** — hidden for solo admins in Pipeline Reports.
 - **Empty states** — Contacts, Leads, Listeners, and Files got richer empty states with explanatory copy and clear CTAs (plus gated upload/form UI).
 - **Sidebar + nav** — Deals/Pipeline overlap resolved, sidebar overflow fixed, TAKO logo floating-dot artefact removed, duplicate Sign Out in Settings removed, Settings tabs no longer wrap, Kit.com tab hidden when unconnected.
@@ -401,5 +432,7 @@ Tracked under the 25-item ship-readiness audit. Highlights:
 ## License
 
 Proprietary — TAKO by Fintery Ltd. All rights reserved.
+
+Purchasers receive a perpetual licence to use, modify, and deploy TAKO on their own infrastructure. Redistribution or resale of the source code is not permitted.
 
 Canbury Works, Units 6 and 7, Canbury Business Park, Elm Crescent, Kingston upon Thames, Surrey, KT2 6HJ, UK
