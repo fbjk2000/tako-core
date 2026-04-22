@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 // ─── i18n data ────────────────────────────────────────────────────────────────
 
@@ -41,12 +41,12 @@ const OUTCOMES_I18N = {
   en: [
     { number: '8', stat: 'AI agents per user', desc: 'Each handles a different part of your sales process — from prospecting to closing.' },
     { number: '3×', stat: 'More outreach capacity', desc: 'AI drafts emails, scores leads, and books meetings. Your reps sell more with the same hours.' },
-    { number: '100%', stat: 'Your data, your control', desc: 'EU-hosted or self-hosted. GDPR-native. No US cloud dependency.' },
+    { number: '100%', stat: 'Your data, your control', desc: 'Self-hosted on your infrastructure. Full source code. No US cloud dependency. No vendor lock-in.' },
   ],
   de: [
     { number: '8', stat: 'KI-Agenten pro Nutzer', desc: 'Jeder übernimmt einen anderen Teil Ihres Vertriebsprozesses — von der Akquise bis zum Abschluss.' },
     { number: '3×', stat: 'Mehr Outreach-Kapazität', desc: 'KI entwirft E-Mails, bewertet Leads und bucht Meetings. Ihre Vertriebsmitarbeiter verkaufen mehr in derselben Zeit.' },
-    { number: '100%', stat: 'Ihre Daten, Ihre Kontrolle', desc: 'EU-gehostet oder selbst gehostet. DSGVO-nativ. Keine US-Cloud-Abhängigkeit.' },
+    { number: '100%', stat: 'Ihre Daten, Ihre Kontrolle', desc: 'Selbst gehostet auf Ihrer Infrastruktur. Vollständiger Quellcode. Keine US-Cloud-Abhängigkeit. Kein Vendor-Lock-in.' },
   ],
 };
 
@@ -95,9 +95,20 @@ const EU_I18N = {
   ],
 };
 
-const LAUNCH_TAGS_I18N = {
-  en: ['Full source code', 'Unlimited users', 'Self-hosted', 'One-time payment', 'Production-tested'],
-  de: ['Vollständiger Quellcode', 'Unbegrenzte Nutzer', 'Selbst gehostet', 'Einmalige Zahlung', 'Produktionserprobt'],
+// Brief three-column pricing summary shown on the landing page. Full details
+// live on /pricing. Prices are EUR only and shared across locales — only the
+// text labels differ by language.
+const PRICING_SUMMARY_I18N = {
+  en: [
+    { label: 'Pay Once',             price: '€5,000',    note: 'one-time' },
+    { label: '12 Monthly Payments',  price: '12 × €500', note: '€6,000 total' },
+    { label: '24 Monthly Payments',  price: '24 × €300', note: '€7,200 total' },
+  ],
+  de: [
+    { label: 'Einmalzahlung',        price: '€5.000',    note: 'einmalig' },
+    { label: '12 Monatsraten',       price: '12 × €500', note: '€6.000 gesamt' },
+    { label: '24 Monatsraten',       price: '24 × €300', note: '€7.200 gesamt' },
+  ],
 };
 
 const I18N_EN = {
@@ -106,16 +117,16 @@ const I18N_EN = {
   navSupport: 'Support',
   navAgents: 'Agents',
   signIn: 'Sign in',
-  startFree: 'Start free',
+  navCta: 'See Pricing',
   heroBadge: 'The AI-first CRM for European sales teams',
   heroTitle: 'Eight agents.\nOne CRM.\nNo busywork.',
   heroDesc: 'TAKO gives every sales rep a team of eight AI agents — handling pipeline, emails, calls, scoring, research and scheduling. Your team just closes.',
-  heroCtaPrimary: 'Start free trial',
-  heroCtaSecondary: 'See how it works',
+  heroCtaPrimary: 'See Pricing',
+  heroCtaSecondary: 'Try the Demo',
   trustGdpr: 'GDPR compliant',
   trustEu: 'EU hosted · Frankfurt',
   trustSoc: 'SOC 2 in progress',
-  trustStripe: 'Stripe payments',
+  trustSelfhost: 'Self-hosted · Your server',
   trustUptime: '99.99% uptime SLA',
   outcomesTag: 'By the numbers',
   outcomesTitle: 'Results that move the needle',
@@ -134,22 +145,12 @@ const I18N_EN = {
   euTitle: 'Your data stays in Europe',
   euDesc: 'We built TAKO for European privacy standards — not as an afterthought, but as a foundation.',
   pricingTag: 'Pricing',
-  pricingTitle: 'Simple, transparent pricing',
-  pricingDesc: 'Start free. Scale as you grow. No hidden fees.',
-  launchTag: 'Limited offer',
-  launchBadge: '75% OFF',
-  launchTitle: 'Launch Edition',
-  launchPrice: 'EUR 4,999',
-  launchPriceNote: 'one-time',
-  launchOrigPrice: 'EUR 19,999',
-  launchDesc: 'Get the full TAKO app with unlimited users and deploy it on your own hosting.',
-  launchDesc2: 'Save 2 to 3 months of setup and iteration. Launch faster with a proven CRM foundation.',
-  launchExpires: 'Offer expires in',
-  launchEnds: 'Ends June 30, 2026 at 23:59 BST',
-  launchCta: 'Book a Setup Call',
+  pricingTitle: 'One product. One price. Unlimited users.',
+  pricingDesc: 'Full source code. 12 months support included. 30-day money-back guarantee.',
+  pricingCta: 'See full pricing →',
   finalTitle: 'Ready to sell smarter?',
-  finalDesc: 'Join hundreds of European sales teams using TAKO to close more deals with less effort.',
-  finalCtaPrimary: 'Start free trial',
+  finalDesc: 'Built for European sales teams that want results, not complexity.',
+  finalCtaPrimary: 'See Pricing',
   finalCtaSecondary: 'Sign in',
   footerTagline: 'The CRM that runs your marketing and sales. Built for European teams that want results, not complexity.',
   footerCompany: 'Fintery Ltd.',
@@ -171,16 +172,16 @@ const I18N_DE = {
   navSupport: 'Support',
   navAgents: 'Agenten',
   signIn: 'Anmelden',
-  startFree: 'Kostenlos starten',
+  navCta: 'Preise ansehen',
   heroBadge: 'Das KI-first CRM für europäische Vertriebsteams',
   heroTitle: 'Acht Agenten.\nEin CRM.\nKein Leerlauf.',
   heroDesc: 'TAKO gibt jedem Vertriebsmitarbeiter ein Team aus acht KI-Agenten — für Pipeline, E-Mails, Anrufe, Scoring, Recherche und Terminplanung. Ihr Team schließt nur noch ab.',
-  heroCtaPrimary: 'Kostenlos testen',
-  heroCtaSecondary: 'So funktioniert es',
+  heroCtaPrimary: 'Preise ansehen',
+  heroCtaSecondary: 'Demo ausprobieren',
   trustGdpr: 'DSGVO-konform',
   trustEu: 'EU-gehostet · Frankfurt',
   trustSoc: 'SOC 2 in Vorbereitung',
-  trustStripe: 'Stripe-Zahlungen',
+  trustSelfhost: 'Selbst gehostet · Ihr Server',
   trustUptime: '99,99 % Uptime-SLA',
   outcomesTag: 'Zahlen, die überzeugen',
   outcomesTitle: 'Ergebnisse, die wirklich etwas bewegen',
@@ -199,22 +200,12 @@ const I18N_DE = {
   euTitle: 'Ihre Daten bleiben in Europa',
   euDesc: 'Wir haben TAKO für europäische Datenschutzstandards entwickelt — nicht als Nachgedanke, sondern als Grundlage.',
   pricingTag: 'Preise',
-  pricingTitle: 'Einfache, transparente Preise',
-  pricingDesc: 'Kostenlos starten. Mit Ihrem Wachstum skalieren. Keine versteckten Gebühren.',
-  launchTag: 'Limitiertes Angebot',
-  launchBadge: '75% RABATT',
-  launchTitle: 'Launch Edition',
-  launchPrice: 'EUR 4.999',
-  launchPriceNote: 'einmalig',
-  launchOrigPrice: 'EUR 19.999',
-  launchDesc: 'Erhalten Sie die vollständige TAKO-App mit unbegrenzt vielen Nutzern und deployen Sie sie auf Ihrem eigenen Hosting.',
-  launchDesc2: '2 bis 3 Monate Setup und Iteration einsparen. Schneller starten mit einer bewährten CRM-Grundlage.',
-  launchExpires: 'Angebot läuft ab in',
-  launchEnds: 'Endet am 30. Juni 2026 um 23:59 Uhr BST',
-  launchCta: 'Setup-Call buchen',
+  pricingTitle: 'Ein Produkt. Ein Preis. Unbegrenzte Nutzer.',
+  pricingDesc: 'Vollständiger Quellcode. 12 Monate Support inklusive. 30-Tage-Geld-zurück-Garantie.',
+  pricingCta: 'Vollständige Preise ansehen →',
   finalTitle: 'Bereit, smarter zu verkaufen?',
-  finalDesc: 'Schließen Sie sich hunderten europäischer Vertriebsteams an, die TAKO nutzen, um mehr Deals mit weniger Aufwand abzuschließen.',
-  finalCtaPrimary: 'Kostenlos testen',
+  finalDesc: 'Für europäische Vertriebsteams, die Ergebnisse wollen, keine Komplexität.',
+  finalCtaPrimary: 'Preise ansehen',
   finalCtaSecondary: 'Anmelden',
   footerTagline: 'Das CRM, das Ihr Marketing und Ihren Vertrieb steuert. Für europäische Teams, die Ergebnisse wollen, keine Komplexität.',
   footerCompany: 'Fintery Ltd.',
@@ -1225,18 +1216,16 @@ const LP_CSS = `
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const LandingPage = () => {
-  const navigate = useNavigate();
   const [lang, setLang] = useState(() => localStorage.getItem('tako_lang') || 'en');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   const t = lang === 'de' ? I18N_DE : I18N_EN;
-  const agents  = AGENTS_I18N[lang];
-  const outcomes= OUTCOMES_I18N[lang];
-  const values  = VALUE_I18N[lang];
-  const proofs  = PROOF_I18N[lang];
-  const euItems = EU_I18N[lang];
-  const launchTags = LAUNCH_TAGS_I18N[lang];
+  const agents         = AGENTS_I18N[lang];
+  const outcomes       = OUTCOMES_I18N[lang];
+  const values         = VALUE_I18N[lang];
+  const proofs         = PROOF_I18N[lang];
+  const euItems        = EU_I18N[lang];
+  const pricingSummary = PRICING_SUMMARY_I18N[lang];
 
   const canvasRef     = useRef(null);
   const labelsContRef = useRef(null);
@@ -1463,25 +1452,6 @@ const LandingPage = () => {
     };
   }, []);
 
-  // ── Countdown ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const end = new Date('2026-06-30T22:59:59Z').getTime();
-    const tick = () => {
-      const diff = Math.max(0, end - Date.now());
-      setCountdown({
-        days:    Math.floor(diff / 86400000),
-        hours:   Math.floor((diff / 3600000) % 24),
-        minutes: Math.floor((diff / 60000) % 60),
-        seconds: Math.floor((diff / 1000) % 60),
-      });
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const pad = (n) => String(n).padStart(2, '0');
-
   // ─── JSX ────────────────────────────────────────────────────────────────────
   return (
     <div className="tako-lp" onClick={handleHashClick}>
@@ -1523,7 +1493,7 @@ const LandingPage = () => {
               {lang === 'en' ? 'DE' : 'EN'}
             </button>
             <Link to="/login" className="btn-ghost" onClick={() => setMobileOpen(false)}>{t.signIn}</Link>
-            <Link to="/signup" className="btn-p" data-testid="nav-cta" onClick={() => setMobileOpen(false)}>{t.startFree}</Link>
+            <Link to="/pricing" className="btn-p" data-testid="nav-cta" onClick={() => setMobileOpen(false)}>{t.navCta}</Link>
           </div>
 
           <button className="hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Menu" aria-expanded={mobileOpen}>
@@ -1549,12 +1519,12 @@ const LandingPage = () => {
         </h1>
         <p data-testid="hero-description">{t.heroDesc}</p>
         <div className="hero-ctas">
-          <Link to="/signup" className="btn-p" style={{ fontSize:'1rem', padding:'0.75rem 2rem' }} data-testid="hero-cta-primary">
+          <Link to="/pricing" className="btn-p" style={{ fontSize:'1rem', padding:'0.75rem 2rem' }} data-testid="hero-cta-primary">
             {t.heroCtaPrimary}
           </Link>
-          <a href="#outcomes" className="btn-outline" style={{ fontSize:'1rem', padding:'0.75rem 2rem' }}>
+          <Link to="/demo" className="btn-outline" style={{ fontSize:'1rem', padding:'0.75rem 2rem' }} data-testid="hero-cta-secondary">
             {t.heroCtaSecondary}
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -1567,7 +1537,7 @@ const LandingPage = () => {
           <span className="trust-sep" />
           <span className="trust-item">{t.trustSoc}</span>
           <span className="trust-sep" />
-          <span className="trust-item">{t.trustStripe}</span>
+          <span className="trust-item">{t.trustSelfhost}</span>
           <span className="trust-sep" />
           <span className="trust-item">{t.trustUptime}</span>
         </div>
@@ -1676,73 +1646,58 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      {/* ── Pricing summary ────────────────────────────────────────────────── */}
+      {/* Single-product, three payment structures. Full detail on /pricing. */}
       <section className="pricing">
-        <div className="section-inner" style={{ maxWidth: '720px' }}>
+        <div className="section-inner" style={{ maxWidth: '960px' }}>
           <p className="section-tag tl-reveal">{t.pricingTag}</p>
           <h2 className="section-title tl-reveal">{t.pricingTitle}</h2>
-          <p className="section-desc tl-reveal" style={{ margin:'0 auto 2rem' }}>{t.pricingDesc}</p>
+          <p className="section-desc tl-reveal" style={{ margin:'0 auto 2.5rem' }}>{t.pricingDesc}</p>
+
+          <div
+            className="tl-reveal"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '1rem',
+              maxWidth: '820px',
+              margin: '0 auto 2rem',
+            }}
+          >
+            {pricingSummary.map((p, i) => (
+              <div
+                key={i}
+                style={{
+                  background: '#fff',
+                  border: '1px solid rgba(12,16,36,0.08)',
+                  borderRadius: '16px',
+                  padding: '1.5rem 1.25rem',
+                  textAlign: 'center',
+                }}
+              >
+                <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(12,16,36,0.55)', margin: '0 0 0.6rem' }}>
+                  {p.label}
+                </p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(12,16,36)', margin: '0 0 0.35rem' }}>
+                  {p.price}
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'rgba(12,16,36,0.6)', margin: 0 }}>
+                  {p.note}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <div className="tl-reveal">
-            <Link to="/pricing" className="btn-p" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem', padding:'0.75rem 2rem' }}>
-              See full pricing — plans from £0 →
+            <Link
+              to="/pricing"
+              className="btn-p"
+              style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem', padding:'0.75rem 2rem' }}
+              data-testid="landing-pricing-cta"
+            >
+              {t.pricingCta}
             </Link>
           </div>
-        </div>
-      </section>
-
-      {/* ── Launch Edition ─────────────────────────────────────────────────── */}
-      <section className="launch-edition">
-        <div className="launch-inner tl-reveal">
-
-          {/* Left */}
-          <div className="launch-left">
-            <div className="launch-badges">
-              <div className="launch-badge-limited">
-                <span className="launch-badge-dot" />
-                {t.launchTag}
-              </div>
-              <div className="launch-badge-pct">{t.launchBadge}</div>
-            </div>
-            <h3 className="launch-title">{t.launchTitle}</h3>
-            <div className="launch-pricing">
-              <span className="launch-price">{t.launchPrice} <span className="launch-price-note">{t.launchPriceNote}</span></span>
-              <span className="launch-orig-price">{t.launchOrigPrice}</span>
-            </div>
-            <p className="launch-desc">{t.launchDesc}</p>
-            <p className="launch-desc2">{t.launchDesc2}</p>
-            <div className="launch-tags">
-              {launchTags.map(tag => (
-                <span key={tag} className="launch-tag">{tag}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Right — countdown */}
-          <div className="launch-right">
-            <p className="cd-expires">{t.launchExpires}</p>
-            <div className="cd-grid">
-              {[
-                [pad(countdown.days),    lang === 'de' ? 'Tage'    : 'Days'   ],
-                [pad(countdown.hours),   lang === 'de' ? 'Stunden' : 'Hours'  ],
-                [pad(countdown.minutes), lang === 'de' ? 'Minuten' : 'Minutes'],
-                [pad(countdown.seconds), lang === 'de' ? 'Sek.'    : 'Seconds'],
-              ].map(([val, unit]) => (
-                <div key={unit} className="cd-box">
-                  <span className="cd-val">{val}</span>
-                  <small className="cd-unit">{unit}</small>
-                </div>
-              ))}
-            </div>
-            <p className="cd-ends">{t.launchEnds}</p>
-            <button
-              className="launch-cta"
-              data-testid="launch-edition-cta"
-              onClick={() => navigate('/support?tab=contact')}
-            >
-              {t.launchCta}
-            </button>
-          </div>
-
         </div>
       </section>
 
@@ -1752,8 +1707,8 @@ const LandingPage = () => {
           <h2 className="section-title tl-reveal">{t.finalTitle}</h2>
           <p className="section-desc tl-reveal">{t.finalDesc}</p>
           <div className="final-cta-btns tl-reveal">
-            <Link to="/signup" className="btn-gold">{t.finalCtaPrimary}</Link>
-            <Link to="/login"  className="btn-outline-white">{t.finalCtaSecondary}</Link>
+            <Link to="/pricing" className="btn-gold">{t.finalCtaPrimary}</Link>
+            <Link to="/login"   className="btn-outline-white">{t.finalCtaSecondary}</Link>
           </div>
         </div>
       </section>
