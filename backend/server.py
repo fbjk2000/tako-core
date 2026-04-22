@@ -8,6 +8,7 @@ import os
 import json
 import logging
 import re
+import html as html_mod
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
@@ -45,6 +46,120 @@ if RESEND_API_KEY:
 # Stripe Configuration
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
 
+# Seller VAT number — shown on every invoice. Mandatory field on HMRC + EU
+# compliant invoices; falls back to an obvious placeholder in dev so nothing
+# silently ships an empty "VAT No:" line.
+COMPANY_VAT_NUMBER = os.environ.get('COMPANY_VAT_NUMBER', 'GB000000000')
+
+
+# ── VAT treatment ────────────────────────────────────────────────────────────
+# The three self-hosted plans (and maintenance renewal) are sold internationally
+# and the correct VAT treatment depends on where the buyer is and whether they
+# have a VAT ID. See FOLLOWUPS.md #3.
+#
+# Rules implemented (simplified, consult Steuerberater before relying on this
+# for historical invoice correction):
+#   - Seller is UK VAT-registered (Fintery Ltd).
+#   - UK customer → 20% standard rate.
+#   - EU customer with VAT ID → reverse charge, 0% VAT. Invoice must carry
+#     "Article 44, Directive 2006/112/EC" note + buyer VAT ID.
+#   - EU customer without VAT ID (B2C) → destination-country VAT rate.
+#   - Non-EU / non-UK customer → outside scope, 0% VAT, export note.
+#
+# VAT ID validation against VIES is intentionally out of scope — we trust the
+# ID the buyer enters at checkout and keep the raw string on the invoice.
+EU_VAT_RATES = {
+    "DE": 19, "FR": 20, "NL": 21, "IT": 22, "ES": 21, "AT": 20,
+    "BE": 21, "PT": 23, "IE": 23, "FI": 24, "SE": 25, "DK": 25,
+    "PL": 23, "CZ": 21, "RO": 19, "HU": 27, "HR": 25, "BG": 20,
+    "SK": 20, "SI": 22, "LT": 21, "LV": 21, "EE": 22, "CY": 19,
+    "MT": 18, "LU": 17, "GR": 24,
+}
+
+
+def determine_vat_treatment(billing_country: Optional[str], vat_id: Optional[str]) -> Dict[str, Any]:
+    """Return the VAT treatment for a sale given the buyer's country + VAT ID.
+
+    Always returns a dict with at minimum ``treatment`` and ``rate`` keys.
+    ``note`` is populated for reverse-charge and export lines so the caller
+    can drop it straight onto the invoice.
+
+    - UK customer (``GB``) → ``uk_standard`` at 20%.
+    - EU customer with any non-empty VAT ID → ``eu_reverse_charge`` at 0%.
+    - EU customer without VAT ID → ``eu_consumer`` at the destination rate.
+    - Anywhere else (incl. ``None``/unknown country) → ``non_eu`` at 0%.
+
+    The billing country is normalised to an uppercase ISO-2 string. An unknown
+    country string is treated as non-EU.
+    """
+    country = (billing_country or "").strip().upper()
+    vat_id_clean = (vat_id or "").strip() or None
+
+    if country == "GB":
+        return {"treatment": "uk_standard", "rate": 20, "note": None}
+
+    if country in EU_VAT_RATES:
+        if vat_id_clean:
+            return {
+                "treatment": "eu_reverse_charge",
+                "rate": 0,
+                "note": (
+                    "Reverse charge — Article 44, Directive 2006/112/EC. "
+                    "VAT to be accounted for by the recipient."
+                ),
+            }
+        return {
+            "treatment": "eu_consumer",
+            "rate": EU_VAT_RATES[country],
+            "note": None,
+        }
+
+    return {
+        "treatment": "non_eu",
+        "rate": 0,
+        "note": "VAT not charged — supply outside the scope of UK/EU VAT.",
+    }
+
+
+def _extract_billing_from_stripe_session(session: Any) -> tuple[Optional[str], Optional[str]]:
+    """Return ``(billing_country, buyer_vat_id)`` from a Stripe session.
+
+    Handles both live Stripe objects (attribute access) and the JSON-decoded
+    webhook payload (dict access). Returns ``(None, None)`` when Stripe has
+    not captured the buyer details yet (e.g. the session hasn't been completed
+    or the sandbox checkout skipped tax collection).
+    """
+    def _get(obj: Any, key: str) -> Any:
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return obj.get(key)
+        return getattr(obj, key, None)
+
+    customer_details = _get(session, "customer_details") or {}
+    address = _get(customer_details, "address") or {}
+    country = _get(address, "country")
+
+    tax_ids_container = _get(customer_details, "tax_ids")
+    tax_ids: List[Any] = []
+    if isinstance(tax_ids_container, list):
+        tax_ids = tax_ids_container
+    elif tax_ids_container is not None:
+        data = _get(tax_ids_container, "data")
+        if isinstance(data, list):
+            tax_ids = data
+
+    vat_id: Optional[str] = None
+    for entry in tax_ids:
+        value = _get(entry, "value")
+        if value:
+            vat_id = str(value).strip() or None
+            if vat_id:
+                break
+
+    normalized_country = country.strip().upper() if isinstance(country, str) and country.strip() else None
+    return normalized_country, vat_id
+
 
 class CheckoutSessionRequest(BaseModel):
     amount: float
@@ -72,6 +187,11 @@ class CheckoutStatusResponse(BaseModel):
     payment_status: str
     amount_total: int
     currency: str
+    # Populated once Stripe has the buyer's billing details (after a completed
+    # checkout where `billing_address_collection="required"` + `tax_id_collection`
+    # are enabled). Used downstream to determine VAT treatment on the invoice.
+    billing_country: Optional[str] = None
+    buyer_vat_id: Optional[str] = None
 
 
 class StripeWebhookResponse(BaseModel):
@@ -102,6 +222,14 @@ class StripeCheckout:
         payment_methods = self._normalize_methods(request.payment_methods)
         mode = request.mode or "payment"
 
+        # Country + VAT-ID collection are required for correct EU/UK VAT
+        # treatment at invoicing time (see `determine_vat_treatment`). These
+        # apply uniformly to both payment- and subscription-mode sessions.
+        tax_collection_kwargs = {
+            "billing_address_collection": "required",
+            "tax_id_collection": {"enabled": True},
+        }
+
         def _create_session():
             if mode == "subscription":
                 if not request.price_id:
@@ -119,6 +247,7 @@ class StripeCheckout:
                     success_url=request.success_url,
                     cancel_url=request.cancel_url,
                     metadata=metadata,
+                    **tax_collection_kwargs,
                 )
                 if sub_kwargs:
                     kwargs["subscription_data"] = sub_kwargs
@@ -144,18 +273,28 @@ class StripeCheckout:
                 success_url=request.success_url,
                 cancel_url=request.cancel_url,
                 metadata=metadata,
+                **tax_collection_kwargs,
             )
 
         session = await asyncio.to_thread(_create_session)
         return CheckoutSessionResponse(url=session.url, session_id=session.id)
 
     async def get_checkout_status(self, session_id: str) -> CheckoutStatusResponse:
-        session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
+        # Expand customer_details.tax_ids so we can surface the buyer VAT ID
+        # alongside the billing country without a second API round-trip.
+        session = await asyncio.to_thread(
+            stripe.checkout.Session.retrieve,
+            session_id,
+            expand=["customer_details.tax_ids"],
+        )
+        country, vat_id = _extract_billing_from_stripe_session(session)
         return CheckoutStatusResponse(
             status=getattr(session, "status", "unknown"),
             payment_status=getattr(session, "payment_status", "unpaid"),
             amount_total=int(getattr(session, "amount_total", 0) or 0),
             currency=(getattr(session, "currency", "eur") or "eur"),
+            billing_country=country,
+            buyer_vat_id=vat_id,
         )
 
     async def handle_webhook(self, body: bytes, signature: Optional[str]) -> StripeWebhookResponse:
@@ -6324,13 +6463,23 @@ async def get_subscription_status(session_id: str, http_request: Request):
     
     if transaction and transaction.get("payment_status") != status.payment_status:
         now = datetime.now(timezone.utc)
+        txn_updates: Dict[str, Any] = {
+            "payment_status": status.payment_status,
+            "updated_at": now.isoformat(),
+        }
+        # Persist the billing details we just learned from Stripe so the
+        # invoice (and any future audit) can reconstruct the VAT treatment
+        # even if Stripe later prunes customer_details from the session.
+        if status.billing_country:
+            txn_updates["billing_country"] = status.billing_country
+        if status.buyer_vat_id:
+            txn_updates["buyer_vat_id"] = status.buyer_vat_id
         await db.payment_transactions.update_one(
             {"stripe_session_id": session_id},
-            {"$set": {
-                "payment_status": status.payment_status,
-                "updated_at": now.isoformat()
-            }}
+            {"$set": txn_updates},
         )
+        # Merge updates into the in-memory copy so downstream helpers see them.
+        transaction = {**transaction, **txn_updates}
 
         # If payment successful, create invoice and activate the licence.
         if status.payment_status == "paid" and not transaction.get("invoice_id"):
@@ -6571,16 +6720,30 @@ async def stripe_webhook(request: Request):
 # ==================== INVOICE ROUTES ====================
 
 async def create_invoice_for_transaction(transaction: dict) -> str:
-    """Create an invoice for a completed transaction"""
+    """Create an invoice for a completed transaction.
+
+    VAT treatment is resolved from the buyer's billing country + VAT ID (both
+    pulled from the Stripe session by the status endpoint and merged onto the
+    transaction doc before this is called). The *charged* amount — what Stripe
+    actually took from the card — is ``transaction["total_amount"]``. For
+    invoice correctness we split that into net + VAT per treatment:
+
+      - ``uk_standard``: 20% inclusive → net = total / 1.20, vat = total − net
+      - ``eu_consumer`` at rate R: R% inclusive → net = total / (1 + R/100)
+      - ``eu_reverse_charge``: vat = 0, net = total (customer arguably overpaid
+        the VAT portion of the sticker price; reconciliation is a commercial
+        matter tracked in FOLLOWUPS #3 — the invoice itself is now compliant).
+      - ``non_eu``: vat = 0, net = total (same note).
+    """
     now = datetime.now(timezone.utc)
-    
+
     # Get the latest invoice number
     last_invoice = await db.invoices.find_one(
-        {}, 
+        {},
         {"_id": 0, "invoice_number": 1},
         sort=[("created_at", -1)]
     )
-    
+
     if last_invoice:
         try:
             last_num = int(last_invoice["invoice_number"].split("-")[1])
@@ -6589,18 +6752,35 @@ async def create_invoice_for_transaction(transaction: dict) -> str:
             invoice_num = 1001
     else:
         invoice_num = 1001
-    
+
     invoice_number = f"INV-{invoice_num:05d}"
-    
+
     # Get plan details
     plan = SUBSCRIPTION_PLANS.get(transaction["plan_id"], {})
-    
+
     # Get user details
     user = await db.users.find_one(
-        {"user_id": transaction["user_id"]}, 
+        {"user_id": transaction["user_id"]},
         {"_id": 0, "name": 1, "email": 1}
     )
-    
+
+    billing_country = transaction.get("billing_country")
+    buyer_vat_id = transaction.get("buyer_vat_id")
+    vat_treatment = determine_vat_treatment(billing_country, buyer_vat_id)
+    treatment = vat_treatment["treatment"]
+    vat_rate = float(vat_treatment["rate"])
+
+    total_amount = float(transaction.get("total_amount") or transaction.get("amount") or 0)
+    if treatment in ("uk_standard", "eu_consumer") and vat_rate > 0:
+        subtotal = round(total_amount / (1 + vat_rate / 100), 2)
+        vat_amount = round(total_amount - subtotal, 2)
+    else:
+        # reverse charge / non-EU / zero-rated → net = gross, no VAT line.
+        subtotal = round(total_amount, 2)
+        vat_amount = 0.0
+
+    discount_amount = float(transaction.get("discount_amount", 0) or 0)
+
     invoice_doc = {
         "invoice_id": f"inv_{uuid.uuid4().hex[:12]}",
         "invoice_number": invoice_number,
@@ -6609,16 +6789,20 @@ async def create_invoice_for_transaction(transaction: dict) -> str:
         "email": transaction["email"],
         "billing_name": user.get("name", transaction["email"]) if user else transaction["email"],
         "billing_address": None,
+        "billing_country": billing_country,
+        "buyer_vat_id": buyer_vat_id,
         "plan_name": plan.get("name", transaction["plan_id"]),
-        "user_count": transaction["user_count"],
+        "user_count": transaction.get("user_count"),
         "unit_price": plan.get("price", 0),
-        "subtotal": transaction["amount"],
+        "subtotal": subtotal,
         "discount_code": transaction.get("discount_code"),
-        "discount_amount": transaction.get("discount_amount", 0),
-        "net_amount": transaction["amount"] - transaction.get("discount_amount", 0),
-        "vat_rate": transaction.get("vat_rate", 20.0),
-        "vat_amount": transaction.get("vat_amount", 0),
-        "total_amount": transaction["total_amount"],
+        "discount_amount": discount_amount,
+        "net_amount": subtotal - discount_amount,
+        "vat_treatment": treatment,
+        "vat_treatment_note": vat_treatment.get("note"),
+        "vat_rate": vat_rate,
+        "vat_amount": vat_amount,
+        "total_amount": round(total_amount, 2),
         "currency": transaction.get("currency", "EUR").upper(),
         "status": "paid",
         "transaction_id": transaction["transaction_id"],
@@ -6651,12 +6835,16 @@ async def send_invoice_email(invoice: dict):
             <h3>1. Service Agreement</h3>
             <p>By subscribing to TAKO CRM services, you agree to these terms and conditions.</p>
             
-            <h3>2. Subscription & Billing</h3>
+            <h3>2. Billing & VAT</h3>
             <ul>
-                <li>Subscriptions are billed in advance on a monthly or annual basis</li>
-                <li>Prices are in EUR unless otherwise specified</li>
-                <li>UK VAT at 20% is added to all invoices</li>
-                <li>Refunds are available within 14 days of initial purchase</li>
+                <li>Prices are in EUR unless otherwise specified.</li>
+                <li>VAT is applied according to the buyer's country and VAT status:
+                    UK customers are charged 20% UK VAT; EU customers with a valid
+                    VAT ID are invoiced under reverse charge (Article 44,
+                    Directive 2006/112/EC); EU consumers are charged their
+                    destination-country VAT rate; customers outside the EU/UK
+                    are invoiced without VAT as an export.</li>
+                <li>Refunds are available within 14 days of initial purchase.</li>
             </ul>
             
             <h3>3. User Limits</h3>
@@ -6680,10 +6868,13 @@ async def send_invoice_email(invoice: dict):
         </div>
         """
         
-        # Combine invoice and terms
+        # Combine invoice and terms. Escape the billing name — it appears
+        # directly in the email body and would otherwise be a stored XSS
+        # vector alongside the invoice HTML (FOLLOWUPS #18).
+        safe_billing_name = html_mod.escape(str(invoice.get('billing_name', '')))
         full_html = f"""
         <div style="font-family: Arial, sans-serif;">
-            <p>Dear {invoice['billing_name']},</p>
+            <p>Dear {safe_billing_name},</p>
             <p>Thank you for subscribing to TAKO CRM! Please find your invoice details below.</p>
             
             {invoice_html}
@@ -6709,14 +6900,109 @@ async def send_invoice_email(invoice: dict):
         logger.error(f"Failed to send invoice email: {str(e)}")
 
 def generate_invoice_html(invoice: dict) -> str:
-    """Generate HTML invoice"""
+    """Generate HTML invoice.
+
+    All user-supplied strings (billing name, email, plan name, VAT ID,
+    discount code, billing country) are HTML-escaped before interpolation —
+    fixes the stored XSS vector flagged in FOLLOWUPS #18 where a malicious
+    billing name would have executed in any staff member's browser that
+    opened the invoice HTML.
+
+    The VAT section branches on ``invoice['vat_treatment']`` to render the
+    four legal cases: UK standard, EU consumer (destination rate), EU
+    reverse charge, and non-EU export (see FOLLOWUPS #3).
+    """
+    esc = html_mod.escape
+
+    # Core user-supplied values — always escape.
+    e_number = esc(str(invoice.get("invoice_number", "")))
+    e_name = esc(str(invoice.get("billing_name", "")))
+    e_email = esc(str(invoice.get("email", "")))
+    e_plan = esc(str(invoice.get("plan_name", "")))
+    e_country = esc(str(invoice.get("billing_country") or ""))
+    e_vat_id = esc(str(invoice.get("buyer_vat_id") or ""))
+
+    user_count = invoice.get("user_count") or 1
+    unit_price = float(invoice.get("unit_price") or 0)
+    subtotal = float(invoice.get("subtotal") or 0)
+    discount_amount = float(invoice.get("discount_amount") or 0)
+    vat_amount = float(invoice.get("vat_amount") or 0)
+    vat_rate = float(invoice.get("vat_rate") or 0)
+    total_amount = float(invoice.get("total_amount") or 0)
+    treatment = str(invoice.get("vat_treatment") or "uk_standard")
+    treatment_note = invoice.get("vat_treatment_note")
+    invoice_date = str(invoice.get("invoice_date", ""))[:10]
+
+    # Discount row (escape the code before interpolating).
+    discount_row = ""
+    discount_code = invoice.get("discount_code")
+    if discount_code:
+        discount_row = (
+            f"<p style='margin: 5px 0;'><span style='color: #64748b;'>"
+            f"Discount ({esc(str(discount_code))}):</span> "
+            f"-€{discount_amount:.2f}</p>"
+        )
+
+    # VAT row + footer note — four legal variants.
+    if treatment == "uk_standard":
+        vat_row = (
+            f'<p style="margin: 5px 0;"><span style="color: #64748b;">'
+            f'VAT (UK, {vat_rate:.0f}%):</span> €{vat_amount:.2f}</p>'
+        )
+        vat_footer_note = ""
+    elif treatment == "eu_consumer":
+        country_label = f" {e_country}" if e_country else ""
+        vat_row = (
+            f'<p style="margin: 5px 0;"><span style="color: #64748b;">'
+            f'VAT ({country_label.strip()}, {vat_rate:.0f}%):</span> €{vat_amount:.2f}</p>'
+        )
+        vat_footer_note = ""
+    elif treatment == "eu_reverse_charge":
+        vat_row = (
+            '<p style="margin: 5px 0;"><span style="color: #64748b;">'
+            'VAT:</span> €0.00 (reverse charge)</p>'
+        )
+        buyer_vat_line = (
+            f'<p style="margin: 0; color: #64748b; font-size: 13px;">Customer VAT No: {e_vat_id}</p>'
+            if e_vat_id else ""
+        )
+        note = esc(str(treatment_note or "Reverse charge — Article 44, Directive 2006/112/EC."))
+        vat_footer_note = (
+            f'{buyer_vat_line}'
+            f'<p style="margin: 10px 0 0 0; padding: 10px; background: #fef3c7; '
+            f'border-left: 3px solid #f59e0b; color: #78350f; font-size: 12px;">{note}</p>'
+        )
+    else:  # non_eu (and any unknown treatment falls through as zero-rated export)
+        vat_row = (
+            '<p style="margin: 5px 0;"><span style="color: #64748b;">'
+            'VAT:</span> N/A (export outside EU/UK)</p>'
+        )
+        note = esc(str(treatment_note or "VAT not charged — supply outside the scope of UK/EU VAT."))
+        vat_footer_note = (
+            f'<p style="margin: 10px 0 0 0; padding: 10px; background: #f1f5f9; '
+            f'border-left: 3px solid #64748b; color: #334155; font-size: 12px;">{note}</p>'
+        )
+
+    # Seller VAT number — mandatory field on HMRC + EU compliant invoices.
+    e_seller_vat = esc(COMPANY_VAT_NUMBER or "")
+    seller_vat_line = (
+        f'<p style="margin: 0; color: #64748b; font-size: 14px;">VAT No: {e_seller_vat}</p>'
+        if e_seller_vat else ""
+    )
+
+    # Bill-to country line (escape; skip if unknown).
+    bill_to_country = (
+        f'<p style="margin: 0; color: #64748b; font-size: 14px;">{e_country}</p>'
+        if e_country else ""
+    )
+
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #4f46e5; color: white; padding: 20px;">
             <h1 style="margin: 0; font-size: 24px;">INVOICE</h1>
-            <p style="margin: 5px 0 0 0; opacity: 0.9;">{invoice['invoice_number']}</p>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">{e_number}</p>
         </div>
-        
+
         <div style="padding: 20px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                 <div>
@@ -6725,18 +7011,20 @@ def generate_invoice_html(invoice: dict) -> str:
                     <p style="margin: 0; color: #64748b; font-size: 14px;">71-75 Shelton Street</p>
                     <p style="margin: 0; color: #64748b; font-size: 14px;">Covent Garden, London</p>
                     <p style="margin: 0; color: #64748b; font-size: 14px;">WC2H 9JQ, United Kingdom</p>
+                    {seller_vat_line}
                 </div>
                 <div style="text-align: right;">
                     <h3 style="color: #64748b; margin: 0 0 5px 0; font-size: 12px;">BILL TO</h3>
-                    <p style="margin: 0; font-weight: bold;">{invoice['billing_name']}</p>
-                    <p style="margin: 0; color: #64748b; font-size: 14px;">{invoice['email']}</p>
+                    <p style="margin: 0; font-weight: bold;">{e_name}</p>
+                    <p style="margin: 0; color: #64748b; font-size: 14px;">{e_email}</p>
+                    {bill_to_country}
                 </div>
             </div>
-            
+
             <div style="margin-bottom: 20px;">
-                <p style="margin: 0; color: #64748b; font-size: 14px;">Invoice Date: {invoice['invoice_date'][:10]}</p>
+                <p style="margin: 0; color: #64748b; font-size: 14px;">Invoice Date: {esc(invoice_date)}</p>
             </div>
-            
+
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <thead>
                     <tr style="background: #f8fafc;">
@@ -6748,22 +7036,24 @@ def generate_invoice_html(invoice: dict) -> str:
                 </thead>
                 <tbody>
                     <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">{invoice['plan_name']}</td>
-                        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">{invoice['user_count']}</td>
-                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">€{invoice['unit_price']:.2f}</td>
-                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">€{invoice['subtotal']:.2f}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">{e_plan}</td>
+                        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">{user_count}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">€{unit_price:.2f}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">€{subtotal:.2f}</td>
                     </tr>
                 </tbody>
             </table>
-            
+
             <div style="text-align: right;">
-                <p style="margin: 5px 0;"><span style="color: #64748b;">Subtotal:</span> €{invoice['subtotal']:.2f}</p>
-                {"<p style='margin: 5px 0;'><span style='color: #64748b;'>Discount (" + invoice['discount_code'] + "):</span> -€" + f"{invoice['discount_amount']:.2f}" + "</p>" if invoice.get('discount_code') else ""}
-                <p style="margin: 5px 0;"><span style="color: #64748b;">VAT ({invoice['vat_rate']}%):</span> €{invoice['vat_amount']:.2f}</p>
-                <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: bold; color: #4f46e5;">Total: €{invoice['total_amount']:.2f}</p>
+                <p style="margin: 5px 0;"><span style="color: #64748b;">Subtotal:</span> €{subtotal:.2f}</p>
+                {discount_row}
+                {vat_row}
+                <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: bold; color: #4f46e5;">Total: €{total_amount:.2f}</p>
             </div>
+
+            {vat_footer_note}
         </div>
-        
+
         <div style="background: #f8fafc; padding: 15px 20px; text-align: center;">
             <p style="margin: 0; color: #64748b; font-size: 12px;">Thank you for your business!</p>
         </div>
