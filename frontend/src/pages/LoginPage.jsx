@@ -29,8 +29,14 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const userData = await login(formData.email, formData.password);
       toast.success('Welcome back!');
+      // FOLLOWUPS #1: send unverified users straight to the interstitial
+      // instead of bouncing them off ProtectedRoute half a beat later.
+      if (userData && userData.email_verified === false) {
+        navigate('/verify-email', { replace: true });
+        return;
+      }
       // Restore checkout intent if present, otherwise honour ProtectedRoute redirect or go to dashboard
       if (localStorage.getItem(CHECKOUT_INTENT_KEY)) {
         navigate('/pricing', { replace: true });
@@ -40,7 +46,19 @@ const LoginPage = () => {
         navigate(from !== '/login' ? from : '/dashboard', { replace: true });
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Invalid email or password');
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail;
+      // FOLLOWUPS #10: the backend returns 429 with a structured detail
+      // payload when rate limits trip. Surface the human-readable message.
+      if (status === 429) {
+        const msg = (typeof detail === 'object' && detail?.message) || 'Too many attempts. Please wait and try again.';
+        toast.error(msg, { duration: 6000 });
+      } else {
+        toast.error(
+          (typeof detail === 'string' ? detail : detail?.message) ||
+            'Invalid email or password'
+        );
+      }
     } finally {
       setLoading(false);
     }

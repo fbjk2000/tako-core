@@ -35,12 +35,112 @@ import ListenersPage from './pages/ListenersPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
 import LegalPage from './pages/LegalPage';
 import DPAPage from './pages/DPAPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
 
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
+
+// ---------- FOLLOWUPS #9: dual-token storage + silent refresh -------------
+// Tokens live in localStorage under these keys; the AuthProvider reads them
+// on mount and the axios interceptors below keep them current. Exported so
+// pages (LoginPage/SignupPage) that receive a token pair from a direct
+// axios call can persist them without going through the context.
+export const ACCESS_TOKEN_KEY = 'token'; // legacy key — kept for compat
+export const REFRESH_TOKEN_KEY = 'refresh_token';
+
+export const saveAuthTokens = ({ access_token, refresh_token, token }) => {
+  const access = access_token || token;
+  if (access) localStorage.setItem(ACCESS_TOKEN_KEY, access);
+  if (refresh_token) localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+};
+
+export const clearAuthTokens = () => {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+// Request interceptor: attach Bearer header on every request to our API.
+// Component-level `headers: { Authorization: ... }` overrides still win
+// because they run after this interceptor in the axios request pipeline.
+axios.interceptors.request.use((config) => {
+  try {
+    const url = config.url || '';
+    const isOurApi = url.startsWith(API) || url.startsWith('/api');
+    if (isOurApi) {
+      const hasAuthHeader = !!(config.headers && (config.headers.Authorization || config.headers.authorization));
+      if (!hasAuthHeader) {
+        const access = localStorage.getItem(ACCESS_TOKEN_KEY);
+        if (access) {
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${access}`;
+        }
+      }
+    }
+  } catch (e) {
+    // never let the interceptor throw
+  }
+  return config;
+});
+
+// Response interceptor: on 401, try a silent refresh exactly once per
+// request, dedupe concurrent refreshes, replay the original call with the
+// new token. On refresh failure, clear tokens and bounce to /login.
+let _refreshInFlight = null;
+const _refreshUrl = `${API}/auth/refresh`;
+const _authPathsNoRefresh = ['/auth/login', '/auth/register', '/auth/refresh'];
+
+const _runRefresh = async () => {
+  const refresh = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refresh) throw new Error('no_refresh_token');
+  const res = await axios.post(_refreshUrl, { refresh_token: refresh }, {
+    // Skip our own interceptor chain for this call — we don't want the
+    // (possibly expired) access token attached, and we don't want another
+    // 401 here to trigger a nested refresh.
+    headers: { 'X-Skip-Auth-Refresh': '1' },
+  });
+  saveAuthTokens(res.data);
+  return res.data.access_token;
+};
+
+axios.interceptors.response.use(
+  (r) => r,
+  async (error) => {
+    const status = error?.response?.status;
+    const original = error?.config || {};
+    const url = original.url || '';
+
+    // Only attempt refresh for 401s on our own API, excluding auth endpoints
+    // themselves, and only once per request (tagged via _retriedRefresh).
+    const isOurApi = url.startsWith(API) || url.startsWith('/api');
+    const isAuthPath = _authPathsNoRefresh.some((p) => url.includes(p));
+    const alreadyTried = !!original._retriedRefresh;
+    const skipFlag = original.headers && original.headers['X-Skip-Auth-Refresh'];
+
+    if (status === 401 && isOurApi && !isAuthPath && !alreadyTried && !skipFlag) {
+      original._retriedRefresh = true;
+      try {
+        if (!_refreshInFlight) {
+          _refreshInFlight = _runRefresh().finally(() => { _refreshInFlight = null; });
+        }
+        const newAccess = await _refreshInFlight;
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${newAccess}`;
+        return axios(original);
+      } catch (e) {
+        clearAuthTokens();
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Capture PWA install prompt
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -119,48 +219,57 @@ export const useAuth = () => {
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [token, setToken] = useState(() => localStorage.getItem(ACCESS_TOKEN_KEY));
 
   const login = async (email, password) => {
     const response = await axios.post(`${API}/auth/login`, { email, password });
-    const { token: newToken, ...userData } = response.data;
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
+    // FOLLOWUPS #9: response now carries { access_token, refresh_token, token, ...userData }.
+    // `token` is kept as an alias for legacy code paths; new code reads
+    // access_token. saveAuthTokens handles both.
+    saveAuthTokens(response.data);
+    const { access_token, refresh_token, token: legacyToken, expires_in, token_type, ...userData } = response.data;
+    setToken(access_token || legacyToken);
     setUser(userData);
     return userData;
   };
 
   const register = async (data) => {
     const response = await axios.post(`${API}/auth/register`, data);
-    const { token: newToken, ...userData } = response.data;
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
+    saveAuthTokens(response.data);
+    const { access_token, refresh_token, token: legacyToken, expires_in, token_type, ...userData } = response.data;
+    setToken(access_token || legacyToken);
     setUser(userData);
     return userData;
   };
 
   const logout = async () => {
     try {
-      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+      const refresh = localStorage.getItem(REFRESH_TOKEN_KEY);
+      // Pass the refresh token so the server can retire it (FOLLOWUPS #9).
+      await axios.post(
+        `${API}/auth/logout`,
+        refresh ? { refresh_token: refresh } : {},
+        { withCredentials: true }
+      );
     } catch (e) {
       console.error('Logout error:', e);
     }
-    localStorage.removeItem('token');
+    clearAuthTokens();
     setToken(null);
     setUser(null);
   };
 
   const checkAuth = async () => {
-    const storedToken = localStorage.getItem('token');
-    
+    const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+
     try {
       if (storedToken) {
-        const response = await axios.get(`${API}/auth/me`, {
-          withCredentials: true,
-          headers: { Authorization: `Bearer ${storedToken}` }
-        });
+        // The request interceptor will attach the Bearer header; if the
+        // access token is expired, the response interceptor will silently
+        // refresh via the stored refresh token and replay this call.
+        const response = await axios.get(`${API}/auth/me`, { withCredentials: true });
         setUser(response.data);
-        setToken(storedToken);
+        setToken(localStorage.getItem(ACCESS_TOKEN_KEY));
         return;
       }
 
@@ -168,8 +277,8 @@ const AuthProvider = ({ children }) => {
       const response = await axios.get(`${API}/auth/me`, { withCredentials: true });
       setUser(response.data);
     } catch (e) {
-      if (storedToken && e.response && e.response.status === 401) {
-        localStorage.removeItem('token');
+      if (e.response && e.response.status === 401) {
+        clearAuthTokens();
         setToken(null);
       }
       setUser(null);
@@ -213,7 +322,11 @@ const AuthCallback = () => {
 
       if (token) {
         try {
-          localStorage.setItem('token', token);
+          // Google OAuth still returns a single long-lived JWT — write it
+          // under the canonical access-token key so the request interceptor
+          // picks it up. The silent-refresh path only kicks in for users
+          // who got the dual-token pair from /auth/login or /auth/register.
+          localStorage.setItem(ACCESS_TOKEN_KEY, token);
           const response = await axios.get(`${API}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -224,7 +337,7 @@ const AuthCallback = () => {
           navigate(safeInternalPath(rawDest, '/dashboard'), { replace: true });
         } catch (error) {
           console.error('Auth callback error:', error);
-          localStorage.removeItem('token');
+          clearAuthTokens();
           navigate('/login', { replace: true });
         }
       } else {
@@ -260,6 +373,13 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // FOLLOWUPS #1: gate on email verification. `email_verified === false`
+  // is the only state that blocks — undefined/true both pass (grandfathered
+  // users have no field; backend returns True for them).
+  if (user.email_verified === false && location.pathname !== '/verify-email') {
+    return <Navigate to="/verify-email" state={{ from: location }} replace />;
   }
 
   return children;
@@ -342,6 +462,7 @@ const AppRouter = () => {
       <Route path="/book/:userId" element={<PublicBookingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route
         path="/subscription/success"
         element={

@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import html as html_mod
+import hashlib
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
@@ -35,7 +36,17 @@ db = client[os.environ['DB_NAME']]
 # JWT Settings
 JWT_SECRET = os.environ.get('JWT_SECRET', 'tako_secret_key')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
+# Legacy long-lived session tokens (FOLLOWUPS #9). Still honoured by
+# decode_jwt_token / get_current_user so pre-refactor sessions keep working
+# until their natural expiry — see "Backward compatibility" in the Prompt 4
+# commit message.
 JWT_EXPIRY_HOURS = int(os.environ.get('JWT_EXPIRY_HOURS', 24))
+# New short-lived access tokens + long-lived refresh tokens. After this
+# deploy, /auth/login and /auth/register return an access_token (15 min) and
+# refresh_token (7 days). The refresh token is a raw secret; only the SHA-256
+# hash is persisted server-side (FOLLOWUPS #9).
+JWT_ACCESS_EXPIRY_MINUTES = int(os.environ.get('JWT_ACCESS_EXPIRY_MINUTES', 15))
+JWT_REFRESH_EXPIRY_DAYS = int(os.environ.get('JWT_REFRESH_EXPIRY_DAYS', 7))
 
 # Resend Email Configuration
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
@@ -901,10 +912,139 @@ def decode_jwt_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-async def get_current_user(
+
+# ---------- FOLLOWUPS #9: short-lived access + rotating refresh tokens ----
+
+def _hash_refresh_token(raw_token: str) -> str:
+    """SHA-256 hex digest. Refresh tokens are high-entropy random secrets, so
+    a plain cryptographic hash is sufficient — we do NOT need bcrypt's slow
+    KDF here. We store only the hash; the raw token lives client-side and
+    never round-trips back to the database."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def _create_access_token(user_id: str, email: str, organization_id: str = None) -> str:
+    """Short-lived (default 15 min) JWT. Same algorithm + secret as the
+    legacy long-lived token, so both decode through the same
+    decode_jwt_token path. Callers distinguish by token_type claim."""
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "organization_id": organization_id,
+        "token_type": "access",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_EXPIRY_MINUTES),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+async def _issue_token_pair(user: dict) -> dict:
+    """Issue a fresh access+refresh pair for `user` and persist the refresh
+    hash. The raw refresh token is returned to the caller exactly once; after
+    that, the server only ever sees the hash. Rotation semantics: each
+    /auth/refresh call deletes the presented hash and issues a new pair."""
+    access_token = _create_access_token(
+        user["user_id"], user["email"], user.get("organization_id")
+    )
+    raw_refresh = secrets.token_urlsafe(48)
+    now = datetime.now(timezone.utc)
+    await db.refresh_tokens.insert_one({
+        "token_hash": _hash_refresh_token(raw_refresh),
+        "user_id": user["user_id"],
+        "created_at": now,
+        "expires_at": now + timedelta(days=JWT_REFRESH_EXPIRY_DAYS),
+    })
+    return {
+        "access_token": access_token,
+        "refresh_token": raw_refresh,
+        "token_type": "Bearer",
+        "expires_in": JWT_ACCESS_EXPIRY_MINUTES * 60,
+    }
+
+
+# ---------- FOLLOWUPS #10: login rate limiting ------------------------------
+
+LOGIN_IP_WINDOW_SECONDS = 15 * 60       # 15 minutes
+LOGIN_IP_MAX_FAILURES = 5
+LOGIN_EMAIL_WINDOW_SECONDS = 60 * 60    # 1 hour
+LOGIN_EMAIL_MAX_FAILURES = 10
+
+
+def _request_ip(request: Request) -> str:
+    """Best-effort client IP. Trusts X-Forwarded-For when present (we sit
+    behind a load balancer in production); falls back to the direct socket
+    address otherwise."""
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        # X-Forwarded-For is a comma-separated list; the left-most entry is
+        # the original client per the usual convention.
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _rate_limit_login_check(request: Request, email: str) -> None:
+    """Raise 429 if recent login failures exceed either the per-IP or
+    per-email threshold. Called BEFORE credential verification so we don't
+    leak which axis tripped the limit."""
+    now = datetime.now(timezone.utc)
+    ip = _request_ip(request)
+    ip_cutoff = now - timedelta(seconds=LOGIN_IP_WINDOW_SECONDS)
+    email_cutoff = now - timedelta(seconds=LOGIN_EMAIL_WINDOW_SECONDS)
+
+    ip_fails = await db.login_attempts.count_documents({
+        "ip": ip,
+        "success": False,
+        "timestamp": {"$gte": ip_cutoff},
+    })
+    if ip_fails >= LOGIN_IP_MAX_FAILURES:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "too_many_attempts_ip",
+                "message": "Too many failed login attempts. Please try again in 15 minutes.",
+                "retry_after_seconds": LOGIN_IP_WINDOW_SECONDS,
+            },
+        )
+
+    email_fails = await db.login_attempts.count_documents({
+        "email": email.lower(),
+        "success": False,
+        "timestamp": {"$gte": email_cutoff},
+    })
+    if email_fails >= LOGIN_EMAIL_MAX_FAILURES:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "too_many_attempts_email",
+                "message": "Too many failed login attempts for this account. Please try again in 1 hour.",
+                "retry_after_seconds": LOGIN_EMAIL_WINDOW_SECONDS,
+            },
+        )
+
+
+async def _record_login_attempt(request: Request, email: str, success: bool) -> None:
+    """Append a row to login_attempts. The collection has a TTL index on
+    timestamp so rows self-destruct after the longer (1h) window."""
+    try:
+        await db.login_attempts.insert_one({
+            "ip": _request_ip(request),
+            "email": email.lower(),
+            "success": bool(success),
+            "timestamp": datetime.now(timezone.utc),
+        })
+    except Exception as e:  # noqa: BLE001
+        # Telemetry; never block auth on this.
+        logger.warning("login_attempts insert failed: %s", e)
+
+
+async def get_current_user_allow_unverified(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
+    """Resolve the authenticated user from either a session cookie or a
+    bearer token. Does NOT enforce email verification — callers that need the
+    verified gate should depend on get_current_user instead. Used by the
+    endpoints an unverified user legitimately needs: /auth/verify-email,
+    /auth/resend-verification, /auth/me, /auth/logout, /auth/refresh."""
     # Check cookie first
     session_token = request.cookies.get("session_token")
     if session_token:
@@ -919,7 +1059,7 @@ async def get_current_user(
                 user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
                 if user:
                     return user
-    
+
     # Check Authorization header
     if credentials:
         token = credentials.credentials
@@ -927,8 +1067,54 @@ async def get_current_user(
         user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
         if user:
             return user
-    
+
     raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+async def _send_verification_email(email: str, name: str, token: str) -> None:
+    """Send the verification link via Resend. Caller is responsible for
+    try/excepting — we raise on failure so /auth/resend-verification can
+    surface a useful error, but /auth/register swallows the exception so a
+    Resend blip doesn't block signup."""
+    if not RESEND_API_KEY:
+        logger.info("RESEND_API_KEY not configured; skipping verification email")
+        return
+    frontend_url = os.environ.get('FRONTEND_URL', '')
+    verify_link = f"{frontend_url}/verify-email?token={token}"
+    safe_name = html_mod.escape(name or "")
+    await asyncio.to_thread(resend.Emails.send, {
+        "from": SENDER_EMAIL,
+        "to": [email.lower()],
+        "subject": "Verify your TAKO account",
+        "html": f"""<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto;">
+            <h2 style="color: #0EA5A0;">Welcome to TAKO{', ' + safe_name if safe_name else ''}!</h2>
+            <p>Confirm your email address to finish setting up your account.</p>
+            <p><a href="{verify_link}" style="background:#0EA5A0;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:bold;">Verify Email</a></p>
+            <p style="color:#666;font-size:14px;">Or paste this link into your browser:<br/><span style="color:#0EA5A0;word-break:break-all;">{verify_link}</span></p>
+            <p style="color:#666;font-size:13px;margin-top:24px;">If you did not create a TAKO account, you can ignore this email.</p>
+        </div>"""
+    })
+
+
+async def get_current_user(
+    user: dict = Depends(get_current_user_allow_unverified),
+) -> dict:
+    """Require authenticated + email-verified (FOLLOWUPS #1).
+
+    Backward compatibility: pre-existing user documents predate the
+    email_verified field. Rather than bulk-update the collection and risk
+    locking out real customers, we treat missing-field as grandfathered. Only
+    explicit `email_verified == False` blocks; this flag is set on new
+    /auth/register writes going forward."""
+    if user.get("email_verified") is False:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "email_not_verified",
+                "message": "Please verify your email address to continue.",
+            },
+        )
+    return user
 
 # Super Admin check helper
 SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "florian@unyted.world")
@@ -1326,6 +1512,12 @@ async def register(user_data: UserCreate, response: Response):
                     {"$inc": {"user_count": 1}}
                 )
     
+    # FOLLOWUPS #1: email verification. New users start unverified and get a
+    # verification link via Resend. get_current_user_allow_unverified lets
+    # them hit /auth/verify-email / /auth/resend-verification / /auth/me /
+    # /auth/logout / /auth/refresh until they click the link; every other
+    # authenticated endpoint 403s via the get_current_user gate.
+    email_verification_token = secrets.token_urlsafe(32)
     user_doc = {
         "user_id": user_id,
         "email": user_data.email,
@@ -1334,11 +1526,30 @@ async def register(user_data: UserCreate, response: Response):
         "organization_id": organization_id,
         "role": user_role,
         "referred_by": user_data.ref_code or None,
+        "email_verified": False,
+        "email_verification_token": email_verification_token,
+        "email_verification_sent_at": now.isoformat(),
         "created_at": now.isoformat()
     }
     await db.users.insert_one(user_doc)
-    
-    token = create_jwt_token(user_id, user_data.email, organization_id)
+
+    # Send the verification email. Non-fatal: signup should not fail because
+    # Resend had a blip — the user can always request a resend from the
+    # /verify-email interstitial.
+    try:
+        await _send_verification_email(
+            email=user_data.email,
+            name=user_data.name,
+            token=email_verification_token,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Verification email send failed for {user_data.email}: {e}")
+
+    tokens = await _issue_token_pair({
+        "user_id": user_id,
+        "email": user_data.email,
+        "organization_id": organization_id,
+    })
     
     # Auto-create lead in super admin's organization for new signups
     try:
@@ -1388,27 +1599,46 @@ async def register(user_data: UserCreate, response: Response):
         "name": user_data.name,
         "organization_id": organization_id,
         "role": user_role,
-        "token": token
+        "email_verified": False,
+        # Legacy single-token key kept for older clients still in the wild.
+        # New clients should read access_token / refresh_token instead.
+        "token": tokens["access_token"],
+        **tokens,
     }
 
 @api_router.post("/auth/login")
-async def login(credentials: UserLogin, response: Response):
+async def login(credentials: UserLogin, request: Request, response: Response):
+    # FOLLOWUPS #10: rate limit BEFORE credential check. Checking after would
+    # leak timing info about which axis tripped the limit and would also
+    # allow an attacker to burn through per-email attempts without the
+    # per-IP limit ever firing.
+    await _rate_limit_login_check(request, credentials.email)
+
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user or not verify_password(credentials.password, user.get("password_hash", "")):
+        await _record_login_attempt(request, credentials.email, success=False)
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    # Track last login
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
-    
-    token = create_jwt_token(user["user_id"], user["email"], user.get("organization_id"))
-    
+
+    # Track last login + clear the failure ledger for this email so the
+    # successful user isn't penalised by someone else's brute force attempts.
+    now = datetime.now(timezone.utc)
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_login": now.isoformat()}})
+    await _record_login_attempt(request, credentials.email, success=True)
+    await db.login_attempts.delete_many({
+        "email": credentials.email.lower(),
+        "success": False,
+    })
+
+    tokens = await _issue_token_pair(user)
     return {
         "user_id": user["user_id"],
         "email": user["email"],
         "name": user["name"],
         "organization_id": user.get("organization_id"),
         "role": user.get("role", "member"),
-        "token": token
+        "email_verified": user.get("email_verified", True),
+        "token": tokens["access_token"],
+        **tokens,
     }
 
 @api_router.post("/auth/forgot-password")
@@ -1452,19 +1682,168 @@ async def forgot_password(email: str):
 
 @api_router.post("/auth/reset-password")
 async def reset_password(token: str, new_password: str):
-    """Reset password using token"""
+    """Reset password using token.
+
+    FOLLOWUPS #8 requested a 24h expiry cap. We already ship a stricter 1h
+    cap (kept — tighter is strictly better for this flow), but the original
+    code forgot to retire expired rows on the expired-400 path, leaving
+    orphan records that the next sweep would keep evaluating. Mark the row
+    `used=True` on expiry too so the collection self-cleans."""
     reset = await db.password_resets.find_one({"token": token, "used": False}, {"_id": 0})
     if not reset:
         raise HTTPException(status_code=400, detail="Invalid or expired reset link")
-    
+
     created = datetime.fromisoformat(reset["created_at"])
     if (datetime.now(timezone.utc) - created).total_seconds() > 3600:
+        await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
         raise HTTPException(status_code=400, detail="Reset link has expired. Please request a new one.")
-    
+
     await db.users.update_one({"user_id": reset["user_id"]}, {"$set": {"password_hash": hash_password(new_password)}})
     await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
-    
+
+    # Invalidate all outstanding refresh tokens for this user on password
+    # change — standard defensive hygiene so a leaked session can't outlive
+    # the credential change.
+    try:
+        await db.refresh_tokens.delete_many({"user_id": reset["user_id"]})
+    except Exception as e:  # noqa: BLE001
+        logger.warning("refresh_tokens cleanup on password reset failed: %s", e)
+
     return {"message": "Password reset successfully. You can now sign in."}
+
+
+# ---------- FOLLOWUPS #1: email verification endpoints ---------------------
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@api_router.post("/auth/verify-email")
+async def verify_email(body: VerifyEmailRequest):
+    """Exchange a single-use verification token for a verified-email state.
+    Anonymous — we look up the user by token rather than by session, so the
+    link works even if the user clicks from a different browser than the
+    one they signed up in."""
+    user = await db.users.find_one(
+        {"email_verification_token": body.token}, {"_id": 0}
+    )
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    if user.get("email_verified"):
+        # Already verified: idempotent success so a double-click doesn't show
+        # a scary error.
+        return {"message": "Email already verified.", "email_verified": True}
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {
+            "$set": {
+                "email_verified": True,
+                "email_verified_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$unset": {"email_verification_token": ""},
+        },
+    )
+    return {"message": "Email verified.", "email_verified": True}
+
+
+RESEND_VERIFICATION_WINDOW_SECONDS = 60 * 60  # 1 hour
+RESEND_VERIFICATION_MAX_PER_WINDOW = 3
+
+
+@api_router.post("/auth/resend-verification")
+async def resend_verification(
+    current_user: dict = Depends(get_current_user_allow_unverified),
+):
+    """Re-send the verification email. Exempt from the email_verified gate
+    (user has no other way to get here). Rate-limited to 3/hour per user so a
+    flapping client can't hammer Resend."""
+    if current_user.get("email_verified"):
+        return {"message": "Email already verified.", "email_verified": True}
+
+    # Rate limit: use email_verification_resends[] timestamps on the user doc.
+    now = datetime.now(timezone.utc)
+    recent_cutoff = now - timedelta(seconds=RESEND_VERIFICATION_WINDOW_SECONDS)
+    resends = current_user.get("email_verification_resends", []) or []
+    recent = [
+        ts for ts in resends
+        if isinstance(ts, str) and datetime.fromisoformat(ts) > recent_cutoff
+    ]
+    if len(recent) >= RESEND_VERIFICATION_MAX_PER_WINDOW:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "resend_rate_limited",
+                "message": "Too many resend attempts. Please wait an hour before trying again.",
+            },
+        )
+
+    # Rotate the token on resend so an old leaked link stops working.
+    new_token = secrets.token_urlsafe(32)
+    recent.append(now.isoformat())
+    await db.users.update_one(
+        {"user_id": current_user["user_id"]},
+        {
+            "$set": {
+                "email_verification_token": new_token,
+                "email_verification_sent_at": now.isoformat(),
+                "email_verification_resends": recent,
+            }
+        },
+    )
+
+    try:
+        await _send_verification_email(
+            email=current_user["email"],
+            name=current_user.get("name", ""),
+            token=new_token,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Verification resend email failed for {current_user['email']}: {e}")
+        raise HTTPException(status_code=502, detail="Could not send verification email right now. Please try again shortly.")
+
+    return {"message": "Verification email sent."}
+
+
+# ---------- FOLLOWUPS #9: refresh-token rotation ---------------------------
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@api_router.post("/auth/refresh")
+async def refresh_tokens(body: RefreshRequest):
+    """Exchange a refresh token for a fresh access+refresh pair. The
+    presented refresh token is retired on success (rotation). Rejects with
+    401 on any of: unknown token, expired token, or user deleted."""
+    token_hash = _hash_refresh_token(body.refresh_token)
+    record = await db.refresh_tokens.find_one({"token_hash": token_hash}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    expires_at = record.get("expires_at")
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if not expires_at or expires_at < datetime.now(timezone.utc):
+        await db.refresh_tokens.delete_one({"token_hash": token_hash})
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+
+    user = await db.users.find_one({"user_id": record["user_id"]}, {"_id": 0})
+    if not user:
+        await db.refresh_tokens.delete_one({"token_hash": token_hash})
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    # Rotate: retire the presented token, issue a new pair.
+    await db.refresh_tokens.delete_one({"token_hash": token_hash})
+    new_tokens = await _issue_token_pair(user)
+    return {
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "organization_id": user.get("organization_id"),
+        "email_verified": user.get("email_verified", True),
+        **new_tokens,
+    }
 
 
 @api_router.get("/auth/google/login")
@@ -1616,7 +1995,9 @@ async def google_login_callback(code: str, state: str, response: Response):
     return redirect
 
 @api_router.get("/auth/me")
-async def get_me(current_user: dict = Depends(get_current_user)):
+async def get_me(current_user: dict = Depends(get_current_user_allow_unverified)):
+    # FOLLOWUPS #1: exempt from the email_verified gate so the VerifyEmailPage
+    # can know who's signed in and pre-fill the resend button.
     # Deletion fields are surfaced so the authenticated layout can show the
     # "Account deletion scheduled for X" warning banner + cancel button.
     # They're None/absent for the overwhelming majority of sessions; the
@@ -1629,15 +2010,32 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "organization_id": current_user.get("organization_id"),
         "role": current_user.get("role", "member"),
         "timezone": current_user.get("timezone"),
+        # Grandfathered users (pre-FOLLOWUPS #1) have no email_verified
+        # field; treat missing as verified so their ProtectedRoute gate
+        # doesn't flip them to /verify-email on next render.
+        "email_verified": current_user.get("email_verified", True),
         "deletion_requested_at": current_user.get("deletion_requested_at"),
         "deletion_scheduled_for": current_user.get("deletion_scheduled_for"),
     }
 
 @api_router.post("/auth/logout")
-async def logout(request: Request, response: Response):
+async def logout(
+    request: Request,
+    response: Response,
+    refresh_token: Optional[str] = Body(None, embed=True),
+):
+    # FOLLOWUPS #9: retire the presented refresh token so revoking a session
+    # actually invalidates the pair. Cookie sessions are also cleared.
     session_token = request.cookies.get("session_token")
     if session_token:
         await db.user_sessions.delete_one({"session_token": session_token})
+    if refresh_token:
+        try:
+            await db.refresh_tokens.delete_one({
+                "token_hash": _hash_refresh_token(refresh_token),
+            })
+        except Exception as e:  # noqa: BLE001
+            logger.warning("refresh_tokens delete on logout failed: %s", e)
     response.delete_cookie("session_token", path="/")
     return {"message": "Logged out successfully"}
 
@@ -10100,6 +10498,30 @@ async def _tako_startup() -> None:
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not create processed_webhook_events indexes: %s", e)
+
+        # Auth hygiene (FOLLOWUPS #9 + #10).
+        # refresh_tokens: unique hash, TTL on expires_at so expired rows are
+        # reaped without a background job (expireAfterSeconds=0 means the
+        # field itself holds the absolute expiry timestamp).
+        # login_attempts: TTL on timestamp covering the longer (1h) window
+        # so the ledger self-cleans; counts on top of fresh rows do the
+        # rate-limit decision.
+        try:
+            await db.refresh_tokens.create_index("token_hash", unique=True)
+            await db.refresh_tokens.create_index("expires_at", expireAfterSeconds=0)
+            await db.refresh_tokens.create_index("user_id")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not create refresh_tokens indexes: %s", e)
+        try:
+            # Keep login_attempts rows for a bit over the longer (email)
+            # window so the count query sees everything it needs to.
+            await db.login_attempts.create_index(
+                "timestamp", expireAfterSeconds=LOGIN_EMAIL_WINDOW_SECONDS + 300
+            )
+            await db.login_attempts.create_index([("email", 1), ("timestamp", -1)])
+            await db.login_attempts.create_index([("ip", 1), ("timestamp", -1)])
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not create login_attempts indexes: %s", e)
 
         # Google Calendar: indexes
         try:

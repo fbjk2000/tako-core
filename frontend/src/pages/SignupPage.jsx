@@ -94,8 +94,19 @@ const SignupPage = () => {
       const refCode = searchParams.get('ref');
       if (refCode) registerData.ref_code = refCode;
       
-      await register(registerData);
-      toast.success('Account created successfully!');
+      const userData = await register(registerData);
+      toast.success('Account created — check your email to verify.');
+      // FOLLOWUPS #1: new users land on /verify-email with the "check your
+      // inbox" interstitial. The ProtectedRoute gate would bounce them
+      // there anyway the moment they tried /dashboard or /pricing, so
+      // route there directly and skip the extra redirect.
+      // The one exception: invite-flow signups land on verify-email too —
+      // the org membership is already recorded; they just need to confirm
+      // their email before the rest of the app unlocks.
+      if (userData && userData.email_verified === false) {
+        navigate('/verify-email', { replace: true });
+        return;
+      }
       // Restore checkout intent if present, otherwise honour ProtectedRoute redirect or go to dashboard
       if (localStorage.getItem(CHECKOUT_INTENT_KEY)) {
         navigate('/pricing', { replace: true });
