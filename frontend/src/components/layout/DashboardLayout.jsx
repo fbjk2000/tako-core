@@ -6,8 +6,10 @@ import { useAuth, API } from '../../App';
 import { useTokenUsage } from '../../hooks/useTokenUsage';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
+/* DEMO_BEGIN */
 import DemoBanner from '../DemoBanner';
 import DemoExpiredOverlay from '../DemoExpiredOverlay';
+/* DEMO_END */
 import {
   LayoutDashboard,
   Users,
@@ -338,6 +340,7 @@ const DashboardLayout = ({ children }) => {
                 <p className="font-medium text-slate-900 truncate" data-testid="sidebar-user-name">
                   {user?.name || l.user}
                 </p>
+                {/* DEMO_BEGIN */}
                 {/* Demo badge — surfaced here (next to the user/org label in
                     the sidebar footer) rather than next to each nav item so
                     we get a single, unobtrusive indicator. Platform-only. */}
@@ -350,6 +353,7 @@ const DashboardLayout = ({ children }) => {
                     DEMO
                   </span>
                 )}
+                {/* DEMO_END */}
               </div>
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>
@@ -368,10 +372,12 @@ const DashboardLayout = ({ children }) => {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+        {/* DEMO_BEGIN */}
         {/* Demo banner (Prompt 9) — shown on active demos above the deletion
             banner so both can coexist on rare edge-case accounts. Renders
             null when the user isn't on a demo. */}
         <DemoBanner user={user} />
+        {/* DEMO_END */}
         {deletionPending && (
           <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 max-w-6xl mx-auto">
@@ -395,11 +401,13 @@ const DashboardLayout = ({ children }) => {
         </div>
       </main>
 
+      {/* DEMO_BEGIN */}
       {/* Expired-demo soft lock (Prompt 9). Fixed-position overlay — lives
           outside <main> so it's anchored to the viewport rather than the
           scrollable content area. Renders null when demo_status !== 'expired'
           or the route is on its own allow-list (/pricing, /support, etc.). */}
       <DemoExpiredOverlay user={user} />
+      {/* DEMO_END */}
     </div>
   );
 };

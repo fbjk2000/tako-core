@@ -109,11 +109,12 @@ rsync -a \
 
 # ---------------------------------------------------------------------------
 # 2. Surgical rewrites on the copy: strip UNYT/crypto, platform-only pages,
-#    super_admin UI, and clean .env.example. Done in Python because the edits
-#    need to understand line boundaries and route blocks, which sed can't do
-#    robustly across a growing tree of React files.
+#    demo system (Prompt 9), super_admin UI, and clean .env.example. Done in
+#    Python because the edits need to understand line boundaries and
+#    route blocks, which sed can't do robustly across a growing tree of
+#    React files.
 # ---------------------------------------------------------------------------
-log "stripping crypto/UNYT + platform-only pages + super_admin UI…"
+log "stripping crypto/UNYT + platform-only pages + demo system + super_admin UI…"
 STAGE_DIR="${STAGE_DIR}" VERSION="${VERSION}" REPO_ROOT="${REPO_ROOT}" python3 - <<'PYEOF'
 import os
 import re
@@ -123,19 +124,74 @@ from pathlib import Path
 stage = Path(os.environ["STAGE_DIR"])
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2a. Frontend pages that should not ship to customers.
+# 2a. Files that should not ship to customers.
+#
+#     - LandingPage / PricingPage / PartnerDashboardPage / DownloadPage are
+#       tako.software platform pages.
+#     - demo_seeder.py / DemoBanner.jsx / DemoExpiredOverlay.jsx are the
+#       self-serve demo system (Prompt 9), platform-only.
 # ─────────────────────────────────────────────────────────────────────────────
 PLATFORM_ONLY_PAGES = [
     "frontend/src/pages/LandingPage.jsx",
     "frontend/src/pages/PricingPage.jsx",
     "frontend/src/pages/PartnerDashboardPage.jsx",
     "frontend/src/pages/DownloadPage.jsx",  # platform-only download page
+    # Demo system (Prompt 9) — wholly platform-only.
+    "backend/demo_seeder.py",
+    "frontend/src/components/DemoBanner.jsx",
+    "frontend/src/components/DemoExpiredOverlay.jsx",
 ]
 for p in PLATFORM_ONLY_PAGES:
     path = stage / p
     if path.exists():
         path.unlink()
         print(f"  removed {p}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helper: strip blocks wrapped in DEMO_BEGIN / DEMO_END sentinels.
+#
+# Works for Python files (# DEMO_BEGIN / # DEMO_END) and JSX files where the
+# markers appear as /* DEMO_BEGIN */ or {/* DEMO_BEGIN */}. The regex is
+# permissive about the surrounding comment syntax so one helper handles
+# every language we ship.
+# ─────────────────────────────────────────────────────────────────────────────
+_SENTINEL_RE = re.compile(
+    r"""
+    [\ \t]*                 # leading indent
+    (?:\#|//|\{?/\*)        # # or // or {/* or /*
+    \s*DEMO_BEGIN\b         # marker
+    [^\n]*\n                # accept arbitrary trailing text on the marker line
+    .*?                     # body (non-greedy)
+    [\ \t]*
+    (?:\#|//|\{?/\*)
+    \s*DEMO_END\b
+    [^\n]*\n
+    """,
+    re.DOTALL | re.VERBOSE,
+)
+
+def strip_demo_sentinels(text: str) -> tuple[str, int]:
+    new_text, n = _SENTINEL_RE.subn("", text)
+    return new_text, n
+
+# Apply the sentinel stripper to every file that has DEMO_BEGIN/DEMO_END
+# markers embedded inline (i.e. where the demo code is interleaved with
+# code we DO want to ship). Files that are wholly demo-only are deleted in
+# 2a above.
+SENTINEL_TARGETS = [
+    "backend/server.py",
+    "frontend/src/pages/SetupOrgPage.jsx",
+    "frontend/src/components/layout/DashboardLayout.jsx",
+]
+for relpath in SENTINEL_TARGETS:
+    path = stage / relpath
+    if path.exists():
+        text = path.read_text()
+        new_text, n = strip_demo_sentinels(text)
+        if n:
+            path.write_text(new_text)
+            print(f"  stripped {n} DEMO_BEGIN/END block(s) from {relpath}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2b. Rewrite frontend/src/App.js:
@@ -294,17 +350,133 @@ if server_py.exists():
         server_py.write_text("".join(out))
         print("  stripped UNYT constants + /checkout/launch-edition/unyt endpoints from backend/server.py")
 
-    # Placeholder so anyone grepping the distribution finds a clear note
-    # rather than just silence. Mirrors the pattern used for other stripped
-    # platform features (e.g. Sentry soft-dep, referral partner code).
-    unyt_stub = stage / "backend/unyt_integration.py"
-    unyt_stub.write_text(
-        '"""UNYT / crypto payment integration — platform-only.\n\n'
-        "Crypto payment integration is available on the TAKO platform\n"
-        "(tako.software) but is not included in the self-hosted package.\n"
-        '"""\n'
-    )
-    print("  wrote backend/unyt_integration.py placeholder")
+    # Intentionally no placeholder stub — Prompt 10 requires that the string
+    # "unyt" does not appear in any file of the distribution. A placeholder
+    # file/module name containing the word would trip the verification grep.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2d-bis. UNYT/crypto residue scrub.
+#
+# After the wholesale strips above there are still scattered references to
+# the old brand — enum alternatives in comments, internal-domain allow-lists
+# keyed on "unyted.world", hardcoded super-admin email checks in JSX, the
+# MetaMask paragraph in the Legal page, and locale strings for UNYT licence
+# types. Scrub them surgically so the verification grep finds nothing.
+# ─────────────────────────────────────────────────────────────────────────────
+RESIDUE_PATCHES = {
+    "backend/server.py": [
+        # Default for SUPER_ADMIN_EMAIL must not carry the old personal email.
+        (
+            r'SUPER_ADMIN_EMAIL = os\.environ\.get\("SUPER_ADMIN_EMAIL", "florian@unyted\.world"\)',
+            'SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")',
+        ),
+        # Drop internal-domain / email entries referring to the old brand.
+        # Conservative: match the quoted entry + optional trailing comma + any
+        # trailing whitespace on that line. Leaves the surrounding list intact.
+        (r'\s*"unyted\.world",?', ""),
+        (r'\s*"unyted\.chat",?', ""),
+        (r'\s*"florian@unyted\.world",?', ""),
+        # Enum / payment-method comments.
+        (r'"stripe" \| "unyt"', '"stripe"'),
+        (r' \| "unyt"', ""),
+        # Rename surviving ReferralSale field so the word "unyt" is gone.
+        (r"\bunyt_tx_hash\b", "external_tx_hash"),
+        # Stray docstring / comment references that mention the old brand.
+        (r" / UNYT confirm", ""),
+        (r"Fintery, Unyted, and any other TAKO client org",
+         "any TAKO client organisation"),
+        # Demo-system residue that lives inline (not wrapped in sentinels).
+        # The /auth/me-chain projection fetches demo fields on the platform
+        # build; customers don't have them, so reduce to deleted_at only.
+        (
+            r'        # Projection: deleted_at always, plus the demo fields on platform builds\n'
+            r'        # — the stripper replaces this call with a deleted_at-only version\.\n',
+            "",
+        ),
+        (
+            r'\{"_id": 0, "deleted_at": 1, "is_demo": 1, "demo_status": 1, "demo_expires_at": 1\}',
+            '{"_id": 0, "deleted_at": 1}',
+        ),
+        # Docstring paragraph that describes the demo-expiry transition.
+        (
+            r"\n    Also transitions active demo orgs to ``expired`` once their TTL passes\n"
+            r"    \(Prompt 9\)\. We don't block expired demos here — the dedicated\n"
+            r"    ``demo_write_block_middleware`` decides which methods/paths get locked\n"
+            r"    out — but we flip the status synchronously so every subsequent read\n"
+            r"    \(including /auth/me in the very same request\) sees the truth\.\n",
+            "",
+        ),
+    ],
+    "frontend/src/pages/SetupOrgPage.jsx": [
+        # Trim the module docstring so it no longer documents the stripped
+        # demo path.
+        (
+            r" \*   - \"Try TAKO free for 14 days\" → POST /api/demo/create"
+            r"        \(Prompt 9\)\n",
+            "",
+        ),
+        (
+            r" \* The demo option is the most visually inviting — that's the default path\n"
+            r" \* we want prospects to take on the tako\.software platform\. It's stripped\n"
+            r" \* from the customer distribution by scripts/build-distribution\.sh\.\n"
+            r" \*\n",
+            "",
+        ),
+        # useState comment no longer needs the 'demo' alternative.
+        (
+            r"// 'demo' \| 'create' \| 'invite' \| null",
+            "// 'create' | 'invite' | null",
+        ),
+    ],
+    "frontend/src/components/layout/DashboardLayout.jsx": [
+        (r" \|\| user\?\.email === 'florian@unyted\.world'", ""),
+    ],
+    "frontend/src/pages/ChatPage.jsx": [
+        (r" \|\| user\?\.email === 'florian@unyted\.world'", ""),
+    ],
+    "frontend/src/pages/AdminPage.jsx": [
+        (r" \|\| user\?\.email === 'florian@unyted\.world'", ""),
+        # The delete-user guard — replace the email-compare with `true` so
+        # any user row still gets the delete button.
+        (r"u\.email !== 'florian@unyted\.world'", "true"),
+        # Locale-key mapping entry for UNYT licence type.
+        (r"^\s*unyt:\s*'admin\.licenceUnyt',\n", ""),
+    ],
+    "frontend/src/pages/SettingsPage.jsx": [
+        (r"^\s*unyt:\s*'settings\.licenceTypeUnyt',\n", ""),
+        # 'unyted.world' domain in the Stripe-visibility whitelist.
+        (r"^\s*'unyted\.world',\n", ""),
+    ],
+    "frontend/src/pages/LegalPage.jsx": [
+        # Entire <p>UNYT token payments…</p> line.
+        (
+            r"^\s*<p>UNYT token payments are processed via MetaMask or UNYT\.shop"
+            r" and are final once confirmed on-chain\.</p>\n",
+            "",
+        ),
+    ],
+    "frontend/src/locales/en.json": [
+        (r'^\s*"licenceTypeUnyt":[^\n]*\n', ""),
+        (r'^\s*"licenceUnyt":[^\n]*\n', ""),
+    ],
+    "frontend/src/locales/de.json": [
+        (r'^\s*"licenceTypeUnyt":[^\n]*\n', ""),
+        (r'^\s*"licenceUnyt":[^\n]*\n', ""),
+    ],
+}
+
+for relpath, patches in RESIDUE_PATCHES.items():
+    path = stage / relpath
+    if not path.exists():
+        continue
+    text = path.read_text()
+    total = 0
+    for pat, repl in patches:
+        text, n = re.subn(pat, repl, text, flags=re.MULTILINE)
+        total += n
+    if total:
+        path.write_text(text)
+        print(f"  scrubbed {total} UNYT residue match(es) in {relpath}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2e. Frontend package.json — drop ethers; PricingPage is gone so the dep

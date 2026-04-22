@@ -7,7 +7,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { Building, Ticket, Sparkles, Loader2 } from 'lucide-react';
+/* DEMO_BEGIN */
+import { Sparkles } from 'lucide-react';
+/* DEMO_END */
+import { Building, Ticket, Loader2 } from 'lucide-react';
 
 /**
  * Org-setup interstitial — FOLLOWUPS #14.
@@ -36,6 +39,7 @@ const SetupOrgPage = () => {
   const [inviteCode, setInviteCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  /* DEMO_BEGIN */
   const handleStartDemo = async () => {
     if (submitting) return;
     setSubmitting(true);
@@ -53,6 +57,7 @@ const SetupOrgPage = () => {
       setSubmitting(false);
     }
   };
+  /* DEMO_END */
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -110,6 +115,7 @@ const SetupOrgPage = () => {
         <CardContent>
           {mode === null && (
             <div className="space-y-3">
+              {/* DEMO_BEGIN */}
               {/* Demo — visually the primary option. Gradient border + sparkle
                   icon to nudge prospects toward the self-serve path. */}
               <button
@@ -144,6 +150,7 @@ const SetupOrgPage = () => {
                   </span>
                 </div>
               </div>
+              {/* DEMO_END */}
 
               <button
                 type="button"

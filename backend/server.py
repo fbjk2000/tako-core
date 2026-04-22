@@ -1084,6 +1084,8 @@ async def _assert_org_not_deleted(user: dict) -> None:
     org_id = user.get("organization_id")
     if not org_id:
         return
+    # Projection: deleted_at always, plus the demo fields on platform builds
+    # — the stripper replaces this call with a deleted_at-only version.
     org = await db.organizations.find_one(
         {"organization_id": org_id},
         {"_id": 0, "deleted_at": 1, "is_demo": 1, "demo_status": 1, "demo_expires_at": 1},
@@ -1091,6 +1093,7 @@ async def _assert_org_not_deleted(user: dict) -> None:
     if org is None or org.get("deleted_at"):
         raise HTTPException(status_code=401, detail="Organization has been deleted")
 
+    # DEMO_BEGIN
     # Demo expiry transition (Prompt 9) — flip active→expired when the TTL
     # passes. Intentionally *not* raising: the write-block middleware is the
     # single enforcement point. Keeping the transition here ensures /auth/me
@@ -1111,6 +1114,7 @@ async def _assert_org_not_deleted(user: dict) -> None:
                     {"organization_id": org_id},
                     {"$set": {"demo_status": "expired"}},
                 )
+    # DEMO_END
 
 
 async def get_current_user_allow_unverified(
@@ -2095,6 +2099,7 @@ async def get_me(current_user: dict = Depends(get_current_user_allow_unverified)
     # They're None/absent for the overwhelming majority of sessions; the
     # frontend only renders the banner when `deletion_scheduled_for` is set.
     #
+    # DEMO_BEGIN
     # Prompt 9: surface is_demo / demo_status / demo_expires_at so the layout
     # can render the demo banner (active) or soft-lock overlay (expired)
     # without a second round-trip. For non-demo orgs and users without an org
@@ -2115,6 +2120,7 @@ async def get_me(current_user: dict = Depends(get_current_user_allow_unverified)
             demo_status = org.get("demo_status")
             demo_expires_at = org.get("demo_expires_at")
             demo_created_at = org.get("demo_created_at")
+    # DEMO_END
 
     return {
         "user_id": current_user["user_id"],
@@ -2130,11 +2136,12 @@ async def get_me(current_user: dict = Depends(get_current_user_allow_unverified)
         "email_verified": current_user.get("email_verified", True),
         "deletion_requested_at": current_user.get("deletion_requested_at"),
         "deletion_scheduled_for": current_user.get("deletion_scheduled_for"),
-        # Demo system fields (Prompt 9, platform-only).
+        # DEMO_BEGIN — demo system fields (Prompt 9, platform-only).
         "is_demo": is_demo,
         "demo_status": demo_status,
         "demo_expires_at": demo_expires_at,
         "demo_created_at": demo_created_at,
+        # DEMO_END
     }
 
 @api_router.post("/auth/logout")
@@ -8009,6 +8016,7 @@ async def _send_license_welcome_email(
         logger.warning(f"[welcome] send to {recipient_email} failed: {exc}")
 
 
+# DEMO_BEGIN
 # ============================================================================
 # SELF-SERVE DEMO SYSTEM (Prompt 9, platform-only)
 # ----------------------------------------------------------------------------
@@ -8621,6 +8629,7 @@ async def check_demo_expirations(db_handle) -> Dict[str, int]:
     if warned or expired:
         logger.info("[demo-check] warned=%d expired=%d", warned, expired)
     return {"warned": warned, "expired": expired}
+# DEMO_END
 
 
 @api_router.post("/webhook/stripe")
@@ -8754,6 +8763,7 @@ async def stripe_webhook(request: Request):
                     referred_by=metadata.get("referral_code") or txn.get("referral_code"),
                 )
 
+                # DEMO_BEGIN
                 # Demo → paid conversion (Prompt 9, platform-only). If the
                 # paying org was in a 14-day demo, flip demo_status so the
                 # banner + soft-lock overlay disappear on next /auth/me.
@@ -8781,6 +8791,7 @@ async def stripe_webhook(request: Request):
                     logger.warning(
                         f"Demo→paid conversion flag update failed for session {session_id}: {exc}"
                     )
+                # DEMO_END
 
                 # Credit partner referral commission (idempotent on session id).
                 try:
@@ -11891,6 +11902,7 @@ async def _tako_startup() -> None:
         )
         logger.info("Google Calendar sync job scheduled (every 2 minutes)")
 
+        # DEMO_BEGIN
         # Demo expiry housekeeping (Prompt 9, platform-only). Runs once at
         # startup for immediate cleanup — SHOULD ALSO be wired as a daily
         # cron so warnings and expirations land on time between restarts.
@@ -11904,6 +11916,7 @@ async def _tako_startup() -> None:
             await check_demo_expirations(db)
         except Exception as e:  # noqa: BLE001
             logger.warning("check_demo_expirations at startup failed: %s", e)
+        # DEMO_END
     except Exception as e:  # noqa: BLE001
         logger.exception("Startup hook failed: %s", e)
 
