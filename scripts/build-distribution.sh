@@ -140,6 +140,9 @@ PLATFORM_ONLY_PAGES = [
     "backend/demo_seeder.py",
     "frontend/src/components/DemoBanner.jsx",
     "frontend/src/components/DemoExpiredOverlay.jsx",
+    # Release/changelog page (Prompt 11) — backs the tako.software/changelog
+    # page; customer instances don't host a public changelog.
+    "frontend/src/pages/ChangelogPage.jsx",
 ]
 for p in PLATFORM_ONLY_PAGES:
     path = stage / p
@@ -156,31 +159,44 @@ for p in PLATFORM_ONLY_PAGES:
 # permissive about the surrounding comment syntax so one helper handles
 # every language we ship.
 # ─────────────────────────────────────────────────────────────────────────────
+#
+# Two marker families are supported:
+#   DEMO_BEGIN / DEMO_END       — self-serve demo system (Prompt 9).
+#   PLATFORM_BEGIN / PLATFORM_END — miscellaneous platform-only code
+#                                   (releases/changelog admin endpoints etc.)
+# Both are matched by the same regex using a named backreference, so new
+# platform-only blocks only need the matching BEGIN/END pair to be stripped.
 _SENTINEL_RE = re.compile(
     r"""
     [\ \t]*                 # leading indent
     (?:\#|//|\{?/\*)        # # or // or {/* or /*
-    \s*DEMO_BEGIN\b         # marker
+    \s*(?P<kind>DEMO|PLATFORM)_BEGIN\b
     [^\n]*\n                # accept arbitrary trailing text on the marker line
     .*?                     # body (non-greedy)
     [\ \t]*
     (?:\#|//|\{?/\*)
-    \s*DEMO_END\b
+    \s*(?P=kind)_END\b
     [^\n]*\n
     """,
     re.DOTALL | re.VERBOSE,
 )
 
 def strip_demo_sentinels(text: str) -> tuple[str, int]:
+    """Strip every BEGIN/END sentinel block from the given text.
+
+    Returns (new_text, count). The function name is kept for backward
+    compatibility — it now also handles PLATFORM_BEGIN/END blocks.
+    """
     new_text, n = _SENTINEL_RE.subn("", text)
     return new_text, n
 
-# Apply the sentinel stripper to every file that has DEMO_BEGIN/DEMO_END
-# markers embedded inline (i.e. where the demo code is interleaved with
-# code we DO want to ship). Files that are wholly demo-only are deleted in
-# 2a above.
+# Apply the sentinel stripper to every file that has BEGIN/END markers
+# embedded inline (i.e. where the platform-only code is interleaved with
+# code we DO want to ship). Files that are wholly platform-only are deleted
+# in 2a above.
 SENTINEL_TARGETS = [
     "backend/server.py",
+    "frontend/src/App.js",
     "frontend/src/pages/SetupOrgPage.jsx",
     "frontend/src/components/layout/DashboardLayout.jsx",
 ]
@@ -603,6 +619,15 @@ for d in ["exports", "uploads", "database-backup", "patches", "test_reports", "m
 PYEOF
 
 # ---------------------------------------------------------------------------
+# 2k. Drop a plain-text VERSION file at the stage root. The customer instance
+#     reads this file at startup to know its own version — the update
+#     checker calls `tako.software/api/version/check?current=<version>` with
+#     whatever is on disk here.
+# ---------------------------------------------------------------------------
+printf '%s\n' "${VERSION}" > "${STAGE_DIR}/VERSION"
+log "wrote VERSION file inside distribution (${VERSION})"
+
+# ---------------------------------------------------------------------------
 # 3. Build frontend production bundle inside the stage dir.
 #    Keeps both the source and the built output so customers can modify +
 #    rebuild, but have a ready-to-serve build out of the box.
@@ -646,8 +671,35 @@ printf '%s  %s\n' "${HASH}" "$(basename "${TARBALL}")" > "${HASH_FILE}"
 printf '%s\n' "${VERSION}" > "${VERSION_FILE}"
 
 SIZE="$(wc -c < "${TARBALL}" | tr -d ' ')"
+
+# ---------------------------------------------------------------------------
+# 5. Write dist/manifest.json — the machine-readable release manifest that
+#    the `/api/version/latest` endpoint serves to customer instances. The
+#    GitHub release workflow also uploads this file alongside the tarball
+#    so out-of-band checks (e.g. a static changelog page) can read it.
+# ---------------------------------------------------------------------------
+MANIFEST_FILE="${DIST_DIR}/manifest.json"
+BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# min_maintenance_date defaults to the build date — customers with
+# maintenance active through (or past) this date can install this version.
+# The platform admin can edit manifest.json later if a later cut-off is
+# needed for a particular release.
+MIN_MAINT_DATE="$(date -u +%Y-%m-%d)"
+
+cat > "${MANIFEST_FILE}" <<JSON
+{
+  "version": "${VERSION}",
+  "sha256": "${HASH}",
+  "filename": "$(basename "${TARBALL}")",
+  "size_bytes": ${SIZE},
+  "built_at": "${BUILT_AT}",
+  "min_maintenance_date": "${MIN_MAINT_DATE}"
+}
+JSON
+
 log "done."
-log "  tarball: ${TARBALL}"
-log "  size:    ${SIZE} bytes"
-log "  sha256:  ${HASH}"
-log "  version: ${VERSION}"
+log "  tarball:  ${TARBALL}"
+log "  size:     ${SIZE} bytes"
+log "  sha256:   ${HASH}"
+log "  version:  ${VERSION}"
+log "  manifest: ${MANIFEST_FILE}"

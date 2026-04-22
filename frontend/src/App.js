@@ -39,6 +39,9 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import SetupOrgPage from './pages/SetupOrgPage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
 import DownloadPage from './pages/DownloadPage';
+/* PLATFORM_BEGIN */
+import ChangelogPage from './pages/ChangelogPage';
+/* PLATFORM_END */
 
 import './App.css';
 
@@ -754,6 +757,11 @@ const AppRouter = () => {
       <Route path="/privacy" element={<LegalPage />} />
       <Route path="/terms" element={<LegalPage />} />
       <Route path="/legal/dpa" element={<DPAPage />} />
+      {/* PLATFORM_BEGIN */}
+      {/* Public changelog — tako.software/changelog. Stripped from the
+          self-hosted distribution (customer instances don't host a changelog). */}
+      <Route path="/changelog" element={<ChangelogPage />} />
+      {/* PLATFORM_END */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

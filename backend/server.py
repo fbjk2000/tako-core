@@ -7955,6 +7955,366 @@ async def download_license_package(token: str, http_request: Request):
     )
 
 
+# ============================================================================
+# VERSION / RELEASE / UPDATE-CHECK ENDPOINTS (Prompt 11)
+# ----------------------------------------------------------------------------
+#   - /api/version/latest, /api/version/check  — public. Read
+#     `DISTRIBUTION_DIR/manifest.json` (written by the build script). On the
+#     customer's instance this directory is typically empty, so these return
+#     404 — harmless. On the platform they serve the current release.
+#   - /api/system/update-check                 — kept in the distribution.
+#     Runs on the customer's instance, reads the local VERSION file, calls
+#     out to the platform's /version/check, correlates with maintenance,
+#     caches the result per-org for 24h.
+# PLATFORM_BEGIN
+#   - /api/releases                            — platform-only, public.
+#     Powers the tako.software/changelog page.
+#   - /api/admin/releases/notify               — platform-only (super_admin).
+#     Records a release and emails active-maintenance customers.
+# PLATFORM_END
+# ============================================================================
+
+
+def _read_manifest_json() -> Optional[Dict[str, Any]]:
+    """Load DISTRIBUTION_DIR/manifest.json (written by build-distribution.sh).
+    Returns None on any error so callers can 404 cleanly."""
+    try:
+        manifest_path = DISTRIBUTION_DIR / "manifest.json"
+        if not manifest_path.is_file():
+            return None
+        data = json.loads(manifest_path.read_text())
+        if not data.get("version"):
+            return None
+        return data
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"_read_manifest_json failed: {exc}")
+        return None
+
+
+def _cmp_semver(a: str, b: str) -> int:
+    """Compare two dotted numeric version strings (e.g. 2026.04.22).
+
+    Returns <0, 0, >0 for a<b, a==b, a>b. Falls back to string compare if
+    either side isn't purely dotted integers — keeps the endpoint safe for
+    unexpected input from the customer instance.
+    """
+    try:
+        pa = [int(x) for x in a.split(".")]
+        pb = [int(x) for x in b.split(".")]
+        for i in range(max(len(pa), len(pb))):
+            xa = pa[i] if i < len(pa) else 0
+            xb = pb[i] if i < len(pb) else 0
+            if xa != xb:
+                return xa - xb
+        return 0
+    except Exception:
+        return (a > b) - (a < b)
+
+
+@api_router.get("/version/latest")
+async def get_version_latest():
+    """Machine-readable manifest for the latest packaged build. Public.
+
+    Returns 404 if the platform hasn't staged a build yet. Fields beyond
+    what's in the on-disk manifest (download_url, changelog_url) are
+    platform-controlled, not per-build.
+    """
+    manifest = _read_manifest_json()
+    if not manifest:
+        raise HTTPException(status_code=404, detail="No distribution available")
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/") or "https://tako.software"
+    built_at = manifest.get("built_at", "")
+    released = built_at.split("T", 1)[0] if built_at else manifest.get("min_maintenance_date", "")
+    return {
+        "version": manifest["version"],
+        "sha256": manifest.get("sha256", ""),
+        "released": released,
+        "size_bytes": manifest.get("size_bytes", 0),
+        "changelog_url": f"{frontend_url}/changelog",
+        "download_url": f"{frontend_url}/download",
+        "min_maintenance_date": manifest.get("min_maintenance_date"),
+    }
+
+
+@api_router.get("/version/check")
+async def get_version_check(current: str):
+    """Compare ``current`` against the latest packaged build. Public.
+
+    Called by customer instances' update-checker — that path correlates the
+    result with its own maintenance status before surfacing anything to the
+    admin UI.
+    """
+    manifest = _read_manifest_json()
+    if not manifest:
+        raise HTTPException(status_code=404, detail="No distribution available")
+    latest = manifest["version"]
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/") or "https://tako.software"
+    return {
+        "current": current,
+        "latest": latest,
+        "update_available": _cmp_semver(current, latest) < 0,
+        "changelog_url": f"{frontend_url}/changelog",
+    }
+
+
+def _parse_expiry(value: Any) -> Optional[datetime]:
+    """Normalize ISO-string or datetime to an aware datetime. Returns None on
+    anything that can't be parsed."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+    return None
+
+
+def _is_maintenance_valid(maint: Any, now: datetime) -> bool:
+    """True if the maintenance window extends through ``now``. Matches the
+    behaviour of the existing /download endpoint's license guard."""
+    expiry = _parse_expiry(maint)
+    if not expiry:
+        return False
+    return expiry > now
+
+
+# PLATFORM_BEGIN — Changelog + release-notification admin endpoints (Prompt 11).
+# These back the tako.software/changelog page and the super-admin "publish a
+# release" flow. They're stripped from the customer distribution by
+# scripts/build-distribution.sh — customer instances don't host a changelog
+# and obviously don't send TAKO release emails on behalf of the platform.
+
+@api_router.get("/releases")
+async def list_releases():
+    """Last 20 releases, newest first. Public — backs tako.software/changelog."""
+    cursor = db.releases.find({}, {"_id": 0}).sort("released_at", -1).limit(20)
+    rows = await cursor.to_list(length=20)
+    return rows
+
+
+class _ReleaseNotifyRequest(BaseModel):
+    version: str
+    changelog: str
+    notify: bool = True
+
+
+@api_router.post("/admin/releases/notify")
+async def admin_releases_notify(
+    req: _ReleaseNotifyRequest,
+    current_user: dict = Depends(require_super_admin),
+):
+    """Record a release in the ``releases`` collection and (optionally) email
+    every customer org whose maintenance is still active. Skips expired
+    maintenance silently — those customers get no spam about a version they
+    can't install. Idempotent on ``version``: calling twice upserts."""
+    now = datetime.now(timezone.utc)
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/") or "https://tako.software"
+    download_link = f"{frontend_url}/download"
+
+    notified = 0
+    skipped = 0
+
+    if req.notify:
+        if not _email_sender_ready():
+            logger.warning("[release-notify] email sender not configured; no emails sent")
+        cursor = db.organizations.find(
+            {"license_status": {"$in": ["active", "completed"]}},
+            {"_id": 0, "organization_id": 1, "owner_id": 1,
+             "maintenance_expires": 1, "name": 1},
+        )
+        async for org in cursor:
+            if not _is_maintenance_valid(org.get("maintenance_expires"), now):
+                skipped += 1
+                continue
+            owner_id = org.get("owner_id")
+            if not owner_id:
+                skipped += 1
+                continue
+            owner = await db.users.find_one(
+                {"user_id": owner_id},
+                {"_id": 0, "email": 1, "name": 1},
+            )
+            if not owner or not owner.get("email"):
+                skipped += 1
+                continue
+            if not _email_sender_ready():
+                skipped += 1
+                continue
+            try:
+                greeting = (owner.get("name") or "there").split()[0]
+                subject = f"TAKO CRM v{req.version} is now available"
+                html_body = f"""
+                <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
+                    <h1 style="font-size:22px;margin:0 0 16px;">TAKO CRM v{html_mod.escape(req.version)} is available</h1>
+                    <p style="font-size:15px;line-height:1.55;color:#334155;">Hi {html_mod.escape(greeting)},</p>
+                    <p style="font-size:15px;line-height:1.55;color:#334155;">A new release of TAKO CRM has shipped. Highlights:</p>
+                    <div style="font-size:14px;line-height:1.6;color:#475569;white-space:pre-wrap;margin:12px 0 20px;">{html_mod.escape(req.changelog)}</div>
+                    <p style="margin:24px 0;">
+                        <a href="{html_mod.escape(download_link)}"
+                           style="display:inline-block;padding:12px 20px;background:#0EA5A0;color:#fff;
+                                  text-decoration:none;border-radius:8px;font-weight:500;">
+                            Download v{html_mod.escape(req.version)}
+                        </a>
+                    </p>
+                    <p style="font-size:13px;line-height:1.55;color:#64748b;">
+                        Your maintenance is active, so this update is included in your plan.
+                        Questions? Reply to this email or write to
+                        <a href="mailto:support@tako.software" style="color:#0EA5A0;">support@tako.software</a>.
+                    </p>
+                </div>
+                """
+                await asyncio.to_thread(resend.Emails.send, {
+                    "from": SENDER_EMAIL,
+                    "to": [owner["email"]],
+                    "subject": subject,
+                    "html": html_body,
+                })
+                notified += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    f"[release-notify] email to {owner.get('email')} failed: {exc}"
+                )
+                skipped += 1
+
+    await db.releases.update_one(
+        {"version": req.version},
+        {"$set": {
+            "version": req.version,
+            "changelog": req.changelog,
+            "released_at": now.isoformat(),
+            "notified_at": now.isoformat() if req.notify else None,
+            "recipients_count": notified,
+        }},
+        upsert=True,
+    )
+    try:
+        await db.audit_log.insert_one({
+            "action": "release_notification",
+            "version": req.version,
+            "recipients_count": notified,
+            "timestamp": now,
+            "actor_user_id": current_user.get("user_id"),
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[release-notify] audit_log insert failed: {exc}")
+
+    return {
+        "version": req.version,
+        "notified": notified,
+        "skipped_expired_maintenance": skipped,
+    }
+# PLATFORM_END
+
+
+# ----------------------------------------------------------------------------
+# Customer-side update checker (STAYS in the distribution).
+# ----------------------------------------------------------------------------
+_UPDATE_CHECK_CACHE: Dict[str, Dict[str, Any]] = {}
+_UPDATE_CHECK_TTL = timedelta(hours=24)
+_UPDATE_SERVER_URL = os.environ.get(
+    "TAKO_UPDATE_SERVER", "https://tako.software",
+).rstrip("/")
+
+
+def _read_instance_version() -> Optional[str]:
+    """Read the plain-text VERSION file the build script drops at the
+    project root. Returns None on dev trees that don't have a packaged
+    build — the endpoint surfaces ``current_version: 'unknown'`` then."""
+    try:
+        candidates = [
+            Path(__file__).resolve().parent.parent / "VERSION",
+            Path.cwd() / "VERSION",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                v = candidate.read_text().strip()
+                if v:
+                    return v
+    except Exception:
+        pass
+    return None
+
+
+@api_router.get("/system/update-check")
+async def system_update_check(
+    force: bool = False,
+    current_user: dict = Depends(get_current_user),
+):
+    """Check whether a newer TAKO version is available. Admin/owner only.
+
+    Calls out to the platform's public /api/version/check with the local
+    VERSION string. Results are cached per-org for 24 hours to avoid
+    hammering the platform on every page load; pass ``?force=true`` to
+    bypass the cache.
+    """
+    if current_user.get("role") not in ("admin", "owner", "super_admin", "deputy_admin"):
+        raise HTTPException(status_code=403, detail="Admin or owner role required")
+
+    org_id = current_user.get("organization_id")
+    current_version = _read_instance_version() or "unknown"
+    now = datetime.now(timezone.utc)
+
+    if org_id and not force:
+        cached = _UPDATE_CHECK_CACHE.get(org_id)
+        if cached and (now - cached["cached_at"]) < _UPDATE_CHECK_TTL:
+            return cached["payload"]
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"{_UPDATE_SERVER_URL}/api/version/check",
+                params={"current": current_version},
+            )
+            r.raise_for_status()
+            upstream = r.json()
+    except Exception as exc:  # noqa: BLE001
+        logger.info(f"[update-check] upstream failed: {exc}")
+        return {
+            "current_version": current_version,
+            "update_available": None,
+            "error": "Could not reach update server",
+        }
+
+    maintenance_active = True
+    if org_id:
+        org = await db.organizations.find_one(
+            {"organization_id": org_id},
+            {"_id": 0, "maintenance_expires": 1},
+        )
+        maintenance_active = _is_maintenance_valid(
+            (org or {}).get("maintenance_expires"), now
+        )
+
+    update_available = bool(upstream.get("update_available"))
+    can_update = update_available and maintenance_active
+    if update_available and maintenance_active:
+        download_message = (
+            "Log in to your account at tako.software/download to get the "
+            "latest version."
+        )
+    elif update_available:
+        download_message = "Renew maintenance at tako.software to access updates."
+    else:
+        download_message = "You're on the latest version."
+
+    payload = {
+        "current_version": current_version,
+        "latest_version": upstream.get("latest"),
+        "update_available": update_available,
+        "maintenance_active": maintenance_active,
+        "can_update": can_update,
+        "download_message": download_message,
+        "changelog_url": upstream.get("changelog_url"),
+    }
+
+    if org_id:
+        _UPDATE_CHECK_CACHE[org_id] = {"cached_at": now, "payload": payload}
+
+    return payload
+
+
 async def _send_license_welcome_email(
     *,
     organization_id: Optional[str],

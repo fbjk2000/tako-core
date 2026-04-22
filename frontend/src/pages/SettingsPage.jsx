@@ -42,7 +42,9 @@ import {
   Key,
   CheckSquare,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -1544,6 +1546,14 @@ const SettingsPage = () => {
                   customers don't re-download from their own instance. */}
               <SoftwareDownloadSection />
 
+              {/* Updates — STAYS in the customer distribution. Calls back to
+                  tako.software/api/version/check and tells the admin whether
+                  a newer version is available and whether they can install it
+                  (i.e. maintenance still valid). */}
+              {(user?.role === 'admin' || user?.role === 'owner' || user?.role === 'super_admin' || user?.role === 'deputy_admin') && (
+                <UpdatesSection />
+              )}
+
               {/* Invoices */}
               <Card>
                 <CardHeader>
@@ -2101,6 +2111,159 @@ const SoftwareDownloadSection = () => {
               </code>
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+/**
+ * UpdatesSection — in-distribution update checker (Prompt 11).
+ *
+ * Calls GET /api/system/update-check, which (on the customer's instance)
+ * reads the local VERSION file and hits tako.software/api/version/check for
+ * the latest release. The backend then correlates against the org's own
+ * maintenance_expires so this UI can tell the admin three things:
+ *   - what version they're on,
+ *   - whether a newer version exists,
+ *   - whether their maintenance covers installing it.
+ *
+ * Kept deliberately calm — "Could not check for updates" is muted, not
+ * alarming, because the platform URL can be unreachable for any number of
+ * benign reasons (customer's firewall, local dev, platform maintenance).
+ */
+const UpdatesSection = () => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+
+  const runCheck = async ({ force = false } = {}) => {
+    try {
+      const res = await axios.get(`${API}/system/update-check`, {
+        params: force ? { force: true } : {},
+        withCredentials: true,
+      });
+      setData(res.data);
+    } catch (e) {
+      // 403 (not admin) is handled at the render level; anything else we
+      // surface as an unreachable-server state.
+      setData({ update_available: null, error: 'Could not check for updates' });
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      await runCheck();
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleCheckNow = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      await runCheck({ force: true });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  if (loading) return null;
+  if (!data) return null;
+
+  const currentVersion = data.current_version || 'unknown';
+  const latest = data.latest_version;
+  const updateAvailable = data.update_available;
+  const maintenanceActive = data.maintenance_active;
+  const canUpdate = data.can_update;
+  const downloadMessage = data.download_message;
+  const isError = updateAvailable === null;
+
+  let badge = null;
+  if (updateAvailable && canUpdate) {
+    badge = (
+      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+        Update available: v{latest}
+      </Badge>
+    );
+  } else if (updateAvailable && !maintenanceActive) {
+    badge = (
+      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+        Update available
+      </Badge>
+    );
+  } else if (!isError && updateAvailable === false) {
+    badge = (
+      <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">
+        Up to date
+      </Badge>
+    );
+  }
+
+  return (
+    <Card data-testid="updates-section">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <RefreshCw className="w-5 h-5" />
+          Updates
+        </CardTitle>
+        <CardDescription>
+          Check whether a newer TAKO CRM release is available for your instance.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-sm text-slate-500">Current version</p>
+            <p className="font-mono text-slate-900">v{currentVersion}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {badge}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCheckNow}
+              disabled={checking}
+              data-testid="updates-check-now"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-2 ${checking ? 'animate-spin' : ''}`} />
+              {checking ? 'Checking…' : 'Check now'}
+            </Button>
+          </div>
+        </div>
+
+        {isError && (
+          <p className="text-sm text-slate-500 mt-4" data-testid="updates-error">
+            Could not check for updates.
+          </p>
+        )}
+
+        {!isError && updateAvailable && !maintenanceActive && (
+          <div
+            className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex gap-3 items-start"
+            data-testid="updates-renew-maintenance"
+          >
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-900">
+              <p className="font-medium">Renew maintenance to install v{latest}</p>
+              <p className="mt-1">{downloadMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {!isError && updateAvailable && maintenanceActive && (
+          <p
+            className="text-sm text-slate-600 mt-4"
+            data-testid="updates-download-hint"
+          >
+            {downloadMessage}
+          </p>
+        )}
+
+        {!isError && updateAvailable === false && (
+          <p className="text-sm text-slate-500 mt-4" data-testid="updates-up-to-date">
+            You're on the latest version.
+          </p>
         )}
       </CardContent>
     </Card>
