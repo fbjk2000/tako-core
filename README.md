@@ -11,7 +11,10 @@
 <p align="center">
   <a href="https://tako.software">tako.software</a> •
   <a href="#features">Features</a> •
+  <a href="#security">Security</a> •
+  <a href="#operations">Operations</a> •
   <a href="#pricing">Pricing</a> •
+  <a href="#distribution">Distribution</a> •
   <a href="#tech-stack">Tech Stack</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#environment-variables">Environment Variables</a> •
@@ -71,13 +74,46 @@
 - **Customizable Stages** — Admins can add/remove/rename deal stages and task steps per org
 - **Team Invitations** — Invite via link, email, or CSV import — unlimited users on every licence
 - **Partner Programme** — Referral partners earn €500 per sale. Agency partners earn an additional €750 onboarding commission per customer. Two-tier, no MLM chains
+- **Self-serve Demo** — Prospects get a fully seeded 14-day trial org in minutes at `/demo` (pre-populated leads, deals, tasks, calendar). On expiry the tenant soft-locks: reads stay open, writes are blocked middleware-wide until the user upgrades. Super admins can extend, expire, or purge demos from the admin panel.
+- **Distribution System** — `scripts/build-distribution.sh` produces a self-contained customer tarball (source + Docker + customer `.env.example` + install guide + backup script). Platform-only code — UNYT/crypto, self-serve demo, partner payouts, super-admin UI, distribution tooling — is stripped via sentinel-wrapped regions (`DEMO_BEGIN`/`PLATFORM_BEGIN` markers) so customers never see it.
+- **Release Pipeline** — Tagging `vX.Y.Z` on `main` runs `.github/workflows/release.yml`, which builds the distribution tarball, generates SHA-256 checksums, creates a GitHub Release, and posts a notification to `/api/admin/releases/notify` so the changelog and in-app update checker update automatically.
+- **In-app Update Checker** — Customer instances call `/api/system/update-check` once per day against the platform; if a newer version is tagged, a banner appears in the admin UI linking to the changelog and download page. Results are cached per-org for 24h to stay polite.
+- **GDPR Compliance** — Self-service data export (`/api/gdpr/export-my-data`), account deletion with grace period (`/api/gdpr/request-deletion` / `/api/gdpr/cancel-deletion`), and a public DPA endpoint at `/api/legal/dpa`.
 - **UNYT Token Payments** — Pay with UNYT on Arbitrum via MetaMask or via [UNYT.shop](https://unyt.shop)
 - **License & Billing** — One-time purchase or installment plans via Stripe. UNYT token payments via MetaMask or UNYT.shop. Optional annual maintenance renewal
 - **PWA** — Installable on iOS, Android, and desktop
 - **i18n** — English and German language support with toggle
 - **API Keys and Webhooks** — Programmatic access for n8n, Notion, Zapier, and custom integrations
 - **Reporting Engine** — User performance, pipeline forecasts, activity logs, CSV export
-- **Onboarding & Support** — In-app onboarding checklist (localStorage-persisted), training modules, FAQ, contact form, legal docs
+- **Onboarding & Support** — In-app onboarding checklist (localStorage-persisted), training modules, FAQ, in-app support ticket form, legal docs
+
+---
+
+## Security
+
+TAKO ships with a defense-in-depth posture suitable for production use by European teams handling customer data. Key controls:
+
+- **Email verification** — New accounts must verify via a tokenized link before they can log in; unverified accounts are blocked at login.
+- **Dual-token JWT** — Access tokens expire in 15 minutes (`JWT_ACCESS_EXPIRY_MINUTES`), refresh tokens last 7 days (`JWT_REFRESH_EXPIRY_DAYS`). Refresh is rotated on use; the legacy single-token flow (`JWT_EXPIRY_HOURS`) is still honoured for in-flight sessions during upgrade.
+- **Login rate limiting** — Password and 2FA endpoints throttle per-IP to blunt credential stuffing.
+- **Password reset** — Tokens are single-use with a 1-hour TTL; reset emails never leak whether an account exists.
+- **Stripe webhook hardening** — `/api/webhook/stripe` verifies the `Stripe-Signature` header against `STRIPE_WEBHOOK_SECRET` and de-duplicates events by `event.id` so retries are safe.
+- **Invoice XSS hardening** — HTML invoices escape every user-controlled field before rendering; no template injection surface.
+- **Session termination on org deletion** — When an organization is deleted, all associated sessions are revoked and users are force-logged-out on next request.
+- **VAT-aware invoicing** — `COMPANY_VAT_NUMBER` is emitted on every invoice; missing VAT keeps the obvious placeholder `GB000000000` so no invoice silently ships without one.
+- **Tenant isolation** — All CRM queries scope to the caller's `organization_id`; cross-tenant access is not possible via the REST or v1 external API.
+
+See [`docs/VPS-HARDENING.md`](docs/VPS-HARDENING.md) for the host-level companion guide (unprivileged deploy user, SSH key-only auth, UFW, fail2ban, automatic security updates, MongoDB bind-address).
+
+---
+
+## Operations
+
+- **Health check** — `GET /api/health` returns a JSON status payload covering MongoDB reachability, email sender readiness, Sentry init, and Stripe webhook configuration. It returns **200** when MongoDB is reachable and **503** when it is not — use it as the target for an external uptime monitor.
+- **Error monitoring** — Set `SENTRY_DSN` (backend `.env`) and `REACT_APP_SENTRY_DSN` (frontend build env) to enable Sentry. Both are optional soft dependencies — the backend and frontend start without error if the SDK isn't installed or the DSN isn't set. `ENVIRONMENT` / `REACT_APP_ENVIRONMENT` tag events so staging and prod don't pollute each other.
+- **Backups** — `scripts/backup-mongo.sh` dumps the MongoDB database, tars the output, and retains the last 7 days in `$BACKUP_DIR` (default `/opt/tako/backups`). Designed to run daily from cron. Restore is `tar -xzf tako_YYYYMMDD_HHMMSS.tar.gz` followed by `mongorestore --uri=... --db=tako tako_YYYYMMDD_HHMMSS/tako`. The script has a TODO for the offsite S3 upload — until that's wired up, rely on the VPS provider's disk snapshots as the second copy.
+- **Support tickets** — Users submit issues from any page via `POST /api/support/ticket`; tickets land in the super-admin panel with user, org, and environment metadata auto-attached. Public (unauthenticated) contact enquiries go through `POST /api/support/contact`.
+- **Host hardening** — [`docs/VPS-HARDENING.md`](docs/VPS-HARDENING.md) walks through IONOS/VPS first-boot steps: unprivileged deploy user, SSH key-only auth, UFW, fail2ban, unattended-upgrades, MongoDB bound to localhost.
 
 ---
 
@@ -113,15 +149,52 @@ TAKO is a self-hosted CRM. Purchase once, deploy on your own infrastructure, own
 | Frontend | React 18, Tailwind CSS, Shadcn/UI, @hello-pangea/dnd, ethers.js |
 | Backend | Python 3.11, FastAPI, Motor (async MongoDB) |
 | Database | MongoDB |
-| Auth | Native Google OAuth 2.0 → JWT (7-day expiry) |
+| Auth | Native Google OAuth 2.0 → dual-token JWT (15-min access / 7-day refresh; legacy 7-day single-token still honoured) |
 | AI | Anthropic Claude (`claude-sonnet-4-20250514`) via `anthropic` Python SDK |
 | Email | Resend (primary, `noreply@tako.software`), Kit.com (optional subscriber lists) |
 | Payments | Stripe + UNYT Token (Arbitrum) |
 | Calling | Twilio Voice API |
 | File parsing | pypdf (PDF, 30 pages), python-docx (DOCX) |
-| Job scheduler | APScheduler 3.x with MongoDB jobstore |
+| Job scheduler | APScheduler 3.x with MongoDB jobstore (demo expiry, listener polling, digests, rescoring) |
+| Error monitoring | Sentry (backend + frontend, both soft dependencies) |
 | i18n | Custom `useT` hook with JSON locale files (English + German) |
 | Deployment | Docker Compose (mongo + backend + frontend), nginx reverse proxy, Let's Encrypt SSL |
+| Release | GitHub Actions (`.github/workflows/release.yml`) + `scripts/build-distribution.sh` |
+
+---
+
+## Distribution
+
+TAKO is distributed to customers as a stripped source tarball — they run the same code we do, minus the platform-only plumbing.
+
+### Build script
+
+`scripts/build-distribution.sh` produces `dist/tako-crm-<version>.tar.gz` plus an accompanying `.sha256` and `VERSION` file. What it ships:
+
+- Full backend and frontend source, minus stripped regions
+- `docker-compose.yml` and Dockerfiles
+- Customer-facing `backend/.env.example` (no platform keys, no Stripe price IDs, no `DISTRIBUTION_DIR`)
+- `scripts/backup-mongo.sh`
+- `scripts/distribution-README.md` (install guide)
+- `docs/VPS-HARDENING.md`
+
+What it strips:
+
+- **UNYT / crypto payment UI and routes** — customers see Stripe only
+- **Self-serve demo** — `/demo` endpoints, demo seeder, middleware soft-lock, admin demo management
+- **Platform-only pages** — `/changelog`, `/download`, partner onboarding admin UI
+- **Super-admin surfaces** — analytics, data explorer, release notify endpoint, partner payout admin
+- **Distribution tooling itself** — `scripts/build-distribution.sh`, release workflow, `DISTRIBUTION_DIR` handling
+- **Internal configs** — `.emergent/`, platform-only migrations, internal test fixtures
+
+Stripping is driven by sentinel-wrapped regions using the generalized markers `DEMO_BEGIN`/`DEMO_END` and `PLATFORM_BEGIN`/`PLATFORM_END` (matched as `(?P<kind>DEMO|PLATFORM)_BEGIN` … `(?P=kind)_END`). Touch them carefully — the regex is paired.
+
+### Release workflow
+
+1. Bump the version in `backend/server.py` (`TAKO_VERSION`) and commit.
+2. `git tag vX.Y.Z && git push --tags`.
+3. `.github/workflows/release.yml` runs: builds the tarball, computes SHA-256, creates the GitHub Release with both artifacts attached, and POSTs to `/api/admin/releases/notify` (super-admin key) so `/api/releases` and `/changelog` pick it up immediately.
+4. Customer instances hit `/api/system/update-check` on their next daily tick, see the new version, and surface a banner linking to `/download` with a fresh signed token from `POST /api/license/download`.
 
 ---
 
@@ -169,10 +242,12 @@ REACT_APP_BACKEND_URL=http://localhost:8001 npm start
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=tako_production
 
-# Auth
+# Auth — dual-token JWT
 JWT_SECRET=your_long_random_secret
 JWT_ALGORITHM=HS256
-JWT_EXPIRY_HOURS=168
+JWT_ACCESS_EXPIRY_MINUTES=15
+JWT_REFRESH_EXPIRY_DAYS=7
+JWT_EXPIRY_HOURS=168          # legacy single-token flow; still honoured
 
 # URLs
 FRONTEND_URL=https://yourdomain.com
@@ -184,6 +259,9 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # AI (platform key — all licensed orgs use this automatically)
 ANTHROPIC_API_KEY=sk-ant-...
+
+# Invoicing
+COMPANY_VAT_NUMBER=GB123456789
 ```
 
 **Optional** — set only the integrations you actually use:
@@ -211,12 +289,21 @@ STRIPE_PRICE_ONETIME=price_...
 STRIPE_PRICE_12MO=price_...
 STRIPE_PRICE_24MO=price_...
 STRIPE_PRICE_MAINTENANCE=price_...
+
+# Error monitoring (soft dependency — safe to leave blank)
+SENTRY_DSN=
+ENVIRONMENT=production
+
+# Distribution output dir (platform-only — stripped from customer builds)
+DISTRIBUTION_DIR=./dist
 ```
 
 **Frontend** (`/frontend/.env`):
 
 ```env
 REACT_APP_BACKEND_URL=https://tako.software
+REACT_APP_SENTRY_DSN=               # optional
+REACT_APP_ENVIRONMENT=production    # optional
 ```
 
 ---
@@ -271,7 +358,7 @@ python scripts/migrate_campaigns_add_channel.py
 
 > **Base URL**: `https://yourdomain.com/api`
 
-All endpoints require: `Authorization: Bearer <jwt_token>`
+All endpoints require: `Authorization: Bearer <jwt_token>` unless otherwise noted.
 
 ### Leads
 
@@ -333,6 +420,51 @@ All endpoints require: `Authorization: Bearer <jwt_token>`
 | GET | `/api/settings/ai-status` | AI availability for current user |
 | GET/PUT | `/api/settings/stages` | Custom deal/task stages |
 
+### GDPR
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/gdpr/export-my-data` | Generate full data export for the calling user (JSON archive) |
+| POST | `/api/gdpr/request-deletion` | Schedule account + associated data deletion (grace period) |
+| POST | `/api/gdpr/cancel-deletion` | Cancel a pending deletion during the grace window |
+| GET | `/api/legal/dpa` | Public Data Processing Agreement (no auth) |
+
+### Support
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/support/contact` | Public contact form (no auth) — routes to super admin inbox |
+| POST | `/api/support/ticket` | Authenticated in-app support ticket with user/org/env auto-attached |
+
+### License & Updates
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/license/renew-maintenance` | Start Stripe checkout for the €999 annual maintenance SKU |
+| POST | `/api/license/download` | Issue a short-lived signed token for downloading the current release |
+| GET | `/api/license/download/{token}` | Redeem the signed token; streams the tarball from `DISTRIBUTION_DIR` |
+| GET | `/api/version/latest` | Latest tagged version (public, no auth) |
+| GET | `/api/version/check` | Per-caller version comparison (`current` vs `latest`, `update_available` flag) |
+| GET | `/api/releases` | Last 20 releases, newest first (public — powers `/changelog`) |
+| POST | `/api/admin/releases/notify` | Platform-only. Called by the release workflow after a tag is published |
+| GET | `/api/system/update-check` | Customer instance → platform daily check; 24h per-org cache |
+
+### Demo (platform-only)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/demo/create` | Spin up a seeded 14-day demo org from the landing page |
+| GET | `/api/admin/demos` | Super admin — list all active / expired demo orgs |
+| POST | `/api/admin/demos/{org_id}/extend` | Extend a demo by N days |
+| POST | `/api/admin/demos/{org_id}/expire` | Force-expire a demo (soft lock activates immediately) |
+| DELETE | `/api/admin/demos/{org_id}` | Purge a demo org and all associated data |
+
+### Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | 200 when MongoDB is reachable, 503 otherwise. JSON body: Mongo, email, Sentry, Stripe status. |
+
 ---
 
 ## External API (v1)
@@ -361,6 +493,7 @@ X-API-Key: tako_live_...
 | **Stripe** | Licence purchase + installment billing | Admin panel (optional — only needed if you resell TAKO) |
 | **Kit.com** | Email marketing automation | Settings → Integrations (optional) |
 | **Google Calendar** | Two-way calendar sync | Settings → Integrations → Connect |
+| **Sentry** | Backend + frontend error monitoring (soft dep) | `SENTRY_DSN` / `REACT_APP_SENTRY_DSN` |
 
 ---
 
@@ -397,30 +530,22 @@ server {
 }
 ```
 
-### Backups
-
-`scripts/backup-mongo.sh` dumps the MongoDB database, tars the output, and retains the last 7 days in `$BACKUP_DIR` (default `/opt/tako/backups`). It's meant to run daily from cron.
-
-```bash
-# /etc/cron.d/tako-backup — root cron, runs at 03:00 every day
-0 3 * * * root MONGO_URL="mongodb://localhost:27017" DB_NAME="tako" /opt/tako/scripts/backup-mongo.sh >> /var/log/tako-backup.log 2>&1
-```
-
-Restore is `tar -xzf tako_YYYYMMDD_HHMMSS.tar.gz` followed by `mongorestore --uri=... --db=tako tako_YYYYMMDD_HHMMSS/tako`. A TODO at the bottom of the script documents the offsite S3 upload — until that's wired up, rely on the VPS provider's disk snapshots as the second copy.
-
-### Health check
-
-`GET /api/health` returns a JSON status payload covering MongoDB reachability, email sender readiness, Sentry init, and Stripe webhook configuration. Use it as the target for an external uptime monitor — the endpoint returns **200** when MongoDB is reachable and **503** when it is not.
-
-### Error monitoring
-
-Set `SENTRY_DSN` (backend `.env`) and `REACT_APP_SENTRY_DSN` (frontend build env) to enable Sentry. Both are optional — the backend and frontend start without error if the SDK isn't installed or the DSN isn't set. `ENVIRONMENT` / `REACT_APP_ENVIRONMENT` tags events so staging and prod don't pollute each other.
+For host hardening, backups, health checks, and error monitoring details, see [Security](#security) and [Operations](#operations) above. For VPS-level steps (deploy user, SSH, UFW, fail2ban, MongoDB bind), see [`docs/VPS-HARDENING.md`](docs/VPS-HARDENING.md).
 
 ---
 
-## Recent Updates (Apr 2026 — Pre-launch QA)
+## Recent Updates (Apr 2026)
 
-Tracked under the 25-item ship-readiness audit. Highlights:
+- **Security audit & hardening** — Dual-token JWT flow (15-min access / 7-day refresh) with rotation on refresh, per-IP login rate limiting, single-use 1-hour password-reset tokens, Stripe webhook signature verification with event-id idempotency, HTML escaping on invoices, session termination on org deletion, VAT-aware invoicing (`COMPANY_VAT_NUMBER`). Host-level guide added at `docs/VPS-HARDENING.md`.
+- **Operations telemetry** — `GET /api/health` covers Mongo, email, Sentry, and Stripe readiness (200/503). Sentry SDK wired as a soft dependency on both backend and frontend. `scripts/backup-mongo.sh` with 7-day retention runs from cron.
+- **In-app support tickets** — `POST /api/support/ticket` surfaces user-submitted issues with env/org/user metadata pre-filled in the super-admin inbox.
+- **GDPR endpoints** — Self-service data export, account deletion with grace period, and a public DPA endpoint at `/api/legal/dpa`.
+- **Distribution system** — `scripts/build-distribution.sh` produces a clean customer tarball with platform-only code stripped via `DEMO_BEGIN`/`PLATFORM_BEGIN` sentinel regions. Output lands in `DISTRIBUTION_DIR` (`./dist` by default).
+- **Self-serve demo** — Landing-page `/demo` spins up a seeded 14-day trial org. APScheduler runs daily expiry; expired tenants soft-lock via middleware (writes blocked, reads open). Super admins extend/expire/purge from the admin panel.
+- **Release pipeline** — `.github/workflows/release.yml` builds the tarball, attaches SHA-256, creates the GitHub Release, and calls `/api/admin/releases/notify` so `/changelog` and the update banner pick up new versions automatically.
+- **Customer update checker** — `/api/system/update-check` runs once per day from each customer instance with a 24h per-org cache; admins see a banner linking to `/changelog` and a fresh signed download token from `POST /api/license/download` when a newer version ships.
+
+### Apr 2026 — Pre-launch QA highlights
 
 - **Self-hosted licence model** — one-time, 12-month, and 24-month installment plans via Stripe; UNYT token payments on Arbitrum; optional €999/year maintenance renewal. All licences unlock unlimited users and unlimited AI.
 - **Public booking page** — now renders host name, avatar, and welcome message from `GET /booking/{user_id}/info`.
@@ -445,6 +570,8 @@ Tracked under the 25-item ship-readiness audit. Highlights:
 | Instagram / LinkedIn Listeners | Backend channel stubs ready, poller not wired |
 | Settings → Meta OAuth connect button (frontend) | Not done |
 | Stripe / Twilio webhook consolidation into generic receiver | Not done |
+| Offsite backup upload (S3) in `scripts/backup-mongo.sh` | TODO in script — rely on VPS snapshots until wired |
+| DPA legal text for `/api/legal/dpa` | Awaiting counsel review |
 
 ---
 
