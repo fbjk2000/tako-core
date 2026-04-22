@@ -36,10 +36,34 @@ const LegalPage = () => {
         {isPrivacy ? <PrivacyPolicy /> : <TermsOfService />}
       </main>
 
-      <footer className="bg-slate-900 py-6 px-6 mt-12">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-slate-400 text-sm">© {new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.</p>
-          <p className="text-slate-500 text-xs mt-1">Canbury Works Units 6 & 7, Canbury Business Park, Elm Crescent, Kingston upon Thames KT2 6HJ, UK</p>
+      <footer className="bg-slate-900 py-10 px-6 mt-12">
+        <div className="max-w-4xl mx-auto grid gap-8 md:grid-cols-3 text-sm">
+          <div>
+            <p className="text-slate-200 font-semibold mb-2">Product</p>
+            <ul className="space-y-1.5 text-slate-400">
+              <li><Link to="/#features" className="hover:text-slate-200">Features</Link></li>
+              <li><Link to="/pricing" className="hover:text-slate-200">Pricing</Link></li>
+              <li><Link to="/partners" className="hover:text-slate-200">Partners</Link></li>
+              <li><Link to="/support" className="hover:text-slate-200">Support</Link></li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-slate-200 font-semibold mb-2">Legal</p>
+            <ul className="space-y-1.5 text-slate-400">
+              <li><Link to="/privacy" className="hover:text-slate-200">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-slate-200">Terms of Service</Link></li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-slate-200 font-semibold mb-2">Contact</p>
+            <ul className="space-y-1.5 text-slate-400">
+              <li><a href="mailto:support@tako.software" className="hover:text-slate-200">support@tako.software</a></li>
+              <li className="text-slate-500 text-xs leading-relaxed">Fintery Ltd., Canbury Works Units 6 &amp; 7, Canbury Business Park, Elm Crescent, Kingston upon Thames KT2 6HJ, UK</li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto mt-8 pt-6 border-t border-slate-800 text-center">
+          <p className="text-slate-500 text-xs">© {new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.</p>
         </div>
       </footer>
     </div>
@@ -154,10 +178,13 @@ const TermsOfService = () => (
       <p>AI features (lead scores, email drafts, social hit classifications, file summaries) are provided as suggestions. You are solely responsible for reviewing, approving, and taking responsibility for any content or action taken based on AI outputs before acting on them.</p>
     </Section>
 
-    <Section title="6. Payment & Subscriptions">
-      <p>Free tier: 1 user at no cost (Solo plan). Paid plans are billed monthly or annually as selected at checkout. Prices are displayed excluding VAT where applicable; VAT is calculated at checkout based on your billing country.</p>
-      <p>Refunds: we offer a 30-day money-back guarantee on first purchase. Contact <a href="mailto:support@tako.software" className="text-[#0EA5A0]">support@tako.software</a>.</p>
-      <p>We reserve the right to change pricing with 30 days' written notice.</p>
+    <Section title="6. Payment & Licensing">
+      <p>TAKO is licensed as a one-time purchase. You may pay the full price up-front, or select one of the installment plans (12 or 24 equal monthly payments) at checkout. All options grant the same perpetual licence to use, modify, and deploy TAKO on your own infrastructure. Prices are displayed excluding VAT where applicable; VAT is calculated at checkout based on your billing country.</p>
+      <p>Each purchase includes 12 months of maintenance and support. After the first year, maintenance may be renewed annually for the published renewal fee. Renewal is optional — the licence itself does not expire.</p>
+      <p>Installment plans: if you select a 12- or 24-month installment plan, Stripe collects one payment per month until the plan is complete. If an installment payment fails, we will contact you before suspending access.</p>
+      <p>UNYT token payments are processed via MetaMask or UNYT.shop and are final once confirmed on-chain.</p>
+      <p>Refunds: we offer a 30-day money-back guarantee on the first purchase. Contact <a href="mailto:support@tako.software" className="text-[#0EA5A0]">support@tako.software</a>.</p>
+      <p>We reserve the right to change pricing with 30 days' written notice for new purchases; your existing licence is unaffected.</p>
     </Section>
 
     <Section title="7. Intellectual Property">
@@ -170,7 +197,7 @@ const TermsOfService = () => (
     </Section>
 
     <Section title="9. Termination">
-      <p>You may cancel your account at any time from Settings. We may suspend or terminate accounts that violate these Terms, with notice where reasonably practicable.</p>
+      <p>You may close your account at any time from Settings. Closing your account does not revoke a perpetual licence already granted; it stops maintenance and in-app access. We may suspend or terminate accounts that violate these Terms, with notice where reasonably practicable.</p>
     </Section>
 
     <Section title="10. Governing Law">

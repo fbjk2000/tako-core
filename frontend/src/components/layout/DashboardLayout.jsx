@@ -232,7 +232,7 @@ const DashboardLayout = ({ children }) => {
               {usage.is_trial && usage.trial_days_remaining != null && usage.trial_days_remaining <= 9 && (
                 <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
                   <span className="font-semibold">AI trial ends in {usage.trial_days_remaining} day{usage.trial_days_remaining !== 1 ? 's' : ''}.</span>{' '}
-                  <a href="/pricing" className="underline font-medium">Upgrade to Pro →</a>
+                  <a href="/pricing" className="underline font-medium">Get TAKO →</a>
                 </div>
               )}
               {/* Token usage bar — show from 80% usage */}
@@ -240,7 +240,7 @@ const DashboardLayout = ({ children }) => {
                 <div>
                   <div className="flex justify-between text-[10px] text-slate-500 mb-1">
                     <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500" />{usage.tokens_used} / {usage.monthly_limit} tokens</span>
-                    <a href="/pricing" className="text-[#0EA5A0] hover:underline">Upgrade</a>
+                    <a href="/pricing" className="text-[#0EA5A0] hover:underline">Get TAKO</a>
                   </div>
                   <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
                     <div

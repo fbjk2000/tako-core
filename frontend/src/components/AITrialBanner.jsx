@@ -32,8 +32,8 @@ const AITrialBanner = () => {
       <Sparkles className={`w-4 h-4 shrink-0 ${showTokenWall ? 'text-red-500' : 'text-amber-500'}`} />
       <p className={`text-sm flex-1 ${showTokenWall ? 'text-red-800' : 'text-amber-800'}`}>
         {showTokenWall
-          ? <>You've used your <strong>{usage.monthly_limit} AI tokens</strong> this month. <a href="/pricing" className="underline font-semibold">Upgrade to Pro for 5,000/month →</a></>
-          : <>Your AI trial ends in <strong>{usage.trial_days_remaining} day{usage.trial_days_remaining !== 1 ? 's' : ''}</strong>. <a href="/pricing" className="underline font-semibold">Upgrade to Pro to keep all agents working →</a></>
+          ? <>You've used your <strong>{usage.monthly_limit} AI tokens</strong> this month. <a href="/pricing" className="underline font-semibold">Get TAKO to keep AI on →</a></>
+          : <>Your AI trial ends in <strong>{usage.trial_days_remaining} day{usage.trial_days_remaining !== 1 ? 's' : ''}</strong>. <a href="/pricing" className="underline font-semibold">Get TAKO to keep all agents working →</a></>
         }
       </p>
       <button onClick={dismiss} className="shrink-0 text-slate-400 hover:text-slate-600">

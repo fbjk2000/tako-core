@@ -594,10 +594,34 @@ const SupportPage = () => {
       </main>
 
       {!user && (
-        <footer className="bg-slate-900 py-8 px-6 mt-8">
-          <div className="max-w-7xl mx-auto text-center">
-            <p className="text-slate-400 text-sm">{t('support.footerCopyright').replace('{year}', new Date().getFullYear())}</p>
-            <p className="text-slate-500 text-xs mt-1">Canbury Works Units 6 & 7, Canbury Business Park, Elm Crescent, Kingston upon Thames KT2 6HJ, UK</p>
+        <footer className="bg-slate-900 py-10 px-6 mt-8">
+          <div className="max-w-7xl mx-auto grid gap-8 md:grid-cols-3 text-sm">
+            <div>
+              <p className="text-slate-200 font-semibold mb-2">{t('support.footerProduct')}</p>
+              <ul className="space-y-1.5 text-slate-400">
+                <li><Link to="/#features" className="hover:text-slate-200">{t('support.footerFeatures')}</Link></li>
+                <li><Link to="/pricing" className="hover:text-slate-200">{t('support.footerPricing')}</Link></li>
+                <li><Link to="/partners" className="hover:text-slate-200">{t('support.footerPartners')}</Link></li>
+                <li><Link to="/support" className="hover:text-slate-200">{t('support.footerSupport')}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-slate-200 font-semibold mb-2">{t('support.footerLegal')}</p>
+              <ul className="space-y-1.5 text-slate-400">
+                <li><Link to="/privacy" className="hover:text-slate-200">{t('support.footerPrivacy')}</Link></li>
+                <li><Link to="/terms" className="hover:text-slate-200">{t('support.footerTerms')}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-slate-200 font-semibold mb-2">{t('support.footerContact')}</p>
+              <ul className="space-y-1.5 text-slate-400">
+                <li><a href="mailto:support@tako.software" className="hover:text-slate-200">support@tako.software</a></li>
+                <li className="text-slate-500 text-xs leading-relaxed">Fintery Ltd., Canbury Works Units 6 &amp; 7, Canbury Business Park, Elm Crescent, Kingston upon Thames KT2 6HJ, UK</li>
+              </ul>
+            </div>
+          </div>
+          <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-slate-800 text-center">
+            <p className="text-slate-500 text-xs">{t('support.footerCopyright').replace('{year}', new Date().getFullYear())}</p>
           </div>
         </footer>
       )}

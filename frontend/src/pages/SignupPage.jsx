@@ -138,7 +138,7 @@ const SignupPage = () => {
               {inviteInfo ? 'Join your team' : 'Create your account'}
             </CardTitle>
             <CardDescription className="text-slate-600">
-              {inviteInfo ? `You've been invited to join ${inviteInfo.organization_name}` : 'Start your free trial — no credit card required'}
+              {inviteInfo ? `You've been invited to join ${inviteInfo.organization_name}` : 'Create your TAKO account — no credit card required'}
             </CardDescription>
           </CardHeader>
           

@@ -106,7 +106,7 @@ const PipelineReportPage = () => {
             {(() => {
               const teamSize = teamData?.members?.length || 0;
               // Only show view-scope badges when there's a real team (>1 member).
-              // Solo users don't need an "Admin View" / "Personal View" label.
+              // Single-seat users don't need an "Admin View" / "Personal View" label.
               const hasTeam = teamSize > 1 || (!isAdmin && !!user?.organization_id);
               if (!hasTeam) return null;
               return pipelineData?.is_admin_view ? (
