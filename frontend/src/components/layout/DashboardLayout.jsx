@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { toast } from 'sonner';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../App';
+import { useAuth, API } from '../../App';
 import { useTokenUsage } from '../../hooks/useTokenUsage';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
@@ -38,12 +40,75 @@ import {
 const ICONS = { LayoutDashboard, Users, Target, CheckSquare, Building, Mail, Megaphone, Settings, Shield, MessageSquare, Phone, BarChart3, HelpCircle, Radio, UserCircle, ContactIcon, Briefcase, Camera, CalendarDays, CalendarClock, FolderOpen, FolderKanban, FileText };
 
 const DashboardLayout = ({ children }) => {
-  const { user, logout, token } = useAuth();
+  const { user, setUser, logout, token } = useAuth();
   const { usage } = useTokenUsage(token);
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lang, setLang] = useState(() => localStorage.getItem('tako_lang') || 'en');
+  const [cancellingDeletion, setCancellingDeletion] = useState(false);
+
+  // GDPR Art. 17 — if a deletion has been scheduled for this user and the
+  // window is still open, render a warning banner above the page content
+  // with a one-click cancel. Backend exposes `deletion_scheduled_for` on
+  // /auth/me; it's undefined/null for the overwhelming majority of users.
+  const deletionScheduledIso = user?.deletion_scheduled_for;
+  const deletionDate = deletionScheduledIso ? new Date(deletionScheduledIso) : null;
+  const deletionPending =
+    deletionDate && !Number.isNaN(deletionDate.valueOf()) && deletionDate > new Date();
+
+  const deletionBannerText = {
+    en: {
+      scheduled: (d) => `Your account is scheduled for deletion on ${d}.`,
+      cancel: 'Cancel Deletion',
+      cancelling: 'Cancelling…',
+      success: 'Account deletion cancelled.',
+      error: 'Could not cancel deletion. Please try again.',
+    },
+    de: {
+      scheduled: (d) => `Ihr Konto wird am ${d} gelöscht.`,
+      cancel: 'Löschung abbrechen',
+      cancelling: 'Wird abgebrochen…',
+      success: 'Kontolöschung abgebrochen.',
+      error: 'Löschung konnte nicht abgebrochen werden. Bitte erneut versuchen.',
+    },
+  };
+  const bannerL = deletionBannerText[lang] || deletionBannerText.en;
+
+  const formattedDeletionDate = deletionDate
+    ? deletionDate.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-GB', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : '';
+
+  const handleCancelDeletion = async () => {
+    if (cancellingDeletion) return;
+    setCancellingDeletion(true);
+    try {
+      await axios.post(
+        `${API}/gdpr/cancel-deletion`,
+        {},
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          withCredentials: true,
+        }
+      );
+      // Optimistically clear the fields on the local user object so the
+      // banner disappears immediately — avoids waiting for a full reload.
+      setUser((prev) =>
+        prev
+          ? { ...prev, deletion_scheduled_for: null, deletion_requested_at: null }
+          : prev
+      );
+      toast.success(bannerL.success);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || bannerL.error);
+    } finally {
+      setCancellingDeletion(false);
+    }
+  };
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'deputy_admin' || user?.email === 'florian@unyted.world';
 
@@ -287,6 +352,24 @@ const DashboardLayout = ({ children }) => {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+        {deletionPending && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 max-w-6xl mx-auto">
+              <p className="text-sm text-amber-900">
+                <strong>{bannerL.scheduled(formattedDeletionDate)}</strong>
+              </p>
+              <button
+                type="button"
+                onClick={handleCancelDeletion}
+                disabled={cancellingDeletion}
+                className="self-start sm:self-auto px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-900 text-white hover:bg-amber-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                data-testid="cancel-deletion-button"
+              >
+                {cancellingDeletion ? bannerL.cancelling : bannerL.cancel}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="p-6 lg:p-8">
           {children}
         </div>

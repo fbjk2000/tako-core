@@ -163,6 +163,7 @@ const I18N_EN = {
   footerLegal: 'Legal',
   footerPrivacy: 'Privacy Policy',
   footerTerms: 'Terms of Service',
+  footerDPA: 'Data Processing Agreement',
   footerRights: `${new Date().getFullYear()} TAKO by Fintery Ltd. All rights reserved.`,
 };
 
@@ -218,6 +219,7 @@ const I18N_DE = {
   footerLegal: 'Rechtliches',
   footerPrivacy: 'Datenschutz',
   footerTerms: 'Nutzungsbedingungen',
+  footerDPA: 'Auftragsverarbeitungsvertrag',
   footerRights: `${new Date().getFullYear()} TAKO by Fintery Ltd. Alle Rechte vorbehalten.`,
 };
 
@@ -1620,6 +1622,7 @@ const LandingPage = () => {
               <div className="footer-links">
                 <Link to="/privacy">{t.footerPrivacy}</Link>
                 <Link to="/terms">{t.footerTerms}</Link>
+                <Link to="/legal/dpa">{t.footerDPA}</Link>
                 <a href="mailto:support@tako.software">support@tako.software</a>
               </div>
             </div>

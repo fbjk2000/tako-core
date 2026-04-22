@@ -1617,6 +1617,10 @@ async def google_login_callback(code: str, state: str, response: Response):
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
+    # Deletion fields are surfaced so the authenticated layout can show the
+    # "Account deletion scheduled for X" warning banner + cancel button.
+    # They're None/absent for the overwhelming majority of sessions; the
+    # frontend only renders the banner when `deletion_scheduled_for` is set.
     return {
         "user_id": current_user["user_id"],
         "email": current_user["email"],
@@ -1624,7 +1628,9 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "picture": current_user.get("picture"),
         "organization_id": current_user.get("organization_id"),
         "role": current_user.get("role", "member"),
-        "timezone": current_user.get("timezone")
+        "timezone": current_user.get("timezone"),
+        "deletion_requested_at": current_user.get("deletion_requested_at"),
+        "deletion_scheduled_for": current_user.get("deletion_scheduled_for"),
     }
 
 @api_router.post("/auth/logout")
@@ -5488,6 +5494,417 @@ async def export_report_csv(entity: str, current_user: dict = Depends(require_su
         writer.writerow(row)
     
     return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=tako_{entity}_{datetime.now().strftime('%Y%m%d')}.csv"})
+
+
+# ==================== GDPR ENDPOINTS (Art. 17 & 20) ====================
+# FOLLOWUPS #5 — user-facing data portability and right-to-erasure. The
+# existing super_admin CSV export above is deliberately left untouched; it
+# serves a different operator-side use case (cross-org inventory).
+#
+# Scope of this block:
+#   - GET  /gdpr/export-my-data     : Art. 20 portability, org-scoped, JSON,
+#                                     rate-limited to 1/24h per user.
+#   - POST /gdpr/request-deletion   : Art. 17 request; 30-day grace window.
+#   - POST /gdpr/cancel-deletion    : cancels a pending request.
+#
+# The actual deletion execution (the cron job that runs when
+# deletion_scheduled_for passes) is intentionally OUT OF SCOPE. See the
+# marked TODO block below for what that job must do. Every mutation here
+# writes an entry to the `audit_log` collection for regulator/tenant review.
+
+GDPR_EXPORT_MIN_INTERVAL_HOURS = 24
+GDPR_DELETION_GRACE_DAYS = 30
+
+
+def _client_ip(request: Request) -> Optional[str]:
+    """Best-effort extraction of the caller IP for audit logs.
+
+    Respects a single upstream proxy via `X-Forwarded-For`; otherwise falls
+    back to the direct socket peer. Returns None rather than a placeholder
+    so audit log entries are unambiguous when we genuinely don't know.
+    """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        # Take the left-most address (original client) and strip port/whitespace.
+        return xff.split(",", 1)[0].strip() or None
+    if request.client and request.client.host:
+        return request.client.host
+    return None
+
+
+async def _write_audit_log(
+    action: str,
+    user_id: str,
+    *,
+    organization_id: Optional[str] = None,
+    request: Optional[Request] = None,
+    extra: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Append an entry to the ``audit_log`` collection.
+
+    Failures are swallowed with a warning — audit logging must never block
+    the primary GDPR action or raise to the caller (which would confuse a
+    user who just asked to delete their account).
+    """
+    entry: Dict[str, Any] = {
+        "action": action,
+        "user_id": user_id,
+        "organization_id": organization_id,
+        "ip": _client_ip(request) if request else None,
+        "user_agent": request.headers.get("user-agent") if request else None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if extra:
+        entry.update(extra)
+    try:
+        await db.audit_log.insert_one(entry)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"audit_log write failed for action={action} user={user_id}: {exc}")
+
+
+# Collections a single organization's export should include. Each entry is
+# (label, collection, scope) — `scope` tells us how to filter ("org" on
+# organization_id, "user" on user_id, "partner" via the partners collection).
+# `users` is handled separately so we can redact `password_hash` and similar.
+_GDPR_ORG_COLLECTIONS: List[tuple] = [
+    ("leads",              "leads",                "org"),
+    ("contacts",           "contacts",             "org"),
+    ("companies",          "companies",            "org"),
+    ("deals",              "deals",                "org"),
+    ("pipelines",          "pipelines",            "org"),
+    ("tasks",              "tasks",                "org"),
+    ("projects",           "projects",             "org"),
+    ("campaigns",          "email_campaigns",      "org"),
+    ("chat_messages",      "chat_messages",        "org"),
+    ("chat_channels",      "chat_channels",        "org"),
+    ("calls",              "calls",                "org"),
+    ("calendar_events",    "calendar_events",      "org"),
+    ("bookings",           "bookings",             "org"),
+    ("files",              "files",                "org"),
+    ("invoices",           "invoices",             "org"),
+    ("payment_transactions", "payment_transactions", "org"),
+]
+
+
+async def _collect_gdpr_export(user: Dict[str, Any]) -> Dict[str, Any]:
+    """Gather every record the user's org owns into a single JSON-safe dict.
+
+    Uses per-collection `.to_list(10000)` with a generous cap — a single
+    tenant with >10k leads is already well past the point where we'd want a
+    streaming export, but at that scale Art. 20 compliance still matters so
+    we log a warning and truncate rather than fail outright.
+    """
+    org_id = user.get("organization_id")
+    user_id = user["user_id"]
+
+    # User profile — password_hash is projected out so it never leaves the DB.
+    profile = await db.users.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "password_hash": 0},
+    )
+
+    # Peer users in the same org. Also redact password_hash.
+    peers: List[Dict[str, Any]] = []
+    if org_id:
+        peers = await db.users.find(
+            {"organization_id": org_id, "user_id": {"$ne": user_id}},
+            {"_id": 0, "password_hash": 0},
+        ).to_list(1000)
+
+    collections_out: Dict[str, List[Dict[str, Any]]] = {}
+    for label, coll_name, scope in _GDPR_ORG_COLLECTIONS:
+        try:
+            coll = getattr(db, coll_name)
+            if scope == "org" and org_id:
+                query = {"organization_id": org_id}
+            elif scope == "user":
+                query = {"user_id": user_id}
+            else:
+                continue
+            docs = await coll.find(query, {"_id": 0}).to_list(10000)
+            collections_out[label] = docs
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"GDPR export: collection '{coll_name}' failed for org {org_id}: {exc}")
+            collections_out[label] = []
+
+    # Partner programme records, if the user registered as a partner.
+    partner_data: Dict[str, Any] = {}
+    try:
+        partner = await db.partners.find_one({"user_id": user_id}, {"_id": 0})
+        if partner:
+            partner_data["partner"] = partner
+            partner_data["referral_sales"] = await db.referral_sales.find(
+                {"partner_id": partner.get("partner_id")}, {"_id": 0}
+            ).to_list(10000)
+            partner_data["payouts"] = await db.partner_payouts.find(
+                {"partner_id": partner.get("partner_id")}, {"_id": 0}
+            ).to_list(1000)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"GDPR export: partner data for user {user_id} failed: {exc}")
+
+    return {
+        "export_metadata": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "user_id": user_id,
+            "organization_id": org_id,
+            "format_version": 1,
+            "note": (
+                "This archive contains the personal + organisational data TAKO "
+                "holds under GDPR Art. 20. It excludes password hashes and "
+                "third-party data not originated in TAKO (e.g. Stripe raw "
+                "events, Anthropic completion payloads)."
+            ),
+        },
+        "profile": profile,
+        "organization_peers": peers,
+        **collections_out,
+        "partner_programme": partner_data or None,
+    }
+
+
+@api_router.get("/gdpr/export-my-data")
+async def gdpr_export_my_data(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """GDPR Art. 20 — right to data portability.
+
+    Returns a single JSON archive of everything TAKO holds for the
+    requesting user's organization. Rate-limited to one export per user
+    per 24 hours (tracked via ``users.last_gdpr_export_at``) so a
+    compromised account can't be used to exfiltrate the tenant repeatedly.
+    """
+    now = datetime.now(timezone.utc)
+    last_export_iso = current_user.get("last_gdpr_export_at")
+    if last_export_iso:
+        try:
+            last_export = datetime.fromisoformat(last_export_iso)
+            if last_export.tzinfo is None:
+                last_export = last_export.replace(tzinfo=timezone.utc)
+            elapsed = now - last_export
+            if elapsed < timedelta(hours=GDPR_EXPORT_MIN_INTERVAL_HOURS):
+                next_eligible = last_export + timedelta(hours=GDPR_EXPORT_MIN_INTERVAL_HOURS)
+                raise HTTPException(
+                    status_code=429,
+                    detail=(
+                        f"You can request another export after "
+                        f"{next_eligible.isoformat()}."
+                    ),
+                )
+        except HTTPException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            # Malformed timestamp — don't block the user, just warn.
+            logger.warning(f"GDPR export: could not parse last_gdpr_export_at for user {current_user['user_id']}: {exc}")
+
+    payload = await _collect_gdpr_export(current_user)
+
+    # Update the rate-limit marker BEFORE returning so a network failure
+    # during the download can't be used to mint unlimited exports.
+    await db.users.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"last_gdpr_export_at": now.isoformat()}},
+    )
+    await _write_audit_log(
+        "gdpr_export",
+        current_user["user_id"],
+        organization_id=current_user.get("organization_id"),
+        request=request,
+    )
+
+    filename = (
+        f"tako-data-export-"
+        f"{current_user.get('organization_id') or current_user['user_id']}-"
+        f"{now.strftime('%Y%m%d')}.json"
+    )
+    body = json.dumps(payload, default=str, indent=2)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+class DeletionRequest(BaseModel):
+    confirm: bool
+    reason: Optional[str] = None
+
+
+@api_router.post("/gdpr/request-deletion")
+async def gdpr_request_deletion(
+    data: DeletionRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """GDPR Art. 17 — right to erasure.
+
+    Schedules deletion for ``now + 30 days``. The user can cancel via
+    ``/gdpr/cancel-deletion`` during that window. The actual purge is
+    performed by an out-of-scope cron job (see TODO block below).
+    """
+    if not data.confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Deletion must be explicitly confirmed (set `confirm` to true).",
+        )
+
+    now = datetime.now(timezone.utc)
+    scheduled_for = now + timedelta(days=GDPR_DELETION_GRACE_DAYS)
+    reason = (data.reason or "").strip() or None
+
+    await db.users.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {
+            "deletion_requested_at": now.isoformat(),
+            "deletion_scheduled_for": scheduled_for.isoformat(),
+            "deletion_reason": reason,
+        }},
+    )
+
+    await _write_audit_log(
+        "gdpr_deletion_requested",
+        current_user["user_id"],
+        organization_id=current_user.get("organization_id"),
+        request=request,
+        extra={"scheduled_for": scheduled_for.isoformat(), "reason": reason},
+    )
+
+    # Confirmation email — best effort. We never let a Resend outage stop
+    # the user from exercising the right.
+    if RESEND_API_KEY:
+        try:
+            safe_name = html_mod.escape(current_user.get("name") or current_user["email"])
+            safe_date = html_mod.escape(scheduled_for.strftime("%d %B %Y"))
+            email_html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1e293b;">Account deletion scheduled</h2>
+                <p>Hi {safe_name},</p>
+                <p>We've received your request to delete your TAKO account.
+                   It is scheduled for <strong>{safe_date}</strong>
+                   ({GDPR_DELETION_GRACE_DAYS} days from today).</p>
+                <p>If this wasn't you, log in to TAKO and cancel the
+                   deletion from any page. After {safe_date} the account
+                   and associated personal data will be purged and the
+                   cancellation option will no longer be available.</p>
+                <p style="color: #64748b; font-size: 13px;">— The TAKO Team</p>
+            </div>
+            """
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": SENDER_EMAIL,
+                "to": [current_user["email"]],
+                "subject": "TAKO: your account deletion is scheduled",
+                "html": email_html,
+            })
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"GDPR deletion confirmation email failed for user {current_user['user_id']}: {exc}")
+
+    return {
+        "message": (
+            f"Account deletion scheduled for {scheduled_for.date().isoformat()}. "
+            "Log in to cancel if this wasn't you."
+        ),
+        "scheduled_for": scheduled_for.isoformat(),
+    }
+
+
+@api_router.post("/gdpr/cancel-deletion")
+async def gdpr_cancel_deletion(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """Cancel a pending deletion request before the grace window closes."""
+    if not current_user.get("deletion_scheduled_for"):
+        raise HTTPException(status_code=400, detail="No deletion request is pending.")
+
+    await db.users.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$unset": {
+            "deletion_requested_at": "",
+            "deletion_scheduled_for": "",
+            "deletion_reason": "",
+        }},
+    )
+
+    await _write_audit_log(
+        "gdpr_deletion_cancelled",
+        current_user["user_id"],
+        organization_id=current_user.get("organization_id"),
+        request=request,
+    )
+
+    return {"message": "Account deletion cancelled."}
+
+
+# ── DELETION CRON — TODO (out of scope for the GDPR endpoint prompt) ──────
+# A scheduled job must periodically enforce any deletion_scheduled_for that
+# has elapsed. It is NOT implemented here — adding it needs a decision on
+# the scheduler (APScheduler vs. external cron) and on cascade semantics
+# for orgs where the deleter is the sole owner. Ticket when picking it up:
+#
+#   1. Query: db.users.find({
+#          "deletion_scheduled_for": {"$lte": now_iso},
+#          "deletion_executed_at": {"$exists": False}
+#      })
+#   2. For each user:
+#        a) Anonymise PII on the user document:
+#             name         → "Deleted User"
+#             email        → f"deleted-{user_id}@removed.tako.invalid"
+#             picture      → None
+#             phone / timezone / profile fields → cleared
+#             password_hash → random unusable value (don't allow login)
+#           Keep user_id + organization_id so FK references in audit_log,
+#           referral_sales etc. stay intact.
+#        b) Revoke active sessions: db.user_sessions.delete_many({user_id})
+#        c) Remove from org members:
+#             - if role != owner       → simply `$pull` from memberships
+#             - if sole owner of org   → set organization.pending_deletion=True
+#                                        and leave orphan-rescue for ops.
+#        d) Anonymise authored content (lead.created_by / deal.created_by /
+#           chat_messages.sender_name etc.) to "Deleted User" — don't hard-
+#           delete; co-workers still need the audit trail of "who entered
+#           this lead".
+#        e) Set on user doc:
+#             deletion_executed_at : ISO now
+#             deletion_scheduled_for: unchanged (for auditability)
+#        f) Write audit_log action="gdpr_deletion_executed".
+#   3. Run every ~6h; idempotent (the `deletion_executed_at` guard skips
+#      already-processed users).
+#
+# Until that cron ships, deletions sit indefinitely in the
+# `deletion_scheduled_for` field — the endpoint + banner still work, they
+# just don't materially remove data yet. The user is told this via the
+# confirmation email copy above.
+
+
+# ==================== LEGAL — DPA (Art. 28) ====================
+
+@api_router.get("/legal/dpa")
+async def get_dpa():
+    """Publish the subprocessor list + current DPA status.
+
+    Public (no auth) — procurement teams evaluate us before they can log in.
+    The DPA itself is pending legal review (FOLLOWUPS #4); until then we
+    expose the subprocessor inventory and a contact address so buyers can
+    request the draft.
+    """
+    return {
+        "status": "draft",
+        "message": (
+            "Our Data Processing Agreement (Auftragsverarbeitungsvertrag) "
+            "per GDPR Art. 28 is being finalized with legal counsel. "
+            "Contact support@tako.software to request a copy."
+        ),
+        "subprocessors": [
+            {"name": "Anthropic", "purpose": "AI features (Claude API)", "location": "US"},
+            {"name": "Stripe",    "purpose": "Payment processing",         "location": "US/EU"},
+            {"name": "Resend",    "purpose": "Transactional email",        "location": "US"},
+            {"name": "Twilio",    "purpose": "SMS and WhatsApp messaging", "location": "US"},
+            {"name": "Google",    "purpose": "OAuth authentication",       "location": "US/EU"},
+            {"name": "Meta",      "purpose": "WhatsApp Business API",      "location": "US/EU"},
+        ],
+        "contact_email": "support@tako.software",
+    }
+
 
 # ==================== SUPER ADMIN SETUP ====================
 

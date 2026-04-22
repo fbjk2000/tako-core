@@ -34,6 +34,7 @@ import FilesPage from './pages/FilesPage';
 import ListenersPage from './pages/ListenersPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
 import LegalPage from './pages/LegalPage';
+import DPAPage from './pages/DPAPage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
 
 import './App.css';
@@ -511,6 +512,7 @@ const AppRouter = () => {
       />
       <Route path="/privacy" element={<LegalPage />} />
       <Route path="/terms" element={<LegalPage />} />
+      <Route path="/legal/dpa" element={<DPAPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

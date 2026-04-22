@@ -52,6 +52,7 @@ const LegalPage = () => {
             <ul className="space-y-1.5 text-slate-400">
               <li><Link to="/privacy" className="hover:text-slate-200">Privacy Policy</Link></li>
               <li><Link to="/terms" className="hover:text-slate-200">Terms of Service</Link></li>
+              <li><Link to="/legal/dpa" className="hover:text-slate-200">Data Processing Agreement</Link></li>
             </ul>
           </div>
           <div>
