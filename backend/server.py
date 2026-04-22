@@ -4668,7 +4668,12 @@ async def get_payment_status(session_id: str, current_user: dict = Depends(get_c
 
 @api_router.post("/checkout/launch-edition")
 async def launch_edition_checkout(request: Request):
-    """Public checkout for Launch Edition (4999 EUR one-time)"""
+    """Public checkout for TAKO CRM — Self-Hosted License (4999 EUR one-time).
+
+    Endpoint path keeps the ``launch-edition`` slug for backward
+    compatibility with existing links, but the product is the self-hosted
+    licence.
+    """
     body = await request.json()
     origin_url = body.get("origin_url", "")
     buyer_name = body.get("name", "")
@@ -4692,8 +4697,8 @@ async def launch_edition_checkout(request: Request):
     admin_uid = super_admin.get("user_id") if super_admin else None
     await db.deals.insert_one({
         "deal_id": deal_id, "organization_id": org_id,
-        "name": f"Launch Edition: {buyer_name or buyer_email or 'Website'}", "value": 4999.0, "currency": "EUR",
-        "stage": "negotiation", "probability": 60, "tags": ["launch-edition", "one-time"],
+        "name": f"TAKO CRM — Self-Hosted License: {buyer_name or buyer_email or 'Website'}", "value": 4999.0, "currency": "EUR",
+        "stage": "negotiation", "probability": 60, "tags": ["tako-crm", "self-hosted", "one-time"],
         "notes": f"Buyer: {buyer_name} ({buyer_email}). Checkout initiated.",
         "assigned_to": admin_uid, "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
     })
@@ -4703,7 +4708,7 @@ async def launch_edition_checkout(request: Request):
             "lead_id": f"lead_{uuid.uuid4().hex[:12]}", "organization_id": org_id,
             "first_name": name_parts[0], "last_name": name_parts[1] if len(name_parts) > 1 else "",
             "email": buyer_email, "source": "launch_edition", "status": "qualified",
-            "notes": "Initiated Launch Edition checkout (EUR 4,999)", "ai_score": None,
+            "notes": "Initiated TAKO CRM Self-Hosted License checkout (EUR 4,999)", "ai_score": None,
             "assigned_to": admin_uid, "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
         })
     await db.payment_transactions.insert_one({
@@ -4715,7 +4720,7 @@ async def launch_edition_checkout(request: Request):
 
 @api_router.get("/checkout/launch-edition/verify")
 async def verify_launch_edition(session_id: str, deal_id: str):
-    """Verify Launch Edition payment and update deal to won"""
+    """Verify TAKO CRM Self-Hosted License payment and update deal to won."""
     api_key = os.environ.get("STRIPE_API_KEY")
     stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
     try:
@@ -4729,14 +4734,14 @@ async def verify_launch_edition(session_id: str, deal_id: str):
             org_id = super_admin.get("organization_id") if super_admin else None
             await db.tasks.insert_one({
                 "task_id": f"task_{uuid.uuid4().hex[:12]}", "organization_id": org_id,
-                "title": f"Deliver Launch Edition: {deal_id}", "description": "Launch Edition purchased. Deliver self-hosted CRM package, setup call, deployment guide, and handover.",
+                "title": f"Deliver TAKO CRM Self-Hosted License: {deal_id}", "description": "TAKO CRM Self-Hosted License purchased. Deliver self-hosted CRM package, setup call, deployment guide, and handover.",
                 "status": "todo", "priority": "high", "assigned_to": admin_uid, "related_deal_id": deal_id,
                 "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
             })
             return {"status": "paid", "deal_id": deal_id, "message": "Payment confirmed. Delivery task created."}
         return {"status": status.payment_status, "deal_id": deal_id}
     except Exception as e:
-        logger.error(f"Launch edition verify error: {e}")
+        logger.error(f"TAKO CRM self-hosted verify error: {e}")
         return {"status": "error", "detail": str(e)}
 
 @api_router.post("/webhook/stripe")
@@ -4754,7 +4759,7 @@ async def launch_edition_unyt(request: Request):
     """Create a UNYT payment order for a self-hosted TAKO purchase.
 
     Accepts an optional `plan_id` to select the product variant. Defaults to
-    the original Launch Edition price (4999 EUR) for backward compatibility.
+    the original one-time price (4999 EUR) for backward compatibility.
     """
     body = await request.json()
     buyer_name = body.get("name", "")
@@ -4858,7 +4863,7 @@ async def confirm_unyt_payment(deal_id: str, tx_hash: str):
 
     await db.tasks.insert_one({
         "task_id": f"task_{uuid.uuid4().hex[:12]}", "organization_id": org_id,
-        "title": f"Deliver Launch Edition (UNYT): {deal_id}",
+        "title": f"Deliver TAKO CRM Self-Hosted License (UNYT): {deal_id}",
         "description": f"UNYT payment received. TX: {tx_hash}. Verify on Arbiscan, then deliver self-hosted CRM package.",
         "status": "todo", "priority": "high", "assigned_to": admin_uid, "related_deal_id": deal_id,
         "subtasks": [], "comments": [], "activity": [{"action": "created", "by": admin_uid or "", "by_name": "System", "at": now.isoformat()}],
