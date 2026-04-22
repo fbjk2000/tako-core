@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { Building, Ticket, Loader2 } from 'lucide-react';
+import { Building, Ticket, Sparkles, Loader2 } from 'lucide-react';
 
 /**
  * Org-setup interstitial — FOLLOWUPS #14.
@@ -17,8 +17,13 @@ import { Building, Ticket, Loader2 } from 'lucide-react';
  * their email domain first (cross-tenant leak). That path is gone; users
  * now land here with `organization_id === null` and pick explicitly:
  *
- *   - "Create organization" → POST /api/organizations?name=…
- *   - "I have an invite code" → POST /api/organizations/invites/accept?invite_code=…
+ *   - "Try TAKO free for 14 days" → POST /api/demo/create        (Prompt 9)
+ *   - "Create organization"       → POST /api/organizations?name=…
+ *   - "I have an invite code"     → POST /api/organizations/invites/accept?invite_code=…
+ *
+ * The demo option is the most visually inviting — that's the default path
+ * we want prospects to take on the tako.software platform. It's stripped
+ * from the customer distribution by scripts/build-distribution.sh.
  *
  * ProtectedRoute forces any authenticated user with no org through this
  * page before they can reach /dashboard or any data-bearing route.
@@ -26,10 +31,28 @@ import { Building, Ticket, Loader2 } from 'lucide-react';
 const SetupOrgPage = () => {
   const navigate = useNavigate();
   const { checkAuth, user } = useAuth();
-  const [mode, setMode] = useState(null); // 'create' | 'invite' | null
+  const [mode, setMode] = useState(null); // 'demo' | 'create' | 'invite' | null
   const [orgName, setOrgName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const handleStartDemo = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setMode('demo');
+    try {
+      await axios.post(`${API}/demo/create`, {}, { withCredentials: true });
+      await checkAuth();
+      toast.success('Your 14-day demo is ready');
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Could not start demo');
+      setMode(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -81,13 +104,47 @@ const SetupOrgPage = () => {
         <CardHeader>
           <CardTitle className="text-xl">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</CardTitle>
           <p className="text-sm text-slate-600 mt-1">
-            To get started, either create your own organization or join an
-            existing one with an invitation code.
+            Pick how you want to get started.
           </p>
         </CardHeader>
         <CardContent>
           {mode === null && (
             <div className="space-y-3">
+              {/* Demo — visually the primary option. Gradient border + sparkle
+                  icon to nudge prospects toward the self-serve path. */}
+              <button
+                type="button"
+                onClick={handleStartDemo}
+                disabled={submitting}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-[#0EA5A0] bg-gradient-to-br from-teal-50 to-white hover:shadow-md transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed"
+                data-testid="setup-org-demo-btn"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0EA5A0] flex items-center justify-center flex-shrink-0">
+                  {submitting ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-white" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Try TAKO free for 14 days</p>
+                  <p className="text-sm text-slate-600">
+                    Pre-loaded with realistic sample data. No credit card.
+                  </p>
+                </div>
+              </button>
+
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center" aria-hidden>
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-2 text-[10px] font-semibold tracking-widest uppercase text-slate-400">
+                    Or
+                  </span>
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setMode('create')}

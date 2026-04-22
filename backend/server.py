@@ -1069,6 +1069,12 @@ async def _assert_org_not_deleted(user: dict) -> None:
     """Reject the request if the user's organization has been soft-deleted
     (FOLLOWUPS #21). Cheap indexed lookup projecting only ``deleted_at``.
 
+    Also transitions active demo orgs to ``expired`` once their TTL passes
+    (Prompt 9). We don't block expired demos here — the dedicated
+    ``demo_write_block_middleware`` decides which methods/paths get locked
+    out — but we flip the status synchronously so every subsequent read
+    (including /auth/me in the very same request) sees the truth.
+
     Only users with a concrete ``organization_id`` need checking — users
     with ``None`` are either freshly registered (routed through /setup-org
     by the frontend gate, FOLLOWUPS #14) or admin-unlinked, and they'd fail
@@ -1080,10 +1086,31 @@ async def _assert_org_not_deleted(user: dict) -> None:
         return
     org = await db.organizations.find_one(
         {"organization_id": org_id},
-        {"_id": 0, "deleted_at": 1},
+        {"_id": 0, "deleted_at": 1, "is_demo": 1, "demo_status": 1, "demo_expires_at": 1},
     )
     if org is None or org.get("deleted_at"):
         raise HTTPException(status_code=401, detail="Organization has been deleted")
+
+    # Demo expiry transition (Prompt 9) — flip active→expired when the TTL
+    # passes. Intentionally *not* raising: the write-block middleware is the
+    # single enforcement point. Keeping the transition here ensures /auth/me
+    # and every subsequent endpoint in this request observes the new status
+    # without a second round-trip.
+    if org.get("is_demo") and org.get("demo_status") == "active":
+        expires_at = org.get("demo_expires_at")
+        if isinstance(expires_at, str):
+            try:
+                expires_at = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            except Exception:
+                expires_at = None
+        if isinstance(expires_at, datetime):
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expires_at:
+                await db.organizations.update_one(
+                    {"organization_id": org_id},
+                    {"$set": {"demo_status": "expired"}},
+                )
 
 
 async def get_current_user_allow_unverified(
@@ -2067,6 +2094,28 @@ async def get_me(current_user: dict = Depends(get_current_user_allow_unverified)
     # "Account deletion scheduled for X" warning banner + cancel button.
     # They're None/absent for the overwhelming majority of sessions; the
     # frontend only renders the banner when `deletion_scheduled_for` is set.
+    #
+    # Prompt 9: surface is_demo / demo_status / demo_expires_at so the layout
+    # can render the demo banner (active) or soft-lock overlay (expired)
+    # without a second round-trip. For non-demo orgs and users without an org
+    # yet these fields are None/False and the frontend renders nothing.
+    is_demo = False
+    demo_status = None
+    demo_expires_at = None
+    demo_created_at = None
+    org_id = current_user.get("organization_id")
+    if org_id:
+        org = await db.organizations.find_one(
+            {"organization_id": org_id},
+            {"_id": 0, "is_demo": 1, "demo_status": 1,
+             "demo_expires_at": 1, "demo_created_at": 1},
+        )
+        if org:
+            is_demo = bool(org.get("is_demo"))
+            demo_status = org.get("demo_status")
+            demo_expires_at = org.get("demo_expires_at")
+            demo_created_at = org.get("demo_created_at")
+
     return {
         "user_id": current_user["user_id"],
         "email": current_user["email"],
@@ -2081,6 +2130,11 @@ async def get_me(current_user: dict = Depends(get_current_user_allow_unverified)
         "email_verified": current_user.get("email_verified", True),
         "deletion_requested_at": current_user.get("deletion_requested_at"),
         "deletion_scheduled_for": current_user.get("deletion_scheduled_for"),
+        # Demo system fields (Prompt 9, platform-only).
+        "is_demo": is_demo,
+        "demo_status": demo_status,
+        "demo_expires_at": demo_expires_at,
+        "demo_created_at": demo_created_at,
     }
 
 @api_router.post("/auth/logout")
@@ -7955,6 +8009,620 @@ async def _send_license_welcome_email(
         logger.warning(f"[welcome] send to {recipient_email} failed: {exc}")
 
 
+# ============================================================================
+# SELF-SERVE DEMO SYSTEM (Prompt 9, platform-only)
+# ----------------------------------------------------------------------------
+# Prospects signing up on tako.software can pick "Try TAKO free for 14 days"
+# on the setup screen, which calls POST /api/demo/create below. That endpoint
+# provisions an org marked is_demo=True with demo_expires_at = now + 14 days,
+# then seeds realistic sample CRM records so the dashboard isn't empty.
+#
+# After 14 days the org flips to demo_status="expired" (transition is done in
+# _assert_org_not_deleted on every authenticated request, plus a daily
+# batch). Reads still work; writes are blocked by demo_write_block_middleware
+# below with a 403 that points the frontend at /pricing.
+#
+# Demo → paid conversion happens in the Stripe checkout.session.completed
+# handler above: when a demo org buys a licence, demo_status flips to
+# "converted" and both the banner and soft-lock overlay disappear on next
+# /auth/me. All data (leads, deals, tasks, campaigns) stays.
+#
+# Files: `backend/demo_seeder.py` owns the sample-record fixtures.
+# Stripping: the build script excludes this whole block (and demo_seeder.py,
+# and the DemoBanner/DemoExpiredOverlay components) from the customer
+# distribution — a customer running TAKO locally has no use for a demo tier.
+# ============================================================================
+
+DEMO_DURATION_DAYS = 14
+DEMO_WARNING_DAYS = 3
+# Paths that stay writable even on an expired demo. Keep synced with the
+# allow-list in demo_write_block_middleware.
+_DEMO_WRITE_ALLOWED_PREFIXES = (
+    "/api/auth/",
+    "/api/license/",
+    "/api/gdpr/",
+    "/api/support/",
+    # /api/demo/create is blocked anyway via the endpoint's "no current org"
+    # check, but letting the middleware through means an expired-demo user
+    # could in theory convert by buying (Stripe flow lives under /api/checkout/
+    # which ISN'T on this list — that's intentional; buying a licence is a
+    # write we want to permit).
+    "/api/checkout/",
+    "/api/demo/",
+)
+
+
+def _parse_demo_expiry(value: Any) -> Optional[datetime]:
+    """Coerce demo_expires_at (ISO string or datetime) to aware datetime.
+    Returns None on anything unparseable so callers can fall back safely."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+    return None
+
+
+class _DemoCreateResponse(BaseModel):
+    """Shape returned by POST /api/demo/create. Frontend uses this to confirm
+    the org is ready and to pre-fill a welcome state before the first
+    /auth/me round-trip."""
+    organization_id: str
+    name: str
+    is_demo: bool = True
+    demo_status: str = "active"
+    demo_created_at: str
+    demo_expires_at: str
+    seeded: Dict[str, int]
+
+
+@api_router.post("/demo/create", response_model=_DemoCreateResponse)
+async def create_demo_organization(
+    current_user: dict = Depends(get_current_user),
+):
+    """Spin up a 14-day demo org for an authenticated, email-verified user
+    who doesn't already belong to one.
+
+    Flow:
+      1. Guard: require verified + no current organization_id.
+      2. Create the org with is_demo / demo_* metadata.
+      3. Link the user as owner (mirrors POST /organizations).
+      4. Seed realistic sample data via demo_seeder.seed_demo_data.
+      5. Return the org envelope + seed counts for the welcome panel.
+
+    Caller: the "Try TAKO free for 14 days" CTA on SetupOrgPage.
+    """
+    from demo_seeder import seed_demo_data
+
+    if current_user.get("organization_id"):
+        raise HTTPException(
+            status_code=400,
+            detail="User already belongs to an organization",
+        )
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=DEMO_DURATION_DAYS)
+    organization_id = f"org_{uuid.uuid4().hex[:12]}"
+    user_name = (current_user.get("name") or "").strip() or current_user.get("email", "Your")
+    first_name = user_name.split()[0] if " " in user_name else user_name
+    org_name = f"{first_name}'s Demo"
+
+    org_doc = {
+        "organization_id": organization_id,
+        "name": org_name,
+        "owner_id": current_user["user_id"],
+        "user_count": 1,
+        "license_type": None,
+        "license_status": None,
+        "created_at": now.isoformat(),
+        "ai_trial_ends_at": (now + timedelta(days=AI_TRIAL_DAYS)).isoformat(),
+        # Demo-specific metadata.
+        "is_demo": True,
+        "demo_created_at": now.isoformat(),
+        "demo_expires_at": expires_at.isoformat(),
+        "demo_status": "active",  # active | expired | converted
+        "created_by": current_user["user_id"],
+    }
+    await db.organizations.insert_one(org_doc)
+
+    await db.users.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"organization_id": organization_id, "role": "owner"}},
+    )
+
+    # Seed realistic sample CRM data so the dashboard isn't a blank canvas.
+    # Failures here raise — we'd rather bubble up than hand back an org the
+    # user thinks is empty.
+    try:
+        seeded = await seed_demo_data(db, organization_id, current_user["user_id"])
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("[demo] seed failed for org %s: %s", organization_id, exc)
+        raise HTTPException(status_code=500, detail="Demo seeding failed") from exc
+
+    logger.info(
+        "[demo] created org %s for user %s (expires %s)",
+        organization_id, current_user["user_id"], expires_at.isoformat(),
+    )
+
+    return _DemoCreateResponse(
+        organization_id=organization_id,
+        name=org_name,
+        demo_created_at=now.isoformat(),
+        demo_expires_at=expires_at.isoformat(),
+        seeded=seeded,
+    )
+
+
+@app.middleware("http")
+async def demo_write_block_middleware(request: Request, call_next):
+    """Block writes on CRM data for expired demo orgs (Prompt 9).
+
+    Runs for every HTTP request (cheap early-exit for GETs and for paths on
+    the allow-list). For write methods, we look up the caller's org; if
+    demo_status == "expired", return a 403 envelope the frontend recognises
+    so it can render the soft-lock overlay. Implementation notes:
+
+      - Middleware, not a dependency: adding a dep to every mutating
+        endpoint is too invasive. One middleware keeps the rule in a single
+        place and guarantees new endpoints inherit it.
+      - We duplicate a minimal slice of the auth resolution (cookie OR bearer
+        → user) rather than reuse get_current_user, because middleware can't
+        use FastAPI Depends() and we want this to stay side-effect-free on
+        unauthenticated requests.
+      - On any decode/lookup failure we pass the request through unchanged —
+        the downstream auth dependency will raise the proper 401. We do not
+        want this middleware to shadow auth errors with 403s.
+    """
+    method = request.method.upper()
+    if method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return await call_next(request)
+
+    path = request.url.path or ""
+    if not path.startswith("/api/"):
+        return await call_next(request)
+    if any(path.startswith(prefix) for prefix in _DEMO_WRITE_ALLOWED_PREFIXES):
+        return await call_next(request)
+
+    # Cheap best-effort auth decode — mirrors get_current_user_allow_unverified
+    # without raising.
+    user_id: Optional[str] = None
+    try:
+        session_token = request.cookies.get("session_token")
+        if session_token:
+            session = await db.user_sessions.find_one(
+                {"session_token": session_token}, {"_id": 0, "user_id": 1, "expires_at": 1},
+            )
+            if session:
+                expires = session.get("expires_at")
+                if isinstance(expires, str):
+                    expires = datetime.fromisoformat(expires)
+                if expires and expires.tzinfo is None:
+                    expires = expires.replace(tzinfo=timezone.utc)
+                if expires and expires > datetime.now(timezone.utc):
+                    user_id = session.get("user_id")
+
+        if not user_id:
+            auth_header = request.headers.get("authorization") or ""
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(None, 1)[1].strip()
+                try:
+                    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                    user_id = payload.get("user_id")
+                except Exception:
+                    user_id = None
+    except Exception:  # noqa: BLE001
+        return await call_next(request)
+
+    if not user_id:
+        return await call_next(request)
+
+    try:
+        user = await db.users.find_one(
+            {"user_id": user_id}, {"_id": 0, "organization_id": 1},
+        )
+        if not user or not user.get("organization_id"):
+            return await call_next(request)
+        org = await db.organizations.find_one(
+            {"organization_id": user["organization_id"]},
+            {"_id": 0, "is_demo": 1, "demo_status": 1, "demo_expires_at": 1},
+        )
+        if not org or not org.get("is_demo"):
+            return await call_next(request)
+
+        status = org.get("demo_status")
+        # Transition stale "active" demos before blocking so the very first
+        # request after expiry flips status + gets blocked in one round-trip.
+        if status == "active":
+            expires = _parse_demo_expiry(org.get("demo_expires_at"))
+            if expires and datetime.now(timezone.utc) > expires:
+                await db.organizations.update_one(
+                    {"organization_id": user["organization_id"]},
+                    {"$set": {"demo_status": "expired"}},
+                )
+                status = "expired"
+
+        if status == "expired":
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "demo_expired",
+                    "message": "Your demo has expired. Purchase TAKO to continue.",
+                    "pricing_url": "/pricing",
+                },
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("demo_write_block_middleware failed open: %s", exc)
+
+    return await call_next(request)
+
+
+# ── Super-admin demo management ─────────────────────────────────────────────
+
+class _DemoExtendBody(BaseModel):
+    days: int = Field(gt=0, le=365, description="Days to extend the demo by")
+
+
+class _DemoDeleteBody(BaseModel):
+    confirm: bool = False
+
+
+@api_router.get("/admin/demos")
+async def admin_list_demos(_admin: dict = Depends(require_super_admin)):
+    """List every demo org. Used by the admin dashboard to see conversion
+    funnel health at a glance."""
+    now = datetime.now(timezone.utc)
+    demos = await db.organizations.find(
+        {"is_demo": True},
+        {"_id": 0, "organization_id": 1, "name": 1, "owner_id": 1,
+         "demo_status": 1, "demo_created_at": 1, "demo_expires_at": 1,
+         "demo_converted_at": 1, "created_at": 1},
+    ).to_list(500)
+
+    # Decorate with owner email + days_remaining so the admin UI doesn't need
+    # a second round-trip per row.
+    out = []
+    for org in demos:
+        owner_email: Optional[str] = None
+        if org.get("owner_id"):
+            owner = await db.users.find_one(
+                {"user_id": org["owner_id"]}, {"_id": 0, "email": 1, "name": 1},
+            )
+            if owner:
+                owner_email = owner.get("email")
+                org["owner_name"] = owner.get("name")
+        org["owner_email"] = owner_email
+        expires = _parse_demo_expiry(org.get("demo_expires_at"))
+        if expires:
+            delta = expires - now
+            org["days_remaining"] = max(0, delta.days + (1 if delta.seconds > 0 else 0))
+        else:
+            org["days_remaining"] = None
+        out.append(org)
+    return {"demos": out, "count": len(out)}
+
+
+@api_router.post("/admin/demos/{org_id}/extend")
+async def admin_extend_demo(
+    org_id: str,
+    body: _DemoExtendBody,
+    admin: dict = Depends(require_super_admin),
+):
+    """Push demo_expires_at forward by `days`. If the demo was already
+    expired, also flip demo_status back to "active" so the user can keep
+    going. Logged in audit_log for traceability."""
+    org = await db.organizations.find_one({"organization_id": org_id, "is_demo": True})
+    if not org:
+        raise HTTPException(status_code=404, detail="Demo org not found")
+
+    # Compute new expiry from max(now, current_expiry) + days — extending an
+    # already-expired demo shouldn't leave it still in the past.
+    now = datetime.now(timezone.utc)
+    current_expiry = _parse_demo_expiry(org.get("demo_expires_at")) or now
+    base = current_expiry if current_expiry > now else now
+    new_expiry = base + timedelta(days=body.days)
+
+    update: Dict[str, Any] = {"demo_expires_at": new_expiry.isoformat()}
+    if org.get("demo_status") == "expired":
+        update["demo_status"] = "active"
+        # Reset the warning flags so the user gets the 3-day heads-up again
+        # before the new expiry.
+        update["demo_3day_warning_sent"] = False
+        update["demo_expiry_email_sent"] = False
+
+    await db.organizations.update_one({"organization_id": org_id}, {"$set": update})
+
+    try:
+        await db.audit_log.insert_one({
+            "action": "demo_extended",
+            "organization_id": org_id,
+            "admin_user_id": admin.get("user_id"),
+            "admin_email": admin.get("email"),
+            "days_added": body.days,
+            "new_expires_at": new_expiry.isoformat(),
+            "timestamp": now,
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"audit_log write failed for demo_extended: {exc}")
+
+    return {"organization_id": org_id, "demo_expires_at": new_expiry.isoformat(),
+            "demo_status": update.get("demo_status", org.get("demo_status"))}
+
+
+@api_router.post("/admin/demos/{org_id}/expire")
+async def admin_force_expire_demo(
+    org_id: str,
+    admin: dict = Depends(require_super_admin),
+):
+    """Force-expire a demo immediately. Useful for killing abusive demos
+    or ones the sales team has converted to a manual trial."""
+    org = await db.organizations.find_one({"organization_id": org_id, "is_demo": True})
+    if not org:
+        raise HTTPException(status_code=404, detail="Demo org not found")
+    now = datetime.now(timezone.utc)
+    await db.organizations.update_one(
+        {"organization_id": org_id},
+        {"$set": {"demo_status": "expired", "demo_expires_at": now.isoformat()}},
+    )
+    try:
+        await db.audit_log.insert_one({
+            "action": "demo_force_expired",
+            "organization_id": org_id,
+            "admin_user_id": admin.get("user_id"),
+            "admin_email": admin.get("email"),
+            "timestamp": now,
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"audit_log write failed for demo_force_expired: {exc}")
+    return {"organization_id": org_id, "demo_status": "expired"}
+
+
+@api_router.delete("/admin/demos/{org_id}")
+async def admin_delete_demo(
+    org_id: str,
+    body: _DemoDeleteBody,
+    admin: dict = Depends(require_super_admin),
+):
+    """Hard-delete a demo org + all its users' org membership + all demo
+    data. Requires `confirm: true` in the body to guard against accidents.
+    Intentionally aggressive — this is for abuse / test-data cleanup, not
+    for the normal soft-delete flow (which goes through /admin/organizations/
+    :id/delete → schedules 30-day purge)."""
+    if not body.confirm:
+        raise HTTPException(status_code=400, detail="Pass {confirm: true} to delete")
+    org = await db.organizations.find_one({"organization_id": org_id, "is_demo": True})
+    if not org:
+        raise HTTPException(status_code=404, detail="Demo org not found")
+
+    # Drop every org-scoped collection row. List is not exhaustive — it
+    # covers what the seeder writes plus the high-volume collections a
+    # real demo user might generate. Add collections here as new features
+    # land; leaving one out means leftover rows rather than incorrect data.
+    collections_to_purge = [
+        "leads", "deals", "tasks", "campaigns", "pipelines",
+        "invoices", "activities", "notes", "chat_threads", "chat_messages",
+        "projects", "files", "email_logs", "sms_logs", "audit_log",
+    ]
+    deleted_counts: Dict[str, int] = {}
+    for coll_name in collections_to_purge:
+        try:
+            res = await db[coll_name].delete_many({"organization_id": org_id})
+            if res.deleted_count:
+                deleted_counts[coll_name] = res.deleted_count
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"purge of {coll_name} for {org_id} failed: {exc}")
+
+    # Unlink users (don't delete their accounts — users may come back under
+    # a new org).
+    await db.users.update_many(
+        {"organization_id": org_id},
+        {"$unset": {"organization_id": "", "role": ""}},
+    )
+
+    # Finally delete the org itself.
+    await db.organizations.delete_one({"organization_id": org_id})
+
+    try:
+        await db.audit_log.insert_one({
+            "action": "demo_hard_deleted",
+            "organization_id": org_id,
+            "admin_user_id": admin.get("user_id"),
+            "admin_email": admin.get("email"),
+            "deleted_counts": deleted_counts,
+            "timestamp": datetime.now(timezone.utc),
+        })
+    except Exception:  # noqa: BLE001
+        pass
+
+    return {"organization_id": org_id, "deleted_counts": deleted_counts}
+
+
+async def _send_demo_warning_email(
+    *, recipient_email: str, recipient_name: Optional[str],
+    days_remaining: int, organization_name: str,
+) -> None:
+    """Nudge: 3 days before expiry, tell the user their demo is ending and
+    point them at /pricing. Non-fatal on send failure."""
+    if not recipient_email or not _email_sender_ready():
+        return
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/") or "https://tako.software"
+    greeting = (recipient_name or "").split()[0] or "there"
+    pricing_link = f"{frontend_url}/pricing"
+    subject = f"Your TAKO demo expires in {days_remaining} days"
+    html_body = f"""
+    <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
+        <h1 style="font-size:22px;margin:0 0 16px;">Hi {html_mod.escape(greeting)},</h1>
+        <p style="font-size:15px;line-height:1.55;color:#334155;">
+            Your TAKO demo ({html_mod.escape(organization_name)}) expires in
+            <strong>{days_remaining} days</strong>. Ready to make it permanent?
+            Purchase a licence and you'll keep every contact, deal, and task
+            you've set up so far — no migration, no export/import.
+        </p>
+        <p style="margin:24px 0;">
+            <a href="{html_mod.escape(pricing_link)}"
+               style="display:inline-block;padding:12px 20px;background:#0EA5A0;color:#fff;
+                      text-decoration:none;border-radius:8px;font-weight:500;">
+                See pricing
+            </a>
+        </p>
+        <p style="font-size:14px;line-height:1.55;color:#475569;">
+            Questions? Email
+            <a href="mailto:support@tako.software" style="color:#0EA5A0;">support@tako.software</a>.
+        </p>
+    </div>
+    """
+    try:
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [recipient_email],
+            "subject": subject,
+            "html": html_body,
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[demo-warning] send to {recipient_email} failed: {exc}")
+
+
+async def _send_demo_expired_email(
+    *, recipient_email: str, recipient_name: Optional[str],
+    organization_name: str,
+) -> None:
+    """Post-expiry: tell the user their demo ended and data is safe."""
+    if not recipient_email or not _email_sender_ready():
+        return
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/") or "https://tako.software"
+    greeting = (recipient_name or "").split()[0] or "there"
+    pricing_link = f"{frontend_url}/pricing"
+    subject = "Your TAKO demo has expired"
+    html_body = f"""
+    <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
+        <h1 style="font-size:22px;margin:0 0 16px;">Hi {html_mod.escape(greeting)},</h1>
+        <p style="font-size:15px;line-height:1.55;color:#334155;">
+            Your TAKO demo ({html_mod.escape(organization_name)}) has expired.
+            <strong>Your data is safe.</strong> Purchase TAKO and you'll pick
+            up right where you left off — same contacts, same deals, same
+            tasks.
+        </p>
+        <p style="margin:24px 0;">
+            <a href="{html_mod.escape(pricing_link)}"
+               style="display:inline-block;padding:12px 20px;background:#0EA5A0;color:#fff;
+                      text-decoration:none;border-radius:8px;font-weight:500;">
+                Get TAKO
+            </a>
+        </p>
+        <p style="font-size:14px;line-height:1.55;color:#475569;">
+            Talk to us:
+            <a href="mailto:support@tako.software" style="color:#0EA5A0;">support@tako.software</a>.
+        </p>
+    </div>
+    """
+    try:
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [recipient_email],
+            "subject": subject,
+            "html": html_body,
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[demo-expired-email] send to {recipient_email} failed: {exc}")
+
+
+async def check_demo_expirations(db_handle) -> Dict[str, int]:
+    """Scan demo orgs and (a) send 3-day warning emails, (b) expire demos
+    whose TTL has passed + send the expired-email notification.
+
+    Called at server startup for immediate cleanup; should ALSO run as a
+    daily cron (e.g. via APScheduler or an external cron task) so warnings
+    don't slip when the server hasn't restarted in a few days.
+
+    Returns {"warned": N, "expired": M} for logging.
+    """
+    now = datetime.now(timezone.utc)
+    warning_threshold = now + timedelta(days=DEMO_WARNING_DAYS)
+    warned = 0
+    expired = 0
+
+    # 3-day warnings — active demos whose expiry is within the warning
+    # window and haven't already been warned.
+    try:
+        active_near_expiry = await db_handle.organizations.find(
+            {
+                "is_demo": True,
+                "demo_status": "active",
+                "demo_3day_warning_sent": {"$ne": True},
+            },
+            {"_id": 0, "organization_id": 1, "name": 1, "owner_id": 1,
+             "demo_expires_at": 1},
+        ).to_list(500)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[demo-check] query (warnings) failed: {exc}")
+        active_near_expiry = []
+
+    for org in active_near_expiry:
+        expires = _parse_demo_expiry(org.get("demo_expires_at"))
+        if not expires or expires > warning_threshold or expires <= now:
+            continue
+        delta = expires - now
+        days_left = max(1, delta.days + (1 if delta.seconds > 0 else 0))
+        owner = await db_handle.users.find_one(
+            {"user_id": org.get("owner_id")}, {"_id": 0, "email": 1, "name": 1},
+        ) if org.get("owner_id") else None
+        if not owner or not owner.get("email"):
+            continue
+        await _send_demo_warning_email(
+            recipient_email=owner["email"],
+            recipient_name=owner.get("name"),
+            days_remaining=days_left,
+            organization_name=org.get("name") or "Your demo",
+        )
+        await db_handle.organizations.update_one(
+            {"organization_id": org["organization_id"]},
+            {"$set": {"demo_3day_warning_sent": True}},
+        )
+        warned += 1
+
+    # Expiry pass — active demos past their TTL.
+    try:
+        to_expire = await db_handle.organizations.find(
+            {"is_demo": True, "demo_status": "active"},
+            {"_id": 0, "organization_id": 1, "name": 1, "owner_id": 1,
+             "demo_expires_at": 1, "demo_expiry_email_sent": 1},
+        ).to_list(500)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[demo-check] query (expirations) failed: {exc}")
+        to_expire = []
+
+    for org in to_expire:
+        expires = _parse_demo_expiry(org.get("demo_expires_at"))
+        if not expires or expires > now:
+            continue
+        await db_handle.organizations.update_one(
+            {"organization_id": org["organization_id"]},
+            {"$set": {"demo_status": "expired"}},
+        )
+        if not org.get("demo_expiry_email_sent") and org.get("owner_id"):
+            owner = await db_handle.users.find_one(
+                {"user_id": org["owner_id"]}, {"_id": 0, "email": 1, "name": 1},
+            )
+            if owner and owner.get("email"):
+                await _send_demo_expired_email(
+                    recipient_email=owner["email"],
+                    recipient_name=owner.get("name"),
+                    organization_name=org.get("name") or "Your demo",
+                )
+                await db_handle.organizations.update_one(
+                    {"organization_id": org["organization_id"]},
+                    {"$set": {"demo_expiry_email_sent": True}},
+                )
+        expired += 1
+
+    if warned or expired:
+        logger.info("[demo-check] warned=%d expired=%d", warned, expired)
+    return {"warned": warned, "expired": expired}
+
+
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhooks — licence lifecycle + partner commissions.
@@ -8085,6 +8753,34 @@ async def stripe_webhook(request: Request):
                     purchase_date=now,
                     referred_by=metadata.get("referral_code") or txn.get("referral_code"),
                 )
+
+                # Demo → paid conversion (Prompt 9, platform-only). If the
+                # paying org was in a 14-day demo, flip demo_status so the
+                # banner + soft-lock overlay disappear on next /auth/me.
+                # We KEEP is_demo_data flags on seeded records — customers
+                # decide for themselves whether to delete sample leads/deals
+                # via the normal delete flows.
+                try:
+                    purchased_org_id = (
+                        metadata.get("organization_id") or txn.get("organization_id")
+                    )
+                    if purchased_org_id:
+                        converted_org = await db.organizations.find_one_and_update(
+                            {"organization_id": purchased_org_id, "is_demo": True},
+                            {"$set": {
+                                "demo_status": "converted",
+                                "demo_converted_at": now.isoformat(),
+                            }},
+                        )
+                        if converted_org:
+                            logger.info(
+                                "[demo] org %s converted from demo to paid",
+                                purchased_org_id,
+                            )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        f"Demo→paid conversion flag update failed for session {session_id}: {exc}"
+                    )
 
                 # Credit partner referral commission (idempotent on session id).
                 try:
@@ -11194,6 +11890,20 @@ async def _tako_startup() -> None:
             next_run_time=datetime.now(timezone.utc) + timedelta(seconds=30),
         )
         logger.info("Google Calendar sync job scheduled (every 2 minutes)")
+
+        # Demo expiry housekeeping (Prompt 9, platform-only). Runs once at
+        # startup for immediate cleanup — SHOULD ALSO be wired as a daily
+        # cron so warnings and expirations land on time between restarts.
+        # We intentionally don't add it to the APScheduler jobstore from
+        # here: the demo system is stripped from the customer distribution
+        # (see scripts/build-distribution.sh), and registering the job
+        # via the MongoDB jobstore would leave a dangling job reference
+        # customers can't resolve. Operators should configure the daily
+        # cron at the platform level instead.
+        try:
+            await check_demo_expirations(db)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("check_demo_expirations at startup failed: %s", e)
     except Exception as e:  # noqa: BLE001
         logger.exception("Startup hook failed: %s", e)
 

@@ -6,6 +6,8 @@ import { useAuth, API } from '../../App';
 import { useTokenUsage } from '../../hooks/useTokenUsage';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
+import DemoBanner from '../DemoBanner';
+import DemoExpiredOverlay from '../DemoExpiredOverlay';
 import {
   LayoutDashboard,
   Users,
@@ -332,9 +334,23 @@ const DashboardLayout = ({ children }) => {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-slate-900 truncate" data-testid="sidebar-user-name">
-                {user?.name || l.user}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-medium text-slate-900 truncate" data-testid="sidebar-user-name">
+                  {user?.name || l.user}
+                </p>
+                {/* Demo badge — surfaced here (next to the user/org label in
+                    the sidebar footer) rather than next to each nav item so
+                    we get a single, unobtrusive indicator. Platform-only. */}
+                {user?.is_demo && (
+                  <span
+                    className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-teal-100 text-[#0EA5A0]"
+                    data-testid="sidebar-demo-badge"
+                    title="This is a 14-day demo organization"
+                  >
+                    DEMO
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>
           </div>
@@ -352,6 +368,10 @@ const DashboardLayout = ({ children }) => {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+        {/* Demo banner (Prompt 9) — shown on active demos above the deletion
+            banner so both can coexist on rare edge-case accounts. Renders
+            null when the user isn't on a demo. */}
+        <DemoBanner user={user} />
         {deletionPending && (
           <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 max-w-6xl mx-auto">
@@ -374,6 +394,12 @@ const DashboardLayout = ({ children }) => {
           {children}
         </div>
       </main>
+
+      {/* Expired-demo soft lock (Prompt 9). Fixed-position overlay — lives
+          outside <main> so it's anchored to the viewport rather than the
+          scrollable content area. Renders null when demo_status !== 'expired'
+          or the route is on its own allow-list (/pricing, /support, etc.). */}
+      <DemoExpiredOverlay user={user} />
     </div>
   );
 };
