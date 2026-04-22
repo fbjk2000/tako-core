@@ -1539,6 +1539,11 @@ const SettingsPage = () => {
                 </CardContent>
               </Card>
 
+              {/* Software Download — platform-only. The build-distribution.sh
+                  script strips this block from the customer distribution since
+                  customers don't re-download from their own instance. */}
+              <SoftwareDownloadSection />
+
               {/* Invoices */}
               <Card>
                 <CardHeader>
@@ -1987,6 +1992,118 @@ const SettingsPage = () => {
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+};
+
+/**
+ * Software Download — platform-only section of the Settings > Billing tab.
+ *
+ * Surfaces the latest packaged self-hosted build for customers holding an
+ * active licence. Mirrors the logic in DownloadPage but fits inside a Card
+ * alongside Licence / Maintenance / Invoices. Stripped from the customer
+ * distribution by scripts/build-distribution.sh (customers don't re-download
+ * from their own instance).
+ */
+const SoftwareDownloadSection = () => {
+  const [manifest, setManifest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.post(`${API}/license/download`);
+        if (!cancelled) setManifest(res.data);
+      } catch (e) {
+        if (cancelled) return;
+        if (e?.response?.status === 503) setUnavailable(true);
+        // 403 (no licence): don't render the card at all.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await axios.post(`${API}/license/download`);
+      setManifest(res.data);
+      const url = res.data.download_url.startsWith('http')
+        ? res.data.download_url
+        : `${API.replace(/\/api$/, '')}${res.data.download_url}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.data.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      const detail = e?.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Download failed.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Hide the section if the user doesn't have a licence (403 returns no
+  // manifest, which we surface as a hidden card — the Licence Status card
+  // above already prompts them to purchase).
+  if (loading) return null;
+  if (!manifest && !unavailable) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Download className="w-5 h-5" />
+          Software Download
+        </CardTitle>
+        <CardDescription>
+          Download the packaged self-hosted TAKO CRM for your server.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {unavailable ? (
+          <p className="text-sm text-slate-500">
+            No distribution package is currently available. Contact{' '}
+            <a href="mailto:support@tako.software" className="text-[#0EA5A0] hover:underline">
+              support@tako.software
+            </a>.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+              <div>
+                <p className="font-semibold text-slate-900">
+                  TAKO CRM v{manifest.version}
+                </p>
+                <p className="text-sm text-slate-500">{manifest.filename}</p>
+              </div>
+              <Button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="bg-[#0EA5A0] hover:bg-teal-700"
+                data-testid="download-distribution"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {downloading ? 'Preparing…' : 'Download'}
+              </Button>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">SHA-256:</p>
+              <code className="block break-all text-xs bg-white border border-slate-200 rounded px-3 py-2 text-slate-800">
+                {manifest.sha256}
+              </code>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

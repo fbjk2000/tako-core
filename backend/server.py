@@ -7699,6 +7699,262 @@ async def renew_maintenance(
     }
 
 
+# ============================================================================
+# DISTRIBUTION PACKAGE DOWNLOAD (Prompt 8)
+# ----------------------------------------------------------------------------
+# After a customer pays for a self-hosted licence, they need to download the
+# product. The build-distribution.sh script emits a versioned tarball into
+# DISTRIBUTION_DIR; these endpoints gate download on licence status, hand out
+# short-lived signed URLs, rate-limit abuse, and record an audit entry per
+# download. The signed-URL indirection keeps the bearer auth off the actual
+# binary URL (so a user can paste the link into e.g. curl without also
+# sharing their session cookie).
+# ============================================================================
+
+DISTRIBUTION_DIR = Path(os.environ.get("DISTRIBUTION_DIR", "./dist")).resolve()
+DOWNLOAD_TOKEN_TTL_SECONDS = 3600  # 1 hour
+DOWNLOAD_RATE_LIMIT_PER_ORG_PER_DAY = 5
+
+
+def _read_distribution_manifest() -> Optional[Dict[str, Any]]:
+    """Return {version, filename, sha256, path, size} for the packaged build,
+    or None if no distribution is currently staged.
+
+    Reads:
+      - DISTRIBUTION_DIR/VERSION  → plain text version string
+      - DISTRIBUTION_DIR/tako-crm-<version>.tar.gz{,.sha256}
+
+    Kept resilient: missing files return None (→ 503 from the download
+    endpoint) rather than crash — the platform should start even when no
+    distribution has been staged yet.
+    """
+    try:
+        version_file = DISTRIBUTION_DIR / "VERSION"
+        if not version_file.is_file():
+            return None
+        version = version_file.read_text().strip()
+        if not version:
+            return None
+        filename = f"tako-crm-{version}.tar.gz"
+        tarball = DISTRIBUTION_DIR / filename
+        hashfile = DISTRIBUTION_DIR / f"{filename}.sha256"
+        if not tarball.is_file() or not hashfile.is_file():
+            return None
+        # sha256 file is "<hex>  <filename>\n".
+        sha_line = hashfile.read_text().strip()
+        sha256 = sha_line.split()[0] if sha_line else ""
+        return {
+            "version": version,
+            "filename": filename,
+            "sha256": sha256,
+            "path": tarball,
+            "size": tarball.stat().st_size,
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"_read_distribution_manifest failed: {exc}")
+        return None
+
+
+def _issue_download_token(*, user_id: str, organization_id: str, version: str) -> str:
+    """Sign a short-lived JWT that authorises one download attempt."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "purpose": "download",
+        "user_id": user_id,
+        "organization_id": organization_id,
+        "version": version,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=DOWNLOAD_TOKEN_TTL_SECONDS)).timestamp()),
+        "jti": secrets.token_hex(8),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _decode_download_token(token: str) -> Dict[str, Any]:
+    """Validate signature, expiry, and the `purpose` claim. Raises HTTPException."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=403, detail="Download link expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=403, detail="Invalid download link")
+    if payload.get("purpose") != "download":
+        raise HTTPException(status_code=403, detail="Invalid download link")
+    return payload
+
+
+@api_router.post("/license/download")
+async def request_license_download(
+    http_request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """Return a short-lived signed download URL for the packaged distribution.
+
+    Gated on the caller's org holding an active or completed licence. The
+    actual tarball is served by GET /license/download/{token} so the signed
+    URL alone is sufficient for a browser/curl to fetch the file without
+    carrying session credentials.
+    """
+    org_id = current_user.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="No organization")
+
+    org = await db.organizations.find_one({"organization_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if org.get("license_status") not in ("active", "completed"):
+        raise HTTPException(status_code=403, detail="Valid license required to download")
+
+    manifest = _read_distribution_manifest()
+    if not manifest:
+        raise HTTPException(
+            status_code=503,
+            detail="No distribution package is currently available. Try again later or contact support@tako.software.",
+        )
+
+    # Rate limit via audit_log — count successful downloads by this org in
+    # the last 24 hours. Matches per-org, not per-user, so a customer can't
+    # walk the limit by rotating between seats.
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent_downloads = await db.audit_log.count_documents({
+        "action": "package_download",
+        "organization_id": org_id,
+        "timestamp": {"$gte": since},
+    })
+    if recent_downloads >= DOWNLOAD_RATE_LIMIT_PER_ORG_PER_DAY:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Download limit reached ({DOWNLOAD_RATE_LIMIT_PER_ORG_PER_DAY}/day). Try again tomorrow.",
+        )
+
+    token = _issue_download_token(
+        user_id=current_user["user_id"],
+        organization_id=org_id,
+        version=manifest["version"],
+    )
+
+    return {
+        "download_url": f"/api/license/download/{token}",
+        "expires_in": DOWNLOAD_TOKEN_TTL_SECONDS,
+        "filename": manifest["filename"],
+        "sha256": manifest["sha256"],
+        "size": manifest["size"],
+        "version": manifest["version"],
+    }
+
+
+@api_router.get("/license/download/{token}")
+async def download_license_package(token: str, http_request: Request):
+    """Serve the tarball — signed token is the only auth needed.
+
+    No Depends(get_current_user) here on purpose: the JWT signature + the
+    `purpose: "download"` claim are the auth mechanism. This lets the user
+    paste the URL into a download manager or `curl` without needing to carry
+    their session cookie.
+    """
+    payload = _decode_download_token(token)
+
+    manifest = _read_distribution_manifest()
+    if not manifest:
+        raise HTTPException(status_code=503, detail="Distribution package not available")
+
+    # The signed token pins the version; if a newer build has rolled out
+    # since the token was issued, 409 so the client re-requests a URL rather
+    # than silently receiving a different artifact than the one hashed on
+    # their download page.
+    if payload.get("version") != manifest["version"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Distribution has been updated since this link was issued. Refresh your download page.",
+        )
+
+    # Log the download. Non-fatal if logging fails — we'd rather serve the
+    # file than block the customer on a metadata write.
+    try:
+        await db.audit_log.insert_one({
+            "action": "package_download",
+            "user_id": payload.get("user_id"),
+            "organization_id": payload.get("organization_id"),
+            "version": manifest["version"],
+            "timestamp": datetime.now(timezone.utc),
+            "ip": http_request.client.host if http_request.client else None,
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"audit_log write failed for package_download: {exc}")
+
+    return FileResponse(
+        path=str(manifest["path"]),
+        media_type="application/gzip",
+        filename=manifest["filename"],
+        headers={
+            "Content-Disposition": f'attachment; filename="{manifest["filename"]}"',
+            "X-TAKO-Version": manifest["version"],
+            "X-TAKO-SHA256": manifest["sha256"],
+        },
+    )
+
+
+async def _send_license_welcome_email(
+    *,
+    organization_id: Optional[str],
+    recipient_email: Optional[str],
+    recipient_name: Optional[str] = None,
+) -> None:
+    """Send the post-payment welcome email with a link to the download page.
+
+    Best-effort: if Resend isn't configured or the send fails, we log and
+    return — the webhook must never 500 on a mail failure.
+    """
+    if not recipient_email:
+        logger.info(f"[welcome] no recipient_email for org {organization_id}; skipping")
+        return
+    if not _email_sender_ready():
+        logger.info("[welcome] email sender not configured; skipping")
+        return
+
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/") or "https://tako.software"
+    download_link = f"{frontend_url}/download"
+    greeting = recipient_name.split()[0] if recipient_name else "there"
+
+    subject = "Welcome to TAKO — Download your software"
+    html_body = f"""
+    <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
+        <h1 style="font-size:22px;margin:0 0 16px;">Welcome to TAKO, {html_mod.escape(greeting)} 🎉</h1>
+        <p style="font-size:15px;line-height:1.55;color:#334155;">
+            Your self-hosted TAKO CRM licence is active. You can download the
+            latest distribution package from your TAKO account:
+        </p>
+        <p style="margin:24px 0;">
+            <a href="{html_mod.escape(download_link)}"
+               style="display:inline-block;padding:12px 20px;background:#0EA5A0;color:#fff;
+                      text-decoration:none;border-radius:8px;font-weight:500;">
+                Download TAKO CRM
+            </a>
+        </p>
+        <p style="font-size:14px;line-height:1.55;color:#475569;">
+            The package includes the full source code, Docker deployment files,
+            and an installation guide. Onboarding and training modules are
+            built into the app — you'll see a checklist on your dashboard
+            after your first login.
+        </p>
+        <p style="font-size:14px;line-height:1.55;color:#475569;">
+            Questions? Email
+            <a href="mailto:support@tako.software" style="color:#0EA5A0;">support@tako.software</a>.
+        </p>
+    </div>
+    """
+    try:
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [recipient_email],
+            "subject": subject,
+            "html": html_body,
+        })
+        logger.info(f"[welcome] sent to {recipient_email} (org {organization_id})")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[welcome] send to {recipient_email} failed: {exc}")
+
+
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhooks — licence lifecycle + partner commissions.
@@ -7837,6 +8093,26 @@ async def stripe_webhook(request: Request):
                 except Exception as exc:  # noqa: BLE001
                     logger.error(
                         f"Partner referral crediting failed (webhook) for session {session_id}: {exc}"
+                    )
+
+                # Fire the post-payment welcome email with the download link.
+                # Non-fatal — a Resend blip must not cause Stripe to think the
+                # webhook failed and retry the whole activation.
+                try:
+                    await _send_license_welcome_email(
+                        organization_id=metadata.get("organization_id") or txn.get("organization_id"),
+                        recipient_email=(
+                            metadata.get("email")
+                            or txn.get("email")
+                            or txn.get("buyer_email")
+                        ),
+                        recipient_name=(
+                            metadata.get("buyer_name") or txn.get("buyer_name")
+                        ),
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        f"Welcome email send failed for session {session_id}: {exc}"
                     )
 
         # ── invoice.paid ──────────────────────────────────────────────────

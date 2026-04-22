@@ -38,6 +38,7 @@ import DPAPage from './pages/DPAPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import SetupOrgPage from './pages/SetupOrgPage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
+import DownloadPage from './pages/DownloadPage';
 
 import './App.css';
 
@@ -737,6 +738,16 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <PartnerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Platform-only: stripped from the self-hosted distribution. Surfaces
+          the packaged TAKO build for customers who just paid. */}
+      <Route
+        path="/download"
+        element={
+          <ProtectedRoute>
+            <DownloadPage />
           </ProtectedRoute>
         }
       />
