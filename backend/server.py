@@ -1065,6 +1065,27 @@ async def _record_login_attempt(request: Request, email: str, success: bool) -> 
         logger.warning("login_attempts insert failed: %s", e)
 
 
+async def _assert_org_not_deleted(user: dict) -> None:
+    """Reject the request if the user's organization has been soft-deleted
+    (FOLLOWUPS #21). Cheap indexed lookup projecting only ``deleted_at``.
+
+    Only users with a concrete ``organization_id`` need checking — users
+    with ``None`` are either freshly registered (routed through /setup-org
+    by the frontend gate, FOLLOWUPS #14) or admin-unlinked, and they'd fail
+    any data query anyway since every org-scoped endpoint scopes by
+    organization_id.
+    """
+    org_id = user.get("organization_id")
+    if not org_id:
+        return
+    org = await db.organizations.find_one(
+        {"organization_id": org_id},
+        {"_id": 0, "deleted_at": 1},
+    )
+    if org is None or org.get("deleted_at"):
+        raise HTTPException(status_code=401, detail="Organization has been deleted")
+
+
 async def get_current_user_allow_unverified(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security)
@@ -1073,7 +1094,14 @@ async def get_current_user_allow_unverified(
     bearer token. Does NOT enforce email verification — callers that need the
     verified gate should depend on get_current_user instead. Used by the
     endpoints an unverified user legitimately needs: /auth/verify-email,
-    /auth/resend-verification, /auth/me, /auth/logout, /auth/refresh."""
+    /auth/resend-verification, /auth/me, /auth/logout, /auth/refresh.
+
+    Also applies the deleted-org gate (FOLLOWUPS #21): if the user's org
+    has been soft-deleted, the request is rejected with 401 so the
+    frontend bounces to /login. Refresh tokens for the org's members are
+    deleted at org-deletion time, so even the silent-refresh flow cannot
+    revive the session.
+    """
     # Check cookie first
     session_token = request.cookies.get("session_token")
     if session_token:
@@ -1087,6 +1115,7 @@ async def get_current_user_allow_unverified(
             if expires_at > datetime.now(timezone.utc):
                 user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
                 if user:
+                    await _assert_org_not_deleted(user)
                     return user
 
     # Check Authorization header
@@ -1095,6 +1124,7 @@ async def get_current_user_allow_unverified(
         payload = decode_jwt_token(token)
         user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
         if user:
+            await _assert_org_not_deleted(user)
             return user
 
     raise HTTPException(status_code=401, detail="Not authenticated")
@@ -1930,7 +1960,11 @@ async def google_login_callback(code: str, state: str, response: Response):
             "grant_type": "authorization_code"
         })
         if token_resp.status_code != 200:
-            logger.error(f"Google token exchange failed: {token_resp.text}")
+            # Don't log token_resp.text — Google's error bodies are usually
+            # fine (just {"error":"invalid_grant"}) but this branch also
+            # triggers on 2xx-with-unexpected-shape, and we'd rather not
+            # have any OAuth response payload land in Sentry or log files.
+            logger.error("Google token exchange failed (status=%s)", token_resp.status_code)
             from fastapi.responses import RedirectResponse
             return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed")
         tokens = token_resp.json()
@@ -4453,8 +4487,10 @@ async def create_kit_tag(name: str):
             )
             if response.status_code in [200, 201]:
                 return response.json()
-            # If it fails, it's likely because we need api_secret for write operations
-            logger.warning(f"Kit create tag requires api_secret: {response.text}")
+            # If it fails, it's likely because we need api_secret for write
+            # operations. Log only the status — response.text is an error body
+            # from a third-party API and shouldn't land in our logs by default.
+            logger.warning("Kit create tag failed (status=%s) — likely api_secret required", response.status_code)
             raise HTTPException(status_code=response.status_code, detail="Creating tags requires Kit.com secret key")
     except httpx.RequestError as e:
         logger.error(f"Kit create tag error: {e}")
@@ -5692,13 +5728,50 @@ async def admin_delete_user(user_id: str, current_user: dict = Depends(require_s
 
 @api_router.delete("/admin/organizations/{org_id}")
 async def admin_delete_organization(org_id: str, current_user: dict = Depends(require_super_admin)):
-    """Delete an organization and unlink all its users"""
+    """Soft-delete an organization and terminate all active sessions for it
+    (FOLLOWUPS #21).
+
+    Previously this was a hard delete with ``organization_id=None`` fan-out,
+    which left two loopholes:
+
+    - A member holding a 15-minute access token (or a grandfathered 24h JWT)
+      could still call authenticated endpoints after deletion because the
+      bearer JWT only carries ``user_id`` — the org-gone state was invisible
+      to the auth middleware.
+    - ``ensure_user_org`` would then quietly spin up a fresh personal org for
+      the now-orphaned user on their next request, which isn't what an
+      admin invoking "delete this tenant" expects.
+
+    New flow:
+      1. Set ``deleted_at`` on the org doc (row is kept for audit / restore).
+      2. Leave ``organization_id`` on member users so the auth middleware
+         can 401 them via the deleted-org lookup (see
+         ``get_current_user_allow_unverified``).
+      3. Delete all refresh tokens for those members so the silent-refresh
+         flow can't mint a new access token after the existing one expires;
+         the user is forced back through /login.
+    """
     org = await db.organizations.find_one({"organization_id": org_id}, {"_id": 0})
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    await db.organizations.delete_one({"organization_id": org_id})
-    await db.users.update_many({"organization_id": org_id}, {"$set": {"organization_id": None, "role": "member"}})
-    return {"message": "Organization deleted"}
+    if org.get("deleted_at"):
+        raise HTTPException(status_code=400, detail="Organization is already deleted")
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.organizations.update_one(
+        {"organization_id": org_id},
+        {"$set": {"deleted_at": now, "deleted_by": current_user["user_id"]}},
+    )
+
+    # Kill refresh tokens for every member — forces re-login on next use.
+    member_ids = [
+        u["user_id"]
+        async for u in db.users.find({"organization_id": org_id}, {"_id": 0, "user_id": 1})
+    ]
+    if member_ids:
+        await db.refresh_tokens.delete_many({"user_id": {"$in": member_ids}})
+
+    return {"message": "Organization deleted", "members_revoked": len(member_ids)}
 
 @api_router.put("/admin/organizations/{org_id}")
 async def admin_update_organization(org_id: str, updates: dict, current_user: dict = Depends(require_super_admin)):
@@ -10825,6 +10898,14 @@ async def _tako_startup() -> None:
             await db.failed_emails.create_index("recipient")
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not create failed_emails indexes: %s", e)
+
+        # organizations (FOLLOWUPS #21): every authenticated request calls
+        # _assert_org_not_deleted → find_one by organization_id; without this
+        # index that's a collection scan on the hot path.
+        try:
+            await db.organizations.create_index("organization_id", unique=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not create organizations index: %s", e)
 
         # Google Calendar: periodic sync every 2 minutes (top-level function so
         # it pickles correctly for the MongoDB jobstore).
