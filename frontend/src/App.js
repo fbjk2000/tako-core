@@ -36,6 +36,7 @@ import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPage
 import LegalPage from './pages/LegalPage';
 import DPAPage from './pages/DPAPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import SetupOrgPage from './pages/SetupOrgPage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
 
 import './App.css';
@@ -473,6 +474,15 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/verify-email" state={{ from: location }} replace />;
   }
 
+  // FOLLOWUPS #14: gate on organization membership. Post auto-join removal,
+  // users who signed up without an invite code or organization_name land
+  // here with organization_id === null. Route them through /setup-org
+  // before they can reach any data-bearing page. Both null and undefined
+  // block; a real string value passes.
+  if (!user.organization_id && location.pathname !== '/setup-org') {
+    return <Navigate to="/setup-org" state={{ from: location }} replace />;
+  }
+
   return children;
 };
 
@@ -554,6 +564,14 @@ const AppRouter = () => {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route
+        path="/setup-org"
+        element={
+          <ProtectedRoute>
+            <SetupOrgPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/subscription/success"
         element={

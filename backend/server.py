@@ -1528,18 +1528,20 @@ async def register(user_data: UserCreate, response: Response):
         }
         await db.organizations.insert_one(org_doc)
     else:
-        # Auto-join org by email domain
-        email_domain = user_data.email.split("@")[1].lower() if "@" in user_data.email else None
-        if email_domain and email_domain not in ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"]:
-            matching_org = await db.organizations.find_one({"email_domain": email_domain}, {"_id": 0})
-            if matching_org:
-                # Self-hosted model: no per-seat limit. Every org gets unlimited users.
-                organization_id = matching_org["organization_id"]
-                user_role = "member"
-                await db.organizations.update_one(
-                    {"organization_id": organization_id},
-                    {"$inc": {"user_count": 1}}
-                )
+        # FOLLOWUPS #14: DO NOT auto-join by email domain.
+        #
+        # The previous behaviour silently added anyone signing up with a
+        # "matching" domain (e.g. acme.com) to whichever org had claimed
+        # email_domain=acme.com first — a cross-tenant leak. An attacker who
+        # guessed a customer's corporate domain could read that customer's
+        # chat, leads and deals from the dashboard on their very first
+        # login. Worse, the victim org got no notification.
+        #
+        # Users without invite code and without organization_name now land
+        # with organization_id=None. The frontend /verify-email → org-setup
+        # flow routes them through "Create org" or "Enter invite code"; no
+        # privileged data is accessible until one is chosen.
+        organization_id = None
     
     # FOLLOWUPS #1: email verification. New users start unverified and get a
     # verification link via Resend. get_current_user_allow_unverified lets
@@ -7920,19 +7922,63 @@ async def create_invoice_for_transaction(transaction: dict) -> str:
     }
     
     await db.invoices.insert_one(invoice_doc)
-    
-    # Send invoice email
-    await send_invoice_email(invoice_doc)
-    
+
+    # Send invoice email and persist delivery status on the invoice itself so
+    # billing support can see at a glance which customers never received their
+    # invoice email (FOLLOWUPS #13). The send helper never raises — it returns
+    # a status dict and records failures in `failed_emails` for retry.
+    email_result = await send_invoice_email(invoice_doc)
+    await db.invoices.update_one(
+        {"invoice_id": invoice_doc["invoice_id"]},
+        {"$set": {
+            "email_status": email_result.get("status", "unknown"),
+            "email_error": email_result.get("error"),
+            "email_attempted_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+
     return invoice_doc["invoice_id"]
 
-async def send_invoice_email(invoice: dict):
-    """Send invoice email with PDF attachment"""
+async def _record_failed_invoice_email(invoice: dict, status: str, error: str) -> None:
+    """Write a failure row to `failed_emails` for later retry / audit.
+
+    Kept best-effort: an exception inserting the failure row must not mask
+    the original email failure — the ERROR log above is what Sentry picks up.
+    """
+    try:
+        await db.failed_emails.insert_one({
+            "kind": "invoice",
+            "invoice_id": invoice.get("invoice_id"),
+            "invoice_number": invoice.get("invoice_number"),
+            "recipient": invoice.get("email"),
+            "status": status,
+            "error": error,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as log_exc:  # noqa: BLE001
+        logger.warning(f"Could not record failed_emails row: {log_exc}")
+
+
+async def send_invoice_email(invoice: dict) -> dict:
+    """Send invoice email. Never raises — returns a result dict.
+
+    Result shape: {"success": bool, "status": str, "error": Optional[str]}
+
+    status is one of: "sent", "not_configured", "failed". The caller writes
+    this onto the invoice document so billing staff can filter for invoices
+    whose customer never received the email. Failures also insert a row into
+    `failed_emails` (FOLLOWUPS #13) so an ops script can retry them later,
+    and are logged at ERROR so Sentry captures the exception with full trace.
+    """
     if not _email_sender_ready():
         logger.error(
-            "Cannot send email (invoice): RESEND_API_KEY or SENDER_EMAIL not configured"
+            "Cannot send email (invoice %s): RESEND_API_KEY or SENDER_EMAIL not configured",
+            invoice.get("invoice_number"),
         )
-        return {"success": False, "error": "Email not configured"}
+        await _record_failed_invoice_email(
+            invoice, "not_configured", "RESEND_API_KEY or SENDER_EMAIL missing"
+        )
+        return {"success": False, "status": "not_configured", "error": "Email not configured"}
     
     try:
         # Generate invoice HTML
@@ -8003,11 +8049,21 @@ async def send_invoice_email(invoice: dict):
             "subject": f"Your TAKO Invoice {invoice['invoice_number']}",
             "html": full_html
         })
-        
+
         logger.info(f"Invoice email sent: {invoice['invoice_number']} to {invoice['email']}")
-        
-    except Exception as e:
-        logger.error(f"Failed to send invoice email: {str(e)}")
+        return {"success": True, "status": "sent", "error": None}
+
+    except Exception as e:  # noqa: BLE001
+        # logger.exception → Sentry captures the full traceback via its
+        # logging integration (see FOLLOWUPS #16). Previously this was a
+        # logger.error(str(e)) without traceback and the result was silently
+        # swallowed, so Stripe-invoice failures only surfaced when a customer
+        # complained they never got their invoice.
+        logger.exception(
+            f"Failed to send invoice email {invoice.get('invoice_number')} to {invoice.get('email')}"
+        )
+        await _record_failed_invoice_email(invoice, "failed", str(e))
+        return {"success": False, "status": "failed", "error": str(e)}
 
 def generate_invoice_html(invoice: dict) -> str:
     """Generate HTML invoice.
@@ -8199,11 +8255,22 @@ async def get_invoice(invoice_id: str, current_user: dict = Depends(get_current_
 
 @api_router.get("/invoices/{invoice_id}/html")
 async def get_invoice_html(invoice_id: str, current_user: dict = Depends(get_current_user)):
-    """Get invoice as HTML for printing/PDF"""
+    """Get invoice as HTML for printing/PDF.
+
+    Access check mirrors get_invoice/: caller must own the invoice
+    (same organization or same user_id), or be a super_admin. Without this
+    check, an authenticated user who guessed an invoice_id could read
+    another tenant's invoice HTML — discovered during the FOLLOWUPS #18
+    XSS audit; same endpoint that renders the escaped invoice body.
+    """
     invoice = await db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    
+
+    if invoice.get("organization_id") != current_user.get("organization_id") and invoice.get("user_id") != current_user["user_id"]:
+        if current_user.get("role") != "super_admin":
+            raise HTTPException(status_code=403, detail="Access denied")
+
     html = generate_invoice_html(invoice)
     return Response(content=html, media_type="text/html")
 
@@ -10750,6 +10817,14 @@ async def _tako_startup() -> None:
             await db.google_calendar_events.create_index([("user_id", 1), ("start_iso", 1)])
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not create google_calendar_events indexes: %s", e)
+
+        # failed_emails (FOLLOWUPS #13): ops queries ~"give me today's
+        # invoice email failures" and a retry script that pulls by recipient.
+        try:
+            await db.failed_emails.create_index([("kind", 1), ("created_at", -1)])
+            await db.failed_emails.create_index("recipient")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not create failed_emails indexes: %s", e)
 
         # Google Calendar: periodic sync every 2 minutes (top-level function so
         # it pickles correctly for the MongoDB jobstore).

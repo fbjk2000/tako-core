@@ -78,6 +78,20 @@ const ChatPage = () => {
   const inputRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
+  // Mirror of state that the 3s polling interval reads. The interval is
+  // mounted once (deps: []) so if we closed over activeChannel / lastFetchTime
+  // directly, every successful poll would recreate pollNewMessages and
+  // remount the interval — producing drifting 3–6s intervals and, worse, a
+  // stale channel_id right after the user switches channels (FOLLOWUPS #12).
+  // Refs stay mutation-stable while state drives re-renders as usual.
+  const activeChannelRef = useRef(null);
+  const lastFetchTimeRef = useRef(null);
+  const tokenRef = useRef(null);
+
+  useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
+  useEffect(() => { lastFetchTimeRef.current = lastFetchTime; }, [lastFetchTime]);
+  useEffect(() => { tokenRef.current = token; }, [token]);
+
   const getH = () => token ? { Authorization: `Bearer ${token}` } : {};
 
   const toggleSection = (section) => setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -167,26 +181,39 @@ const ChatPage = () => {
     }
   }, [token]);
 
-  // Poll for new messages
+  // Poll for new messages. Reads channel + cursor from refs so this callback
+  // is stable across renders — the interval below stays mounted for the life
+  // of the component instead of being torn down every successful poll. Also
+  // means a channel switch takes effect on the very next tick: activeChannel
+  // state update → ref update (useEffect) → next poll sees new channel_id.
   const pollNewMessages = useCallback(async () => {
-    if (!activeChannel || !lastFetchTime) return;
+    const ch = activeChannelRef.current;
+    const since = lastFetchTimeRef.current;
+    if (!ch || !since) return;
+    const authToken = tokenRef.current;
+    if (!authToken) return;
     try {
       const response = await axios.get(`${API}/chat/messages/new`, {
-        headers: getH(),
+        headers: { Authorization: `Bearer ${authToken}` },
         withCredentials: true,
-        params: { 
-          since: lastFetchTime,
-          channel_id: activeChannel.channel_id
+        params: {
+          since,
+          channel_id: ch.channel_id
         }
       });
       if (response.data.messages?.length > 0) {
+        // Drop any messages that arrived for a channel the user has since
+        // left — otherwise a slow response could splice foreign messages
+        // into the new view.
+        const currentId = activeChannelRef.current?.channel_id;
+        if (currentId !== ch.channel_id) return;
         setMessages(prev => [...prev, ...response.data.messages]);
         setLastFetchTime(new Date().toISOString());
       }
     } catch (error) {
       console.error('Failed to poll messages:', error);
     }
-  }, [activeChannel, lastFetchTime, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch organization members
   const fetchMembers = useCallback(async () => {
@@ -246,7 +273,10 @@ const ChatPage = () => {
   };
 
   useEffect(() => {
-    // Poll for new messages every 3 seconds
+    // Poll for new messages every 3 seconds. Mounted once — pollNewMessages
+    // is a stable callback that reads current channel/cursor/token from refs
+    // (FOLLOWUPS #12). Previously depended on [pollNewMessages], which
+    // caused the interval to churn on every successful poll.
     pollIntervalRef.current = setInterval(pollNewMessages, 3000);
     return () => {
       if (pollIntervalRef.current) {
