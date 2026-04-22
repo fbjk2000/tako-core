@@ -397,6 +397,25 @@ server {
 }
 ```
 
+### Backups
+
+`scripts/backup-mongo.sh` dumps the MongoDB database, tars the output, and retains the last 7 days in `$BACKUP_DIR` (default `/opt/tako/backups`). It's meant to run daily from cron.
+
+```bash
+# /etc/cron.d/tako-backup — root cron, runs at 03:00 every day
+0 3 * * * root MONGO_URL="mongodb://localhost:27017" DB_NAME="tako" /opt/tako/scripts/backup-mongo.sh >> /var/log/tako-backup.log 2>&1
+```
+
+Restore is `tar -xzf tako_YYYYMMDD_HHMMSS.tar.gz` followed by `mongorestore --uri=... --db=tako tako_YYYYMMDD_HHMMSS/tako`. A TODO at the bottom of the script documents the offsite S3 upload — until that's wired up, rely on the VPS provider's disk snapshots as the second copy.
+
+### Health check
+
+`GET /api/health` returns a JSON status payload covering MongoDB reachability, email sender readiness, Sentry init, and Stripe webhook configuration. Use it as the target for an external uptime monitor — the endpoint returns **200** when MongoDB is reachable and **503** when it is not.
+
+### Error monitoring
+
+Set `SENTRY_DSN` (backend `.env`) and `REACT_APP_SENTRY_DSN` (frontend build env) to enable Sentry. Both are optional — the backend and frontend start without error if the SDK isn't installed or the DSN isn't set. `ENVIRONMENT` / `REACT_APP_ENVIRONMENT` tags events so staging and prod don't pollute each other.
+
 ---
 
 ## Recent Updates (Apr 2026 — Pre-launch QA)

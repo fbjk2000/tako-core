@@ -218,6 +218,11 @@ const SupportPage = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  // FOLLOWUPS #17: the new /support/ticket endpoint returns a short,
+  // human-readable ticket id (TAKO-NNNNNN). Showing it prominently gives
+  // the user something to quote when they follow up — and reassures them
+  // that the message actually landed somewhere.
+  const [ticketId, setTicketId] = useState(null);
 
   // Checklist state — persisted in localStorage
   const [checked, setChecked] = useState(() => {
@@ -238,11 +243,27 @@ const SupportPage = () => {
     e.preventDefault();
     setSending(true);
     try {
-      await axios.post(`${API}/support/contact`, contactForm);
+      // FOLLOWUPS #17: contact form now creates a real support ticket with
+      // a human-readable id. Backend derives email from the session when
+      // the submitter is logged in; we send it regardless so anonymous
+      // submissions still work.
+      const payload = {
+        subject: contactForm.subject,
+        message: `${contactForm.name ? `From: ${contactForm.name}\n` : ''}${contactForm.message}`,
+        email: contactForm.email,
+      };
+      const res = await axios.post(`${API}/support/ticket`, payload);
+      setTicketId(res?.data?.ticket_id || null);
       setContactForm({ name: '', email: '', subject: '', message: '' });
       setSent(true);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || t('support.messageFailed'));
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      // 429 returns a structured detail; surface its human copy.
+      const msg =
+        typeof detail === 'object' ? (detail?.message || t('support.messageFailed')) :
+        detail || t('support.messageFailed');
+      toast.error(msg, { duration: status === 429 ? 6000 : 4000 });
     } finally {
       setSending(false);
     }
@@ -471,10 +492,19 @@ const SupportPage = () => {
                         <p className="font-semibold text-slate-900">{t('support.messageReceived')}</p>
                         <p className="text-sm text-slate-500 mt-1">{t('support.respondIn24h')}</p>
                       </div>
+                      {ticketId && (
+                        <div className="inline-flex flex-col items-center gap-1 px-5 py-3 rounded-lg bg-slate-50 border border-slate-200">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Ticket reference</p>
+                          <p className="font-mono text-lg font-semibold text-slate-900" data-testid="ticket-id">
+                            {ticketId}
+                          </p>
+                          <p className="text-xs text-slate-500">Quote this ID if you follow up</p>
+                        </div>
+                      )}
                       <button
                         type="button"
                         className="text-sm text-[#0EA5A0] hover:text-teal-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
-                        onClick={() => setSent(false)}
+                        onClick={() => { setSent(false); setTicketId(null); }}
                       >
                         {t('support.sendAnother')}
                       </button>

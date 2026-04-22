@@ -43,6 +43,97 @@ import './App.css';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
+// ---------- FOLLOWUPS #16: error monitoring -------------------------------
+// Sentry is a soft dependency on the frontend too. When REACT_APP_SENTRY_DSN
+// is set at build time, we dynamically import @sentry/react and init. No DSN
+// or no package → stays a no-op so dev builds don't need the SDK installed.
+//
+// Set REACT_APP_SENTRY_DSN and REACT_APP_ENVIRONMENT at build time (CRA
+// inlines these). ErrorBoundary below catches rendering errors regardless;
+// Sentry just records them when it's available.
+if (process.env.REACT_APP_SENTRY_DSN) {
+  import('@sentry/react')
+    .then((Sentry) => {
+      Sentry.init({
+        dsn: process.env.REACT_APP_SENTRY_DSN,
+        environment: process.env.REACT_APP_ENVIRONMENT || 'production',
+        // Deliberately no performance tracing on the frontend (per spec).
+        tracesSampleRate: 0,
+      });
+    })
+    .catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn('[sentry] init skipped — @sentry/react not installed', e);
+    });
+}
+
+// Top-level error boundary. Catches exceptions thrown during React render
+// so a bad component can't white-screen the whole app. The fallback UI is
+// intentionally bare — minimum it needs is "something went wrong" and a
+// reload affordance so the user has a way forward.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    // eslint-disable-next-line no-console
+    console.error('Unhandled error in React tree:', error, errorInfo);
+    // If Sentry happened to be loaded by the init above, capture the error.
+    try {
+      if (window.Sentry && typeof window.Sentry.captureException === 'function') {
+        window.Sentry.captureException(error, { extra: errorInfo });
+      }
+    } catch (e) {
+      /* no-op */
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f8fafc',
+          padding: '24px',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        }}>
+          <div style={{ maxWidth: 480, textAlign: 'center' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
+              Something went wrong
+            </h1>
+            <p style={{ fontSize: 14, color: '#475569', marginBottom: 20 }}>
+              The page hit an unexpected error. Reloading usually fixes it — if it keeps happening, contact us at{' '}
+              <a href="mailto:support@tako.software" style={{ color: '#0EA5A0' }}>support@tako.software</a>.
+            </p>
+            <button
+              onClick={() => { window.location.reload(); }}
+              style={{
+                background: '#0EA5A0',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Reload page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ---------- FOLLOWUPS #9: dual-token storage + silent refresh -------------
 // Tokens live in localStorage under these keys; the AuthProvider reads them
 // on mount and the axios interceptors below keep them current. Exported so
@@ -641,13 +732,15 @@ const AppRouter = () => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ScrollToTop />
-        <AppRouter />
-        <Toaster position="top-right" />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <ScrollToTop />
+          <AppRouter />
+          <Toaster position="top-right" />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

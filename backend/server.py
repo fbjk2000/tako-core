@@ -25,6 +25,14 @@ import asyncio
 import resend
 import stripe
 
+# Sentry is a soft dependency (FOLLOWUPS #16). If the package isn't installed
+# or SENTRY_DSN isn't set, the server still starts — we log a warning and
+# proceed without error monitoring. Init happens in the startup hook.
+try:
+    import sentry_sdk
+except ImportError:  # noqa: BLE001
+    sentry_sdk = None
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -53,6 +61,27 @@ RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
+
+# Placeholder sender addresses we treat as "not configured" for the purposes
+# of the startup check and health endpoint. onboarding@resend.dev is the
+# Resend sandbox sender — fine for dev, unsafe to ship production mail from.
+_EMAIL_SENDER_PLACEHOLDERS = {
+    "",
+    "noreply@example.com",
+    "onboarding@resend.dev",
+}
+
+
+def _email_sender_ready() -> bool:
+    """True when both RESEND_API_KEY and a non-placeholder SENDER_EMAIL are
+    set. Callers use this as the single gate in front of every outbound
+    email path (FOLLOWUPS #7) — keeps the "don't crash if email isn't
+    configured" rule in one place."""
+    if not RESEND_API_KEY:
+        return False
+    if not SENDER_EMAIL or SENDER_EMAIL.strip().lower() in _EMAIL_SENDER_PLACEHOLDERS:
+        return False
+    return True
 
 # Stripe Configuration
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
@@ -1076,8 +1105,8 @@ async def _send_verification_email(email: str, name: str, token: str) -> None:
     try/excepting — we raise on failure so /auth/resend-verification can
     surface a useful error, but /auth/register swallows the exception so a
     Resend blip doesn't block signup."""
-    if not RESEND_API_KEY:
-        logger.info("RESEND_API_KEY not configured; skipping verification email")
+    if not _email_sender_ready():
+        logger.info("Email sender not configured; skipping verification email")
         return
     frontend_url = os.environ.get('FRONTEND_URL', '')
     verify_link = f"{frontend_url}/verify-email?token={token}"
@@ -1660,7 +1689,7 @@ async def forgot_password(email: str):
     frontend_url = os.environ.get('FRONTEND_URL', '')
     reset_link = f"{frontend_url}/reset-password?token={reset_token}"
     
-    if RESEND_API_KEY:
+    if _email_sender_ready():
         try:
             import asyncio
             result = await asyncio.to_thread(resend.Emails.send, {
@@ -2090,7 +2119,7 @@ async def change_password(data: PasswordChange, request: Request, current_user: 
     # session or attacker can't quietly rotate the password without them
     # noticing. We do NOT send the new password (obviously); we tell them what
     # changed, when, and what to do if it wasn't them.
-    if RESEND_API_KEY and user.get("email"):
+    if _email_sender_ready() and user.get("email"):
         try:
             import asyncio
             ua = request.headers.get("user-agent", "an unknown device")[:200]
@@ -2551,7 +2580,7 @@ async def send_email_invites(
         await db.invites.insert_one(invite_doc)
         
         # Send email invitation
-        if RESEND_API_KEY:
+        if _email_sender_ready():
             try:
                 resend.Emails.send({
                     "from": SENDER_EMAIL,
@@ -4024,7 +4053,7 @@ async def invite_to_event(event_id: str, emails: List[str], current_user: dict =
     
     # Send invite emails
     sent = 0
-    if RESEND_API_KEY and new_invitees:
+    if _email_sender_ready() and new_invitees:
         start_str = event.get("date", "")
         end_str = event.get("end_date", "")
         title = event.get("title", "Meeting")
@@ -4652,7 +4681,7 @@ async def send_campaign_via_kit_internal(campaign: dict) -> dict:
         except Exception as e:
             logger.error(f"Kit send error: {e}")
 
-    if RESEND_API_KEY and recipients:
+    if _email_sender_ready() and recipients:
         sent = 0
         for email_addr in recipients:
             try:
@@ -6169,7 +6198,7 @@ async def gdpr_request_deletion(
 
     # Confirmation email — best effort. We never let a Resend outage stop
     # the user from exercising the right.
-    if RESEND_API_KEY:
+    if _email_sender_ready():
         try:
             safe_name = html_mod.escape(current_user.get("name") or current_user["email"])
             safe_date = html_mod.escape(scheduled_for.strftime("%d %B %Y"))
@@ -6691,7 +6720,7 @@ async def submit_contact_form(contact: ContactFormSubmit):
     
     # Send email notification via Resend
     email_sent = False
-    if RESEND_API_KEY:
+    if _email_sender_ready():
         try:
             # Email to support team
             support_html = f"""
@@ -6753,6 +6782,136 @@ async def submit_contact_form(contact: ContactFormSubmit):
         "contact_id": contact_doc["contact_id"],
         "email_sent": email_sent
     }
+
+# ---------- FOLLOWUPS #17: support ticket endpoint -------------------------
+
+class SupportTicketRequest(BaseModel):
+    """Public-accessible support form. Email is only required when the
+    submitter isn't authenticated — if they are, we pull it from the
+    session user. Size caps match the spec (subject ≤200, message ≤5000)."""
+    model_config = ConfigDict(extra="ignore")
+    subject: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=1, max_length=5000)
+    email: Optional[EmailStr] = None
+
+
+SUPPORT_RATE_WINDOW_SECONDS = 60 * 60  # 1 hour
+SUPPORT_RATE_MAX_TICKETS = 5
+
+
+@api_router.post("/support/ticket")
+async def create_support_ticket(
+    body: SupportTicketRequest,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Public support form — auth optional.
+
+    Flow:
+      1. Try to resolve the authed user (cookie or Bearer). If we have one,
+         take the email/user_id/org from the session; otherwise require an
+         email in the body.
+      2. Rate-limit by email: max 5 open/closed tickets per rolling hour.
+      3. Mint a TAKO-NNNNNN ticket id, persist to support_tickets.
+      4. Notify support@tako.software via Resend. Best-effort — a Resend
+         outage must not lose the ticket.
+    """
+    user = None
+    try:
+        user = await get_current_user_allow_unverified(request, credentials)
+    except HTTPException:
+        # Anonymous submission is fine for this endpoint.
+        user = None
+
+    email = (body.email or (user and user.get("email")) or "").strip().lower()
+    if not email:
+        raise HTTPException(
+            status_code=422,
+            detail="Email is required when submitting a support ticket without being signed in.",
+        )
+
+    # Rate limit per email (simple count over the rolling window).
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=SUPPORT_RATE_WINDOW_SECONDS)
+    recent_count = await db.support_tickets.count_documents({
+        "email": email,
+        "created_at": {"$gte": cutoff},
+    })
+    if recent_count >= SUPPORT_RATE_MAX_TICKETS:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "support_rate_limited",
+                "message": "You've opened a lot of tickets recently — please wait before submitting another.",
+            },
+        )
+
+    # TAKO-NNNNNN. Six random digits is enough entropy for a human-readable
+    # handle; we collide-check against the collection just in case.
+    for _ in range(5):
+        candidate = f"TAKO-{secrets.randbelow(1000000):06d}"
+        if not await db.support_tickets.find_one({"ticket_id": candidate}, {"_id": 0}):
+            ticket_id = candidate
+            break
+    else:
+        # Extremely unlikely — fall back to a uuid-based suffix so we never
+        # refuse to store the ticket.
+        ticket_id = f"TAKO-{uuid.uuid4().hex[:8].upper()}"
+
+    ticket_doc = {
+        "ticket_id": ticket_id,
+        "subject": body.subject,
+        "message": body.message,
+        "email": email,
+        "user_id": (user or {}).get("user_id"),
+        "org_id": (user or {}).get("organization_id"),
+        "status": "open",
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.support_tickets.insert_one(ticket_doc)
+    logger.info("Support ticket created: %s from %s", ticket_id, email)
+
+    # Notify support team — non-fatal on failure. Escape the user-supplied
+    # fields: the email goes straight into an HTML body and this is the
+    # classic stored-XSS vector flagged in FOLLOWUPS #18.
+    if _email_sender_ready():
+        try:
+            safe_subject = html_mod.escape(body.subject)
+            safe_message = html_mod.escape(body.message).replace("\n", "<br>")
+            safe_email = html_mod.escape(email)
+            notify_html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0EA5A0;">New support ticket: {ticket_id}</h2>
+                <p><strong>From:</strong> {safe_email}</p>
+                <p><strong>Subject:</strong> {safe_subject}</p>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #0EA5A0; margin-top: 12px;">
+                    {safe_message}
+                </div>
+                <p style="color: #64748b; font-size: 12px; margin-top: 24px;">
+                    user_id: {html_mod.escape(str(ticket_doc['user_id']) or '—')} ·
+                    org_id: {html_mod.escape(str(ticket_doc['org_id']) or '—')}
+                </p>
+            </div>
+            """
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": SENDER_EMAIL,
+                "to": ["support@tako.software"],
+                "reply_to": email,
+                "subject": f"[{ticket_id}] {body.subject}",
+                "html": notify_html,
+            })
+        except Exception as e:  # noqa: BLE001
+            logger.error("Support-ticket notification email failed (%s): %s", ticket_id, e)
+    else:
+        logger.warning(
+            "Support ticket %s created but notification email skipped (sender not configured)",
+            ticket_id,
+        )
+
+    return {
+        "ticket_id": ticket_id,
+        "message": "We've received your request and will respond within 24 hours.",
+    }
+
 
 @api_router.get("/admin/contact-requests")
 async def get_contact_requests(current_user: dict = Depends(require_super_admin)):
@@ -7769,9 +7928,11 @@ async def create_invoice_for_transaction(transaction: dict) -> str:
 
 async def send_invoice_email(invoice: dict):
     """Send invoice email with PDF attachment"""
-    if not RESEND_API_KEY:
-        logger.warning("Resend not configured, skipping invoice email")
-        return
+    if not _email_sender_ready():
+        logger.error(
+            "Cannot send email (invoice): RESEND_API_KEY or SENDER_EMAIL not configured"
+        )
+        return {"success": False, "error": "Email not configured"}
     
     try:
         # Generate invoice HTML
@@ -10159,7 +10320,7 @@ async def create_booking(user_id: str, name: str, email: str, start_time: str, d
         await db.leads.insert_one(lead_doc)
     
     # Send confirmation email
-    if RESEND_API_KEY:
+    if _email_sender_ready():
         try:
             ical = f"""BEGIN:VCALENDAR
 VERSION:2.0
@@ -10422,8 +10583,32 @@ async def root():
     return {"message": "TAKO CRM API", "version": "1.0.0"}
 
 @api_router.get("/health")
-async def health():
-    return {"status": "healthy"}
+async def health(response: Response):
+    """Expanded health probe — FOLLOWUPS #16.
+
+    Fast, unauthenticated, safe to hit from an external uptime monitor.
+    Returns 200 when MongoDB is reachable; 503 only when the database is
+    down. The other signals (email, sentry, stripe_webhooks) are reported
+    as informational status strings so ops can spot a misconfigured
+    environment without having to SSH in — but they don't by themselves
+    fail the probe."""
+    checks = {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "mongo": "connected",
+        "email": "configured" if _email_sender_ready() else "not_configured",
+        "sentry": "enabled" if (sentry_sdk and os.environ.get("SENTRY_DSN")) else "disabled",
+        "stripe_webhooks": "configured" if os.environ.get("STRIPE_WEBHOOK_SECRET") else "not_configured",
+    }
+    try:
+        # Cheap — MongoDB ping is a no-op server-side RTT check.
+        await db.command("ping")
+    except Exception as e:  # noqa: BLE001
+        logger.error("Health check mongo ping failed: %s", e)
+        checks["status"] = "degraded"
+        checks["mongo"] = "error"
+        response.status_code = 503
+    return checks
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -10485,6 +10670,42 @@ async def _tako_startup() -> None:
             logger.warning(
                 "STRIPE_WEBHOOK_SECRET not configured — webhook endpoint will "
                 "reject all events. Set it in the environment and restart."
+            )
+
+        # Sentry — error monitoring (FOLLOWUPS #16). Init only when both the
+        # package is importable and a DSN is configured; either missing
+        # should be a warning, not a crash, so dev environments don't need
+        # the extra dependency.
+        sentry_dsn = os.environ.get("SENTRY_DSN")
+        environment = os.environ.get("ENVIRONMENT", "production")
+        if sentry_dsn and sentry_sdk is not None:
+            try:
+                sentry_sdk.init(
+                    dsn=sentry_dsn,
+                    traces_sample_rate=0.1,
+                    environment=environment,
+                )
+                logger.info("Sentry initialized (environment=%s)", environment)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Sentry init failed: %s", e)
+        elif sentry_dsn and sentry_sdk is None:
+            logger.warning(
+                "SENTRY_DSN set but sentry-sdk is not installed — "
+                "install sentry-sdk to enable error monitoring"
+            )
+        else:
+            logger.warning("SENTRY_DSN not configured — error monitoring disabled")
+
+        # Email sender readiness (FOLLOWUPS #7). We don't fail startup; we
+        # log so the operator can see at a glance why no emails are going
+        # out. Individual senders re-check via _email_sender_ready() before
+        # calling Resend.
+        if not RESEND_API_KEY:
+            logger.warning("RESEND_API_KEY not configured — email sending disabled")
+        if not SENDER_EMAIL or SENDER_EMAIL.strip().lower() in _EMAIL_SENDER_PLACEHOLDERS:
+            logger.warning(
+                "SENDER_EMAIL not configured (current=%r) — outbound emails will fail",
+                SENDER_EMAIL,
             )
 
         # Webhook idempotency (FOLLOWUPS #2). Unique index on event_id
