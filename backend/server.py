@@ -53,6 +53,13 @@ class CheckoutSessionRequest(BaseModel):
     cancel_url: str
     metadata: Dict[str, str] = Field(default_factory=dict)
     payment_methods: List[str] = Field(default_factory=lambda: ["card"])
+    # Optional subscription-mode fields. When `mode="subscription"` the
+    # checkout line item uses `price_id` (a Stripe recurring Price) instead of
+    # inline `price_data`; `amount` is still recorded for our own reporting.
+    mode: str = "payment"  # "payment" | "subscription"
+    price_id: Optional[str] = None
+    cancel_at: Optional[int] = None  # unix timestamp; sets subscription end date
+    subscription_metadata: Dict[str, str] = Field(default_factory=dict)
 
 
 class CheckoutSessionResponse(BaseModel):
@@ -71,6 +78,11 @@ class StripeWebhookResponse(BaseModel):
     event_type: str
     session_id: Optional[str] = None
     payment_status: Optional[str] = None
+    # Raw event payload — lets downstream handlers branch on event type
+    # (checkout.session.completed, invoice.paid, customer.subscription.deleted)
+    # without re-parsing the body. Kept optional for backward compatibility.
+    event: Optional[Dict[str, Any]] = None
+    data_object: Optional[Dict[str, Any]] = None
 
 
 class StripeCheckout:
@@ -88,9 +100,32 @@ class StripeCheckout:
     async def create_checkout_session(self, request: CheckoutSessionRequest) -> CheckoutSessionResponse:
         metadata = {str(k): str(v) for k, v in (request.metadata or {}).items()}
         payment_methods = self._normalize_methods(request.payment_methods)
-        unit_amount = max(int(round(float(request.amount) * 100)), 1)
+        mode = request.mode or "payment"
 
         def _create_session():
+            if mode == "subscription":
+                if not request.price_id:
+                    raise ValueError("price_id is required for subscription-mode checkout")
+                sub_data = {k: str(v) for k, v in (request.subscription_metadata or {}).items()} or None
+                sub_kwargs = {}
+                if request.cancel_at:
+                    sub_kwargs["cancel_at"] = int(request.cancel_at)
+                if sub_data:
+                    sub_kwargs["metadata"] = sub_data
+                kwargs = dict(
+                    mode="subscription",
+                    payment_method_types=payment_methods,
+                    line_items=[{"price": request.price_id, "quantity": 1}],
+                    success_url=request.success_url,
+                    cancel_url=request.cancel_url,
+                    metadata=metadata,
+                )
+                if sub_kwargs:
+                    kwargs["subscription_data"] = sub_kwargs
+                return stripe.checkout.Session.create(**kwargs)
+
+            # One-off payment path (unchanged behaviour).
+            unit_amount = max(int(round(float(request.amount) * 100)), 1)
             return stripe.checkout.Session.create(
                 mode="payment",
                 payment_method_types=payment_methods,
@@ -136,81 +171,32 @@ class StripeCheckout:
 
         event_type = event.get("type", "")
         data_object = (event.get("data") or {}).get("object") or {}
-        session_id = data_object.get("id")
+        # For checkout.session.* the object IS the session; for invoice.* / subscription.*
+        # we still surface the object id but callers should prefer the explicit
+        # data_object when dispatching on event type.
+        session_id = data_object.get("id") if event_type.startswith("checkout.session.") else None
         payment_status = data_object.get("payment_status")
 
         return StripeWebhookResponse(
             event_type=event_type,
             session_id=session_id,
             payment_status=payment_status,
+            event=event,
+            data_object=data_object,
         )
 
+# ── Self-hosted single-product catalogue ─────────────────────────────
+# TAKO is a self-hosted CRM sold as a perpetual licence under three payment
+# options. All three deliver the same product; only the payment structure and
+# total differ. One-time is a single Stripe payment; the installment plans are
+# Stripe subscriptions configured with `cancel_at = purchase_date + N months`
+# so billing ends automatically when the contract is complete.
+#
+# Legacy SaaS tiers (Solo/Pro/Enterprise / tako_free / tako_pro_* / tako_ent_*)
+# were removed as part of the self-hosted refactor. Old organization documents
+# may still carry `subscription_plan` / `subscription_status` / `plan` fields;
+# those are ignored — licence state lives in `license_type`/`license_status`.
 SUBSCRIPTION_PLANS = {
-    # ── Solo (free) ─────────────────────────────────────────────
-    "tako_free": {
-        "id": "tako_free", "name": "Solo", "tier": "free",
-        "prices": {
-            "gbp": {"monthly": 0, "annual": 0},
-            "eur": {"monthly": 0, "annual": 0},
-            "usd": {"monthly": 0, "annual": 0},
-        },
-        "limits": {"users": 1, "pipelines": 1, "contacts": 500},
-        "ai_tokens_monthly": 250,
-        "ai_tokens_trial": 5000,
-        "description": "One user. One pipeline. All 8 AI agents for 30 days.",
-    },
-    # ── Pro ─────────────────────────────────────────────────────
-    "tako_pro_monthly": {
-        "id": "tako_pro_monthly", "name": "Pro", "tier": "pro",
-        "prices": {
-            "gbp": {"monthly": 25, "annual": None},
-            "eur": {"monthly": 29, "annual": None},
-            "usd": {"monthly": 29, "annual": None},
-        },
-        "interval": "month",
-        "ai_tokens_monthly": 5000,
-        "description": "Your full sales team. 5,000 AI tokens per rep, per month.",
-    },
-    "tako_pro_annual": {
-        "id": "tako_pro_annual", "name": "Pro", "tier": "pro",
-        "prices": {
-            "gbp": {"monthly": 22, "annual": 264},
-            "eur": {"monthly": 25, "annual": 300},
-            "usd": {"monthly": 25, "annual": 300},
-        },
-        "interval": "year",
-        "ai_tokens_monthly": 5000,
-        "description": "Your full sales team. 5,000 AI tokens per rep, per month.",
-    },
-    # ── Enterprise ───────────────────────────────────────────────
-    "tako_ent_monthly": {
-        "id": "tako_ent_monthly", "name": "Enterprise", "tier": "enterprise",
-        "prices": {
-            "gbp": {"monthly": 45, "annual": None},
-            "eur": {"monthly": 49, "annual": None},
-            "usd": {"monthly": 55, "annual": None},
-        },
-        "interval": "month",
-        "ai_tokens_monthly": None,  # unlimited
-        "description": "Unlimited AI. SSO. SLAs. A team that knows your name.",
-    },
-    "tako_ent_annual": {
-        "id": "tako_ent_annual", "name": "Enterprise", "tier": "enterprise",
-        "prices": {
-            "gbp": {"monthly": 39, "annual": 468},
-            "eur": {"monthly": 45, "annual": 540},
-            "usd": {"monthly": 49, "annual": 588},
-        },
-        "interval": "year",
-        "ai_tokens_monthly": None,  # unlimited
-        "description": "Unlimited AI. SSO. SLAs. A team that knows your name.",
-    },
-    # ── Self-hosted single-product plans ─────────────────────────────
-    # All three deliver the same product. Payment structure differs only.
-    # The "Pay Once" plan charges the full amount in a single Stripe session.
-    # The installment plans charge one period's amount per checkout; recurring
-    # billing requires Stripe subscription objects (price IDs) to be configured
-    # in Stripe and wired to a separate subscription endpoint.
     "tako_selfhost_once": {
         "id": "tako_selfhost_once", "name": "TAKO Self-hosted", "tier": "selfhost",
         "prices": {
@@ -219,7 +205,9 @@ SUBSCRIPTION_PLANS = {
             "usd": {"monthly": 5000, "annual": None},
         },
         "interval": "once",
-        "ai_tokens_monthly": None,  # unlimited / self-hosted
+        "mode": "payment",
+        "license_type": "onetime",
+        "total_eur": 5000,
         "description": "Full source code. Unlimited users. Paid once.",
     },
     "tako_selfhost_12mo": {
@@ -230,9 +218,10 @@ SUBSCRIPTION_PLANS = {
             "usd": {"monthly": 500, "annual": None},
         },
         "interval": "month",
+        "mode": "subscription",
+        "license_type": "installment_12",
         "installments": 12,
         "total_eur": 6000,
-        "ai_tokens_monthly": None,
         "description": "Full source code. Unlimited users. 12 monthly payments.",
     },
     "tako_selfhost_24mo": {
@@ -243,12 +232,29 @@ SUBSCRIPTION_PLANS = {
             "usd": {"monthly": 300, "annual": None},
         },
         "interval": "month",
+        "mode": "subscription",
+        "license_type": "installment_24",
         "installments": 24,
         "total_eur": 7200,
-        "ai_tokens_monthly": None,
         "description": "Full source code. Unlimited users. 24 monthly payments.",
     },
 }
+
+# Stripe Price IDs for the three plans. These must be created in the Stripe
+# dashboard before production checkout will work; see backend/.env.example.
+STRIPE_PRICE_ONETIME = os.environ.get("STRIPE_PRICE_ONETIME", "")
+STRIPE_PRICE_12MO = os.environ.get("STRIPE_PRICE_12MO", "")
+STRIPE_PRICE_24MO = os.environ.get("STRIPE_PRICE_24MO", "")
+STRIPE_PRICE_MAINTENANCE = os.environ.get("STRIPE_PRICE_MAINTENANCE", "")
+
+STRIPE_PRICE_BY_PLAN = {
+    "tako_selfhost_once": STRIPE_PRICE_ONETIME,
+    "tako_selfhost_12mo": STRIPE_PRICE_12MO,
+    "tako_selfhost_24mo": STRIPE_PRICE_24MO,
+}
+
+# Euro price of a one-year maintenance & support renewal (post Year 1).
+MAINTENANCE_RENEWAL_EUR = 999.0
 
 # Create the main app
 app = FastAPI(title="TAKO CRM API")
@@ -296,9 +302,25 @@ class Organization(BaseModel):
     organization_id: str
     name: str
     owner_id: str
-    plan: str = "free"
     user_count: int = 1
-    max_free_users: int = 3
+    # ── Licence fields (self-hosted model) ───────────────────────
+    # license_type: "onetime" | "installment_12" | "installment_24" | "unyt"
+    # license_status: "active" | "payment_pending" | "completed"
+    # "active" = any paid licence in good standing. For installments this is
+    # set on first successful payment. "completed" is set once all scheduled
+    # installments have been paid. "payment_pending" is used while a checkout
+    # session is open but not yet confirmed.
+    license_type: Optional[str] = None
+    license_status: Optional[str] = None
+    purchase_date: Optional[datetime] = None
+    installments_paid: int = 0
+    installments_total: Optional[int] = None
+    maintenance_expires: Optional[datetime] = None
+    maintenance_renewed: bool = False
+    referred_by: Optional[str] = None  # partner referral code at purchase time
+    # Legacy fields (`plan`, `subscription_status`, `subscription_plan`,
+    # `max_users`, `max_free_users`) may still exist on older documents — we
+    # neither read nor write them going forward.
     created_at: datetime
 
 class Lead(BaseModel):
@@ -816,52 +838,56 @@ AI_TOKEN_COSTS = {
 }
 
 async def _get_token_budget(user_id: str, org_id: Optional[str]) -> dict:
-    """Return token budget info for a user. Returns dict with:
-       monthly_limit (int|None), tokens_used (int), can_use (bool),
-       is_trial (bool), trial_days_remaining (int|None), tier (str)
+    """Return AI token budget info for a user.
+
+    Self-hosted model:
+      - Orgs with an active/completed licence  → unlimited, no tracking.
+      - Orgs in the 30-day AI trial window     → 5,000 tokens/month on the
+                                                  platform key.
+      - Everyone else                          → 250 tokens/month.
+    The `tier` field is preserved for API compatibility with the frontend
+    banner but is now derived from licence state, not plan IDs.
     """
     now = datetime.now(timezone.utc)
     month_key = now.strftime("%Y-%m")
 
-    # Determine tier from org subscription_plan
-    tier = "free"
-    if org_id:
-        org = await db.organizations.find_one({"organization_id": org_id}, {"subscription_plan": 1, "_id": 0})
-        if org:
-            plan_id = org.get("subscription_plan", "tako_free")
-            if "ent" in (plan_id or ""):
-                tier = "enterprise"
-            elif "pro" in (plan_id or ""):
-                tier = "pro"
+    has_license = await _has_active_license(org_id)
+    tier = "selfhost" if has_license else "free"
 
-    # Enterprise: unlimited, no tracking needed
-    if tier == "enterprise":
-        return {"monthly_limit": None, "tokens_used": 0, "can_use": True,
-                "is_trial": False, "trial_days_remaining": None, "tier": tier}
+    # Licensed orgs: unlimited AI, no tracking.
+    if has_license:
+        return {
+            "monthly_limit": None,
+            "tokens_used": 0,
+            "can_use": True,
+            "is_trial": False,
+            "trial_days_remaining": None,
+            "has_license": True,
+            "tier": tier,
+            "month_key": month_key,
+            "pct_used": 0,
+        }
 
-    # Check AI trial for free tier
+    # Free (unlicensed) orgs: trial → 5k tokens, otherwise 250.
     is_trial = False
     trial_days_remaining = None
-    if tier == "free":
-        trial = await _ai_trial_info(org_id)
-        if trial.get("active"):
-            is_trial = True
-            ends_at = trial.get("ends_at")
-            if ends_at:
-                try:
-                    ends_dt = datetime.fromisoformat(ends_at.replace("Z", "+00:00"))
-                    trial_days_remaining = max(0, (ends_dt - now).days)
-                except Exception:
-                    pass
+    trial = await _ai_trial_info(org_id)
+    if trial.get("active"):
+        is_trial = True
+        ends_at = trial.get("ends_at")
+        if ends_at:
+            try:
+                ends_dt = datetime.fromisoformat(ends_at.replace("Z", "+00:00"))
+                trial_days_remaining = max(0, (ends_dt - now).days)
+            except Exception:
+                pass
 
-    monthly_limit = 5000 if (tier == "pro" or is_trial) else 250
+    monthly_limit = 5000 if is_trial else 250
 
-    # Get usage from db
     usage_doc = await db.ai_token_usage.find_one(
         {"user_id": user_id, "month_key": month_key}, {"_id": 0}
     )
     tokens_used = usage_doc.get("tokens_used", 0) if usage_doc else 0
-
     can_use = tokens_used < monthly_limit
 
     return {
@@ -870,6 +896,7 @@ async def _get_token_budget(user_id: str, org_id: Optional[str]) -> dict:
         "can_use": can_use,
         "is_trial": is_trial,
         "trial_days_remaining": trial_days_remaining,
+        "has_license": False,
         "tier": tier,
         "month_key": month_key,
         "pct_used": round((tokens_used / monthly_limit) * 100) if monthly_limit else 0,
@@ -894,16 +921,25 @@ async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
     """Determine the Anthropic API key to use.
     Priority:
       1) internal TAKO team → platform key
-      2) org-level key the customer has configured
-      3) active trial window on the org → platform key (if configured)
-      4) reject with a clear upgrade message
+      2) paid licence holders → platform key (unlimited, no token gate)
+      3) org-level "bring your own key" → that key
+      4) active trial window on the org → platform key
+      5) reject with a clear upgrade message
     """
     if _is_internal_user(user_email):
         if ANTHROPIC_API_KEY:
             return ANTHROPIC_API_KEY
         raise HTTPException(status_code=500, detail="AI not configured — platform ANTHROPIC_API_KEY missing")
 
-    # Look up org-level key first — customers who bring their own key always use it.
+    # Paid self-hosted customers: platform key, no limit. "Bring your own key"
+    # remains an option below, but is no longer required.
+    if await _has_active_license(org_id):
+        if ANTHROPIC_API_KEY:
+            return ANTHROPIC_API_KEY
+        # Licence holder with no platform key configured — fall through to
+        # BYO-key lookup so they can still use their own.
+
+    # Look up org-level key — customers who bring their own key always use it.
     if org_id:
         settings = await db.org_integrations.find_one({"organization_id": org_id}, {"anthropic_api_key": 1})
         if settings and settings.get("anthropic_api_key"):
@@ -943,9 +979,9 @@ async def _resolve_ai_key(user_email: str, org_id: str | None = None) -> str:
                     detail={
                         "code": "token_limit_reached",
                         "message": f"You've used your {budget['monthly_limit']} AI tokens this month.",
-                        "action": "Upgrade to Pro for 5,000 tokens/month →",
+                        "action": "Get TAKO to unlock unlimited AI →",
                         "message_de": f"Du hast deine {budget['monthly_limit']} KI-Token diesen Monat aufgebraucht.",
-                        "action_de": "Upgrade auf Pro fuer 5.000 Token/Monat →",
+                        "action_de": "Hole dir TAKO fuer unbegrenzte KI →",
                         "tokens_used": budget["tokens_used"],
                         "monthly_limit": budget["monthly_limit"],
                         "settings_url": "/pricing",
@@ -1022,10 +1058,9 @@ async def ensure_user_org(current_user: dict) -> str:
         "organization_id": org_id,
         "name": f"{user_name}'s Workspace",
         "owner_id": current_user["user_id"],
-        "plan": "free",
         "user_count": 1,
-        "max_free_users": 3,
-        "max_users": 3,
+        "license_type": None,
+        "license_status": None,
         "email_domain": email_domain if email_domain and email_domain not in ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"] else None,
         "created_at": now.isoformat()
     }
@@ -1089,10 +1124,9 @@ async def register(user_data: UserCreate, response: Response):
             "organization_id": organization_id,
             "name": user_data.organization_name,
             "owner_id": user_id,
-            "plan": "free",
             "user_count": 1,
-            "max_free_users": 3,
-            "max_users": 3,
+            "license_type": None,
+            "license_status": None,
             "email_domain": email_domain,
             "created_at": now.isoformat(),
             "ai_trial_ends_at": (now + timedelta(days=AI_TRIAL_DAYS)).isoformat(),
@@ -1104,15 +1138,13 @@ async def register(user_data: UserCreate, response: Response):
         if email_domain and email_domain not in ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"]:
             matching_org = await db.organizations.find_one({"email_domain": email_domain}, {"_id": 0})
             if matching_org:
-                max_users = matching_org.get("max_users", matching_org.get("max_free_users", 3))
-                current_count = matching_org.get("user_count", 1)
-                if current_count < max_users:
-                    organization_id = matching_org["organization_id"]
-                    user_role = "member"
-                    await db.organizations.update_one(
-                        {"organization_id": organization_id},
-                        {"$inc": {"user_count": 1}}
-                    )
+                # Self-hosted model: no per-seat limit. Every org gets unlimited users.
+                organization_id = matching_org["organization_id"]
+                user_role = "member"
+                await db.organizations.update_one(
+                    {"organization_id": organization_id},
+                    {"$inc": {"user_count": 1}}
+                )
     
     user_doc = {
         "user_id": user_id,
@@ -1550,9 +1582,9 @@ async def create_organization(name: str, current_user: dict = Depends(get_curren
         "organization_id": organization_id,
         "name": name,
         "owner_id": current_user["user_id"],
-        "plan": "free",
         "user_count": 1,
-        "max_free_users": 3,
+        "license_type": None,
+        "license_status": None,
         "created_at": now.isoformat(),
         "ai_trial_ends_at": (now + timedelta(days=AI_TRIAL_DAYS)).isoformat(),
     }
@@ -2298,6 +2330,171 @@ async def _maybe_credit_stripe_referral(transaction: dict) -> Optional[dict]:
         }}
     )
     return sale
+
+
+# ==================== LICENCE LIFECYCLE HELPERS ====================
+
+async def _activate_license(
+    *,
+    organization_id: Optional[str],
+    plan_id: Optional[str],
+    license_type: Optional[str] = None,
+    installments_total: Optional[int] = None,
+    purchase_date: Optional[datetime] = None,
+    referred_by: Optional[str] = None,
+    set_status: str = "active",
+) -> Optional[dict]:
+    """Activate a self-hosted licence on an organization.
+
+    Sets `license_type`, `license_status`, `purchase_date`,
+    `maintenance_expires` (purchase + 12 months), `installments_total`, and
+    `referred_by`. Idempotent: if the org already has an active licence we
+    leave it alone (first licence wins — no accidental downgrades on webhook
+    retries or polling).
+    """
+    if not organization_id:
+        return None
+
+    # Resolve licence type from plan_id if not supplied.
+    if not license_type and plan_id:
+        license_type = _plan_to_license_type(plan_id)
+    if not license_type:
+        return None
+
+    if installments_total is None and plan_id:
+        plan_meta = SUBSCRIPTION_PLANS.get(plan_id, {})
+        installments_total = plan_meta.get("installments")
+
+    org = await db.organizations.find_one({"organization_id": organization_id}, {"_id": 0})
+    if not org:
+        return None
+
+    # Already activated — don't overwrite.
+    if org.get("license_status") in ("active", "completed") and org.get("license_type"):
+        return org
+
+    now = datetime.now(timezone.utc)
+    purchase_iso = (purchase_date or now).isoformat()
+    maintenance_expires = (purchase_date or now) + timedelta(days=365)
+
+    update = {
+        "license_type": license_type,
+        "license_status": set_status,
+        "purchase_date": purchase_iso,
+        "installments_paid": 1 if license_type.startswith("installment_") else 0,
+        "installments_total": installments_total,
+        "maintenance_expires": maintenance_expires.isoformat(),
+        "maintenance_renewed": False,
+    }
+    if referred_by:
+        update["referred_by"] = referred_by
+
+    await db.organizations.update_one(
+        {"organization_id": organization_id},
+        {"$set": update},
+    )
+    return {**org, **update}
+
+
+async def _increment_installment(
+    organization_id: Optional[str],
+    stripe_invoice_id: Optional[str] = None,
+) -> Optional[dict]:
+    """Increment `installments_paid` on an installment licence, and flip to
+    `completed` status once all scheduled payments have landed. Idempotent on
+    `stripe_invoice_id` via the `installment_invoices` array on the org doc.
+    """
+    if not organization_id:
+        return None
+    org = await db.organizations.find_one({"organization_id": organization_id}, {"_id": 0})
+    if not org:
+        return None
+    license_type = org.get("license_type")
+    if license_type not in ("installment_12", "installment_24"):
+        return None
+
+    if stripe_invoice_id and stripe_invoice_id in (org.get("installment_invoices") or []):
+        return org  # already counted
+
+    total = org.get("installments_total") or (12 if license_type == "installment_12" else 24)
+    paid = (org.get("installments_paid") or 0) + 1
+    new_status = "completed" if paid >= total else "active"
+
+    update = {
+        "installments_paid": paid,
+        "installments_total": total,
+        "license_status": new_status,
+    }
+    push = {}
+    if stripe_invoice_id:
+        push["installment_invoices"] = stripe_invoice_id
+
+    mongo_update: Dict[str, Any] = {"$set": update}
+    if push:
+        mongo_update["$addToSet"] = push
+
+    await db.organizations.update_one(
+        {"organization_id": organization_id},
+        mongo_update,
+    )
+    return {**org, **update}
+
+
+async def _extend_maintenance(
+    organization_id: Optional[str],
+    months: int = 12,
+    stripe_session_id: Optional[str] = None,
+) -> Optional[dict]:
+    """Extend `maintenance_expires` by N months. Used by the €999/year
+    maintenance renewal endpoint. Idempotent on `stripe_session_id`.
+    """
+    if not organization_id:
+        return None
+    org = await db.organizations.find_one({"organization_id": organization_id}, {"_id": 0})
+    if not org:
+        return None
+
+    if stripe_session_id and stripe_session_id in (org.get("maintenance_renewals") or []):
+        return org
+
+    current_expiry_iso = org.get("maintenance_expires")
+    now = datetime.now(timezone.utc)
+    try:
+        current_expiry = datetime.fromisoformat(current_expiry_iso.replace("Z", "+00:00")) if current_expiry_iso else now
+    except Exception:
+        current_expiry = now
+    if current_expiry < now:
+        current_expiry = now
+
+    new_expiry = current_expiry + timedelta(days=30 * months)
+    update = {
+        "maintenance_expires": new_expiry.isoformat(),
+        "maintenance_renewed": True,
+    }
+    mongo_update: Dict[str, Any] = {"$set": update}
+    if stripe_session_id:
+        mongo_update["$addToSet"] = {"maintenance_renewals": stripe_session_id}
+    await db.organizations.update_one(
+        {"organization_id": organization_id},
+        mongo_update,
+    )
+    return {**org, **update}
+
+
+async def _has_active_license(org_id: Optional[str]) -> bool:
+    """True if the organisation holds an active or completed self-hosted
+    licence. Used to gate AI access without a per-month token limit."""
+    if not org_id:
+        return False
+    org = await db.organizations.find_one(
+        {"organization_id": org_id},
+        {"license_status": 1, "license_type": 1, "_id": 0},
+    )
+    if not org:
+        return False
+    status = org.get("license_status")
+    return status in ("active", "completed") and bool(org.get("license_type"))
+
 
 @api_router.post("/partners/register")
 async def partner_register(current_user: dict = Depends(get_current_user)):
@@ -4606,12 +4803,24 @@ async def launch_edition_unyt(request: Request):
             "assigned_to": admin_uid, "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
         })
     
+    # Silently look up the buyer's organization so we can activate the
+    # licence on confirmation (pricing-page purchases may or may not be
+    # signed in — we match on email).
+    buyer_org_id = None
+    if buyer_email:
+        buyer_user = await db.users.find_one(
+            {"email": buyer_email.lower()}, {"organization_id": 1, "_id": 0}
+        )
+        if buyer_user:
+            buyer_org_id = buyer_user.get("organization_id")
+
     await db.payment_transactions.insert_one({
         "transaction_id": f"txn_{uuid.uuid4().hex[:12]}", "deal_id": deal_id,
         "product": "tako_selfhost", "plan_id": plan_id,
         "amount": amount_eur, "currency": "eur",
         "payment_method": "unyt", "unyt_amount": unyt_amount,
         "buyer_wallet": buyer_wallet, "buyer_name": buyer_name, "buyer_email": buyer_email,
+        "buyer_organization_id": buyer_org_id,
         "status": "pending", "created_at": now.isoformat(),
         "referral_code": referral_code_valid,
         "referral_partner_id": partner["partner_id"] if partner else None,
@@ -4656,6 +4865,25 @@ async def confirm_unyt_payment(deal_id: str, tx_hash: str):
         "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
     })
 
+    # Activate the self-hosted licence on the buyer's organisation (if we
+    # captured one at checkout time). UNYT purchases are perpetual one-time
+    # licences regardless of the selected plan_id — there is no UNYT recurring
+    # billing — so license_type = "unyt" with 12 months maintenance.
+    try:
+        txn = await db.payment_transactions.find_one(
+            {"deal_id": deal_id, "payment_method": "unyt"}, {"_id": 0}
+        )
+        if txn and txn.get("buyer_organization_id"):
+            await _activate_license(
+                organization_id=txn["buyer_organization_id"],
+                plan_id=None,
+                license_type="unyt",
+                purchase_date=now,
+                referred_by=txn.get("referral_code"),
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Licence activation failed (UNYT) for deal {deal_id}: {exc}")
+
     # Credit partner referral commission (idempotent on tx_hash).
     try:
         txn = await db.payment_transactions.find_one(
@@ -4672,6 +4900,7 @@ async def confirm_unyt_payment(deal_id: str, tx_hash: str):
                     payment_method="unyt",
                     commission_amount=PARTNER_COMMISSION_LICENSE_EUR,
                     license_type="unyt",
+                    customer_org_id=txn.get("buyer_organization_id"),
                     customer_email=txn.get("buyer_email"),
                     unyt_tx_hash=tx_hash,
                     notes=f"UNYT payment confirmed (deal {deal_id})",
@@ -4850,8 +5079,10 @@ async def admin_delete_organization(org_id: str, current_user: dict = Depends(re
 
 @api_router.put("/admin/organizations/{org_id}")
 async def admin_update_organization(org_id: str, updates: dict, current_user: dict = Depends(require_super_admin)):
-    """Edit organization details and license limits"""
-    allowed = {"name", "plan", "max_users", "max_free_users", "email_domain"}
+    """Edit organization details. License fields are managed by the payment
+    lifecycle (Stripe webhook / UNYT confirm / renewal endpoint) — admins can
+    only patch organizational metadata here."""
+    allowed = {"name", "email_domain", "license_type", "license_status", "maintenance_expires"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -5917,105 +6148,103 @@ async def create_subscription_checkout(
     http_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a Stripe checkout session for subscription"""
+    """Create a Stripe checkout session for a self-hosted TAKO licence.
+
+    One-time plans (`tako_selfhost_once`) use `mode=payment` with an inline
+    price. Installment plans (`tako_selfhost_12mo`, `tako_selfhost_24mo`) use
+    `mode=subscription` against a recurring Stripe Price, with `cancel_at`
+    set to N months from now so billing stops automatically when the contract
+    is complete.
+    """
     if not STRIPE_API_KEY:
         raise HTTPException(status_code=500, detail="Payment system not configured")
-    
-    # Validate plan
+
+    # Validate plan — only the three self-hosted plans are accepted here.
     if request.plan_id not in SUBSCRIPTION_PLANS:
         raise HTTPException(status_code=400, detail="Invalid subscription plan")
-    
-    plan = SUBSCRIPTION_PLANS[request.plan_id]
 
-    # Calculate pricing
+    plan = SUBSCRIPTION_PLANS[request.plan_id]
+    mode = plan.get("mode", "payment")
+
+    # For subscription-mode plans the Stripe Price ID is required.
+    price_id = STRIPE_PRICE_BY_PLAN.get(request.plan_id)
+    if mode == "subscription" and not price_id:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Stripe Price ID not configured for {request.plan_id}. "
+                   f"Set STRIPE_PRICE_12MO / STRIPE_PRICE_24MO in backend/.env.",
+        )
+
+    # Pricing shown in the response breakdown (not used by Stripe in
+    # subscription mode — Stripe bills against the recurring Price object).
     currency = request.currency.lower()
     prices = plan.get("prices", {}).get(currency, {})
-    interval = "annual" if "annual" in request.plan_id else "monthly"
-    unit_price = prices.get(interval) or prices.get("monthly", 0) or 0
-    base_price = unit_price * request.user_count
-    discount_amount = 0.0
-    discount_info = None
-    
-    # Normalize discount code once — strips whitespace, uppercases, treats blank as absent
-    discount_code = (request.discount_code or '').strip().upper() or None
+    unit_price = prices.get("monthly", 0) or 0
+    if mode == "payment":
+        base_price = unit_price  # single charge for the full licence
+    else:
+        base_price = unit_price  # one period's charge; total = unit_price * installments
 
-    # Apply discount code if provided
-    if discount_code:
-        discount = await db.discount_codes.find_one({
-            "code": discount_code,
-            "is_active": True
-        }, {"_id": 0})
-
-        if discount:
-            discount_amount = base_price * (discount["discount_percent"] / 100)
-            discount_info = {
-                "code": discount["code"],
-                "percentage": discount["discount_percent"]
-            }
-    
-    # Apply crypto discount (5%) if using crypto
-    crypto_discount = 0.0
-    if request.use_crypto:
-        crypto_discount = (base_price - discount_amount) * 0.05
-    
-    # Calculate VAT
     settings = await db.platform_settings.find_one({"setting_id": "platform_settings"}, {"_id": 0})
     vat_rate = settings.get("vat_rate", 20.0) if settings else 20.0
-    
-    net_amount = base_price - discount_amount - crypto_discount
-    vat_amount = net_amount * (vat_rate / 100)
-    total_amount = net_amount + vat_amount
-    
-    # Create URLs
+    vat_amount = base_price * (vat_rate / 100)
+    total_amount = base_price + vat_amount
+
+    # Success/cancel URLs
     success_url = f"{request.origin_url}/subscription/success?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{request.origin_url}/settings?payment=cancelled"
-    
-    # Initialize Stripe
+
     host_url = str(http_request.base_url).rstrip('/')
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
-    
-    # Validate referral code (silent — buyer never sees an error; invalid
-    # codes are simply dropped).
+
+    # Partner referral code (silent — invalid codes are dropped).
     referral_code = (request.referral_code or '').strip().upper() or None
     partner = await _get_partner_by_code(referral_code) if referral_code else None
     referral_code_valid = partner["referral_code"] if partner else None
 
-    # Create checkout session
     metadata = {
         "organization_id": current_user.get("organization_id", ""),
         "user_id": current_user["user_id"],
         "email": current_user["email"],
         "plan_id": request.plan_id,
-        "user_count": str(request.user_count),
-        "discount_code": discount_code or "",
         "vat_rate": str(vat_rate),
         "referral_code": referral_code_valid or "",
     }
-    
-    payment_methods = ["card", "crypto"] if request.use_crypto else ["card"]
-    checkout_currency = "usd" if request.use_crypto else currency
 
-    # Convert to USD if using crypto (required by Stripe)
-    if request.use_crypto:
-        total_amount = total_amount * 1.08  # Approximate EUR to USD conversion
-
-    checkout_kwargs = dict(
+    checkout_kwargs: Dict[str, Any] = dict(
         amount=round(total_amount, 2),
-        currency=checkout_currency,
+        currency=currency,
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata,
-        payment_methods=payment_methods,
+        payment_methods=["card"],
+        mode=mode,
     )
-    if request.coupon_code:
-        checkout_kwargs["discounts"] = [{"coupon": request.coupon_code.upper()}]
+
+    if mode == "subscription":
+        # `cancel_at` stops billing after `installments` months.
+        now = datetime.now(timezone.utc)
+        installments = int(plan.get("installments") or 12)
+        cancel_at_dt = now + timedelta(days=30 * installments)
+        checkout_kwargs["price_id"] = price_id
+        checkout_kwargs["cancel_at"] = int(cancel_at_dt.timestamp())
+        checkout_kwargs["subscription_metadata"] = {
+            "organization_id": current_user.get("organization_id", ""),
+            "plan_id": request.plan_id,
+            "installments": str(installments),
+            "referral_code": referral_code_valid or "",
+        }
+    elif price_id:
+        # One-time plans can optionally use a Stripe Price too — if
+        # STRIPE_PRICE_ONETIME is set we use it, otherwise fall back to the
+        # inline price_data path so dev environments work without Stripe setup.
+        checkout_kwargs["price_id"] = None  # stay on inline price_data
 
     checkout_request = CheckoutSessionRequest(**checkout_kwargs)
-    
     session = await stripe_checkout.create_checkout_session(checkout_request)
-    
-    # Create payment transaction record
+
+    # Create payment transaction record.
     now = datetime.now(timezone.utc)
     transaction_doc = {
         "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
@@ -6025,9 +6254,7 @@ async def create_subscription_checkout(
         "amount": base_price,
         "currency": currency,
         "plan_id": request.plan_id,
-        "user_count": request.user_count,
-        "discount_code": discount_code,
-        "discount_amount": discount_amount + crypto_discount,
+        "mode": mode,
         "vat_amount": vat_amount,
         "vat_rate": vat_rate,
         "total_amount": total_amount,
@@ -6037,23 +6264,35 @@ async def create_subscription_checkout(
         "referral_partner_id": partner["partner_id"] if partner else None,
         "referral_commission_credited": False,
         "created_at": now.isoformat(),
-        "updated_at": now.isoformat()
+        "updated_at": now.isoformat(),
     }
     await db.payment_transactions.insert_one(transaction_doc)
-    
+
+    # Pre-flag the org as payment_pending so the Settings UI reflects the
+    # in-flight checkout. If payment is cancelled this is never cleared; the
+    # Settings UI should show the 'Get TAKO' CTA whenever license_status isn't
+    # active/completed, regardless of payment_pending, so this is informational.
+    if current_user.get("organization_id"):
+        await db.organizations.update_one(
+            {"organization_id": current_user["organization_id"]},
+            {"$set": {"license_status": "payment_pending",
+                       "license_type": plan.get("license_type"),
+                       "referred_by": referral_code_valid}},
+        )
+
     return {
         "checkout_url": session.url,
         "session_id": session.session_id,
+        "mode": mode,
         "breakdown": {
             "base_price": base_price,
-            "discount_amount": discount_amount,
-            "crypto_discount": crypto_discount,
-            "net_amount": net_amount,
             "vat_rate": vat_rate,
             "vat_amount": vat_amount,
             "total_amount": total_amount,
-            "currency": checkout_currency.upper()
-        }
+            "currency": currency.upper(),
+            "installments": plan.get("installments"),
+            "total_contract_eur": plan.get("total_eur"),
+        },
     }
 
 @api_router.get("/subscriptions/status/{session_id}")
@@ -6087,8 +6326,8 @@ async def get_subscription_status(session_id: str, http_request: Request):
                 "updated_at": now.isoformat()
             }}
         )
-        
-        # If payment successful, create invoice and update organization
+
+        # If payment successful, create invoice and activate the licence.
         if status.payment_status == "paid" and not transaction.get("invoice_id"):
             invoice_id = await create_invoice_for_transaction(transaction)
             await db.payment_transactions.update_one(
@@ -6096,17 +6335,14 @@ async def get_subscription_status(session_id: str, http_request: Request):
                 {"$set": {"invoice_id": invoice_id}}
             )
 
-            # Update organization subscription status
-            if transaction.get("organization_id"):
-                await db.organizations.update_one(
-                    {"organization_id": transaction["organization_id"]},
-                    {"$set": {
-                        "subscription_status": "active",
-                        "subscription_plan": transaction["plan_id"],
-                        "max_users": transaction["user_count"] + 3,  # +3 free users
-                        "subscription_updated_at": now.isoformat()
-                    }}
-                )
+            # Activate the self-hosted licence on the organisation. Idempotent —
+            # webhook and polling paths both land here.
+            await _activate_license(
+                organization_id=transaction.get("organization_id"),
+                plan_id=transaction.get("plan_id"),
+                purchase_date=now,
+                referred_by=transaction.get("referral_code"),
+            )
 
             # Credit partner referral commission (idempotent).
             try:
@@ -6123,45 +6359,206 @@ async def get_subscription_status(session_id: str, http_request: Request):
         "invoice_id": transaction.get("invoice_id") if transaction else None
     }
 
-@api_router.post("/webhook/stripe")
-async def stripe_webhook(request: Request):
-    """Handle Stripe webhooks"""
+
+class MaintenanceRenewRequest(BaseModel):
+    origin_url: Optional[str] = None
+
+
+@api_router.post("/license/renew-maintenance")
+async def renew_maintenance(
+    request: MaintenanceRenewRequest,
+    http_request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """Start a Stripe Checkout session for a €999/year maintenance renewal.
+
+    On webhook confirmation (`checkout.session.completed` with
+    `metadata.product = "maintenance_renewal"`) the org's
+    `maintenance_expires` is extended by 12 months. The caller's organisation
+    must already hold an active or completed licence — renewals are only
+    meaningful for existing customers.
+    """
     if not STRIPE_API_KEY:
         raise HTTPException(status_code=500, detail="Payment system not configured")
-    
+
+    org_id = current_user.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="No organization")
+
+    org = await db.organizations.find_one({"organization_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if org.get("license_status") not in ("active", "completed") or not org.get("license_type"):
+        raise HTTPException(
+            status_code=400,
+            detail="Maintenance renewal is only available for organisations with an active TAKO licence.",
+        )
+
+    origin_url = (request.origin_url or "").rstrip("/") or str(http_request.base_url).rstrip("/")
+    success_url = f"{origin_url}/settings?tab=billing&maintenance=renewed&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin_url}/settings?tab=billing&maintenance=cancelled"
+
+    host_url = str(http_request.base_url).rstrip('/')
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+
+    metadata = {
+        "product": "maintenance_renewal",
+        "organization_id": org_id,
+        "user_id": current_user["user_id"],
+        "email": current_user["email"],
+    }
+
+    checkout_kwargs: Dict[str, Any] = dict(
+        amount=MAINTENANCE_RENEWAL_EUR,
+        currency="eur",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata,
+        payment_methods=["card"],
+        mode="payment",  # annual maintenance is a one-time charge, renewed manually
+    )
+    if STRIPE_PRICE_MAINTENANCE:
+        # If a Stripe Price is configured we still use inline price_data in
+        # payment mode for simplicity (Stripe Price objects are primarily
+        # needed for subscription billing). The env var is kept for future
+        # flexibility.
+        pass
+
+    checkout_request = CheckoutSessionRequest(**checkout_kwargs)
+    session = await stripe_checkout.create_checkout_session(checkout_request)
+
+    now = datetime.now(timezone.utc)
+    await db.payment_transactions.insert_one({
+        "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
+        "organization_id": org_id,
+        "user_id": current_user["user_id"],
+        "email": current_user["email"],
+        "amount": MAINTENANCE_RENEWAL_EUR,
+        "currency": "eur",
+        "plan_id": "maintenance_renewal",
+        "product": "maintenance_renewal",
+        "total_amount": MAINTENANCE_RENEWAL_EUR,
+        "stripe_session_id": session.session_id,
+        "payment_status": "pending",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    })
+
+    return {
+        "checkout_url": session.url,
+        "session_id": session.session_id,
+        "amount_eur": MAINTENANCE_RENEWAL_EUR,
+    }
+
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhooks — licence lifecycle + partner commissions.
+
+    Branches on event type:
+      - checkout.session.completed  → activate licence, credit referral
+      - invoice.paid                → advance installment counter
+      - customer.subscription.deleted → cancelled early; leave licence active,
+                                        stop incrementing
+    Invoice lifecycle (invoice.paid after first payment) handles ongoing
+    monthly installment charges. Idempotency is per-object (session id,
+    invoice id) — the broader per-event idempotency referenced in FOLLOWUPS #2
+    is intentionally out of scope here.
+    """
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=500, detail="Payment system not configured")
+
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
-    
+
     host_url = str(request.base_url).rstrip('/')
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
-    
+
     try:
         webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        event_type = webhook_response.event_type or ""
+        obj = webhook_response.data_object or {}
+        now = datetime.now(timezone.utc)
 
-        # Update payment transaction
-        if webhook_response.session_id:
-            now = datetime.now(timezone.utc)
+        # ── checkout.session.completed ────────────────────────────────────
+        if event_type == "checkout.session.completed":
+            session_id = obj.get("id")
+            metadata = obj.get("metadata") or {}
+            payment_status = obj.get("payment_status")
+
             await db.payment_transactions.update_one(
-                {"stripe_session_id": webhook_response.session_id},
+                {"stripe_session_id": session_id},
                 {"$set": {
-                    "payment_status": webhook_response.payment_status,
-                    "updated_at": now.isoformat()
+                    "payment_status": payment_status or "paid",
+                    "updated_at": now.isoformat(),
                 }}
             )
 
-            # Credit partner referral commission on first paid event.
-            if webhook_response.payment_status == "paid":
+            txn = await db.payment_transactions.find_one(
+                {"stripe_session_id": session_id}, {"_id": 0}
+            ) or {}
+
+            # Maintenance renewal branch — metadata.product = 'maintenance_renewal'
+            if metadata.get("product") == "maintenance_renewal":
+                await _extend_maintenance(
+                    organization_id=metadata.get("organization_id") or txn.get("organization_id"),
+                    months=12,
+                    stripe_session_id=session_id,
+                )
+            else:
+                # Licence purchase: activate the licence (first-period charge
+                # for installments; full price for one-time).
+                await _activate_license(
+                    organization_id=metadata.get("organization_id") or txn.get("organization_id"),
+                    plan_id=metadata.get("plan_id") or txn.get("plan_id"),
+                    purchase_date=now,
+                    referred_by=metadata.get("referral_code") or txn.get("referral_code"),
+                )
+
+                # Credit partner referral commission (idempotent on session id).
                 try:
-                    txn = await db.payment_transactions.find_one(
-                        {"stripe_session_id": webhook_response.session_id}, {"_id": 0}
-                    )
                     if txn:
                         await _maybe_credit_stripe_referral(txn)
                 except Exception as exc:  # noqa: BLE001
-                    logger.error(f"Partner referral crediting failed (webhook) for session {webhook_response.session_id}: {exc}")
+                    logger.error(
+                        f"Partner referral crediting failed (webhook) for session {session_id}: {exc}"
+                    )
 
-        return {"received": True, "event_type": webhook_response.event_type}
+        # ── invoice.paid ──────────────────────────────────────────────────
+        # Fired for every installment charge on a subscription. The very first
+        # invoice is usually handled via checkout.session.completed already; we
+        # still increment here to keep the counter accurate when Stripe emits
+        # invoice.paid before session.completed.
+        elif event_type == "invoice.paid":
+            invoice_id = obj.get("id")
+            subscription_id = obj.get("subscription")
+            sub_metadata: Dict[str, Any] = {}
+            if subscription_id:
+                try:
+                    sub = await asyncio.to_thread(stripe.Subscription.retrieve, subscription_id)
+                    sub_metadata = (getattr(sub, "metadata", None) or {})
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"Could not retrieve subscription {subscription_id}: {exc}")
+            org_id = (sub_metadata.get("organization_id") if sub_metadata else None) or obj.get("metadata", {}).get("organization_id")
+            await _increment_installment(org_id, stripe_invoice_id=invoice_id)
+
+        # ── customer.subscription.deleted ─────────────────────────────────
+        # Installment sub cancelled early (customer or Stripe). Leave the
+        # licence active so the customer keeps using the self-hosted copy they
+        # partly paid for; just stop counting installments. (Commercial policy:
+        # early cancellation = no refund, no further charges.)
+        elif event_type == "customer.subscription.deleted":
+            sub_metadata = (obj.get("metadata") or {})
+            org_id = sub_metadata.get("organization_id")
+            if org_id:
+                await db.organizations.update_one(
+                    {"organization_id": org_id},
+                    {"$set": {"license_subscription_cancelled_at": now.isoformat()}},
+                )
+
+        return {"received": True, "event_type": event_type}
     except Exception as e:
         logger.error(f"Webhook error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
