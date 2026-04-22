@@ -205,6 +205,24 @@ class StripeWebhookResponse(BaseModel):
     data_object: Optional[Dict[str, Any]] = None
 
 
+class WebhookNotConfigured(RuntimeError):
+    """Raised when STRIPE_WEBHOOK_SECRET is missing at request time.
+
+    The route handler maps this to a 500 — the server is mis-configured,
+    not the caller. Distinct from ``WebhookSignatureInvalid`` so ops can
+    tell a config drift from a spoofed payload in the logs.
+    """
+
+
+class WebhookSignatureInvalid(RuntimeError):
+    """Raised when the signature header is missing or does not verify.
+
+    The route handler maps this to a 401. Stripe treats 4xx as permanent
+    failures and will not retry, which is what we want for a forged or
+    replayed signature.
+    """
+
+
 class StripeCheckout:
     def __init__(self, api_key: str, webhook_url: str):
         self.api_key = api_key
@@ -298,15 +316,38 @@ class StripeCheckout:
         )
 
     async def handle_webhook(self, body: bytes, signature: Optional[str]) -> StripeWebhookResponse:
+        """Verify a Stripe webhook signature and parse the event.
+
+        Signature verification is **mandatory**. Previous revisions of this
+        method fell through to ``json.loads(payload)`` when either the
+        ``STRIPE_WEBHOOK_SECRET`` env var or the ``Stripe-Signature`` header
+        was missing — that made it trivial to forge a ``payment_status=paid``
+        event by POSTing unsigned JSON to the webhook URL (FOLLOWUPS #6).
+
+        Raises:
+          ``WebhookNotConfigured`` — env secret missing; caller returns 500.
+          ``WebhookSignatureInvalid`` — bad/missing signature; caller returns 401.
+        """
         payload = body.decode("utf-8")
         secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
-        if secret and signature:
+        if not secret:
+            raise WebhookNotConfigured(
+                "STRIPE_WEBHOOK_SECRET is not configured — refusing unsigned events"
+            )
+        if not signature:
+            raise WebhookSignatureInvalid("Missing Stripe-Signature header")
+
+        try:
             event = await asyncio.to_thread(
                 stripe.Webhook.construct_event, payload, signature, secret
             )
-        else:
-            event = json.loads(payload)
+        except stripe.error.SignatureVerificationError as exc:
+            raise WebhookSignatureInvalid(str(exc)) from exc
+        except ValueError as exc:
+            # Stripe raises ValueError on malformed payloads before it
+            # even looks at the signature.
+            raise WebhookSignatureInvalid(f"Malformed webhook payload: {exc}") from exc
 
         event_type = event.get("type", "")
         data_object = (event.get("data") or {}).get("object") or {}
@@ -4883,10 +4924,13 @@ async def verify_launch_edition(session_id: str, deal_id: str):
         logger.error(f"TAKO CRM self-hosted verify error: {e}")
         return {"status": "error", "detail": str(e)}
 
-@api_router.post("/webhook/stripe")
-async def stripe_webhook(request: Request):
-    api_key = os.environ.get("STRIPE_API_KEY")
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+# NOTE: a previous iteration of this file defined a second, empty
+# `@api_router.post("/webhook/stripe")` here. FastAPI registers routes in
+# declaration order and returns the first match, so that dead stub was
+# silently shadowing the real handler below — every Stripe event returned
+# 200 with no body and no processing. It was removed alongside the
+# FOLLOWUPS #6 + #2 hardening; the authoritative handler lives further
+# down in this file near the invoice routes.
 
 UNYT_CONTRACT = "0x5305bF91163D97D0d93188611433F86D1bb69898"
 UNYT_RECEIVER = "0xFf98458bEBA08e0a8967D45Ce216D9Ee5fdecD1A"
@@ -6610,32 +6654,98 @@ async def renew_maintenance(
 async def stripe_webhook(request: Request):
     """Handle Stripe webhooks — licence lifecycle + partner commissions.
 
-    Branches on event type:
-      - checkout.session.completed  → activate licence, credit referral
-      - invoice.paid                → advance installment counter
-      - customer.subscription.deleted → cancelled early; leave licence active,
-                                        stop incrementing
-    Invoice lifecycle (invoice.paid after first payment) handles ongoing
-    monthly installment charges. Idempotency is per-object (session id,
-    invoice id) — the broader per-event idempotency referenced in FOLLOWUPS #2
-    is intentionally out of scope here.
-    """
-    if not STRIPE_API_KEY:
-        raise HTTPException(status_code=500, detail="Payment system not configured")
+    Request flow (see FOLLOWUPS #6 signature verification and #2 idempotency):
 
+      1. Read raw body.
+      2. Reject with 500 if ``STRIPE_WEBHOOK_SECRET`` isn't configured — the
+         endpoint must not accept unsigned events.
+      3. Verify the signature → 401 on missing or invalid signature. Stripe
+         treats 4xx as permanent failure and will not retry, which is what we
+         want for a forged or replayed payload.
+      4. Parse the event (done inside ``handle_webhook``).
+      5. Check ``processed_webhook_events`` for the event id. If we've seen
+         this event before, log and return 200 immediately without re-running
+         business logic (protects against Stripe's retries on network/timeout
+         → double-activated licences, double-credited referrals, duplicate
+         invoices).
+      6. Process business logic:
+           - ``checkout.session.completed``  → activate licence, credit referral
+           - ``invoice.paid``                → advance installment counter
+           - ``customer.subscription.deleted`` → cancelled early; licence stays
+                                                 active, stop incrementing
+      7. Record the event id and return 200.
+      8. On processing failure, log the error and STILL record the event id +
+         return 200. If business logic is broken we don't want Stripe retrying
+         the same event every few minutes until it reaches its 3-day giveup;
+         the event id is persisted so we can replay manually from the Stripe
+         dashboard once the fix lands.
+
+    Per-object bookkeeping (``_maybe_credit_stripe_referral`` dedupes on
+    session id, ``_increment_installment`` on invoice id) is still in place
+    — the event-level idempotency above is a belt-and-braces layer on top.
+    """
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
+
+    # Step 2: refuse to run without a webhook secret. Done before we even
+    # look at STRIPE_API_KEY so the error log clearly distinguishes "webhook
+    # misconfigured" from "Stripe disabled".
+    if not os.environ.get("STRIPE_WEBHOOK_SECRET"):
+        logger.error(
+            "Stripe webhook rejected: STRIPE_WEBHOOK_SECRET is not configured. "
+            "Refusing unsigned events to prevent forged payment_status=paid."
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Webhook endpoint not configured — refusing unsigned events",
+        )
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=500, detail="Payment system not configured")
 
     host_url = str(request.base_url).rstrip('/')
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
+    # Step 3: verify signature. ``handle_webhook`` raises
+    # WebhookNotConfigured / WebhookSignatureInvalid which map to 500 / 401.
     try:
         webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        event_type = webhook_response.event_type or ""
-        obj = webhook_response.data_object or {}
-        now = datetime.now(timezone.utc)
+    except WebhookNotConfigured as exc:
+        logger.error(f"Stripe webhook rejected (configuration): {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail="Webhook endpoint not configured — refusing unsigned events",
+        ) from exc
+    except WebhookSignatureInvalid as exc:
+        logger.warning(f"Stripe webhook rejected (signature): {exc}")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature") from exc
 
+    event_type = webhook_response.event_type or ""
+    event = webhook_response.event or {}
+    event_id = event.get("id")
+    obj = webhook_response.data_object or {}
+    now = datetime.now(timezone.utc)
+
+    # Step 5: idempotency. If we've already processed this Stripe event id,
+    # return 200 without re-running any mutations. Stripe retries on any
+    # non-2xx response and on connection timeouts, so without this check a
+    # single `checkout.session.completed` can arrive 2+ times and activate a
+    # licence twice / double-credit a partner.
+    if event_id:
+        existing = await db.processed_webhook_events.find_one(
+            {"event_id": event_id}, {"_id": 0, "event_id": 1}
+        )
+        if existing:
+            logger.info(
+                f"Duplicate webhook event {event_id} ({event_type}); skipping re-processing."
+            )
+            return {"received": True, "event_type": event_type, "duplicate": True}
+
+    # Step 6 + 8: process in a try/except. Any failure is logged but we still
+    # record the event id (step 7) and return 200 — Stripe would otherwise
+    # retry a broken handler forever.
+    processing_error: Optional[str] = None
+    try:
         # ── checkout.session.completed ────────────────────────────────────
         if event_type == "checkout.session.completed":
             session_id = obj.get("id")
@@ -6711,11 +6821,35 @@ async def stripe_webhook(request: Request):
                     {"organization_id": org_id},
                     {"$set": {"license_subscription_cancelled_at": now.isoformat()}},
                 )
+    except Exception as exc:  # noqa: BLE001
+        processing_error = str(exc)
+        logger.exception(
+            f"Stripe webhook processing failed for event {event_id} ({event_type}): {exc}"
+        )
 
-        return {"received": True, "event_type": event_type}
-    except Exception as e:
-        logger.error(f"Webhook error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+    # Step 7: record the event id. We do this even on failure so Stripe does
+    # not retry a broken handler indefinitely. Operators can replay from the
+    # Stripe dashboard once the bug is fixed.
+    if event_id:
+        try:
+            await db.processed_webhook_events.insert_one({
+                "event_id": event_id,
+                "event_type": event_type,
+                "processed_at": now,
+                "processing_error": processing_error,
+            })
+        except Exception as exc:  # noqa: BLE001
+            # Collision against the unique index = another worker handled
+            # this event concurrently. Safe to ignore.
+            logger.info(
+                f"Could not record webhook event {event_id} (likely concurrent handler): {exc}"
+            )
+
+    return {
+        "received": True,
+        "event_type": event_type,
+        "processed": processing_error is None,
+    }
 
 # ==================== INVOICE ROUTES ====================
 
@@ -9528,6 +9662,27 @@ async def _tako_startup() -> None:
         start_scheduler()
         await ensure_indexes()
         await reschedule_all_listeners()
+
+        # Stripe webhook secret — if unset, the /webhook/stripe handler
+        # refuses all events (FOLLOWUPS #6). Surface the misconfiguration
+        # at startup so operators notice before Stripe does.
+        if not os.environ.get("STRIPE_WEBHOOK_SECRET"):
+            logger.warning(
+                "STRIPE_WEBHOOK_SECRET not configured — webhook endpoint will "
+                "reject all events. Set it in the environment and restart."
+            )
+
+        # Webhook idempotency (FOLLOWUPS #2). Unique index on event_id
+        # guarantees the concurrent-duplicate race loses on one worker; TTL
+        # on processed_at retires records after 30 days since Stripe stops
+        # retrying after 3 days and nothing further needs the event id.
+        try:
+            await db.processed_webhook_events.create_index("event_id", unique=True)
+            await db.processed_webhook_events.create_index(
+                "processed_at", expireAfterSeconds=2592000  # 30 days
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not create processed_webhook_events indexes: %s", e)
 
         # Google Calendar: indexes
         try:
