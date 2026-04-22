@@ -44,25 +44,20 @@ const AdminPage = () => {
   const [platformSettings, setPlatformSettings] = useState(null);
   const [users, setUsers] = useState([]);
   const [discountCodes, setDiscountCodes] = useState([]);
-  const [affiliates, setAffiliates] = useState([]);
+  const [partners, setPartners] = useState([]);
+  const [partnerFilter, setPartnerFilter] = useState('all'); // 'all' | 'referral' | 'agency' | 'pending'
+  const [selectedPartner, setSelectedPartner] = useState(null);
+  const [partnerDetails, setPartnerDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Dialog states
   const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
-  const [isAffiliateDialogOpen, setIsAffiliateDialogOpen] = useState(false);
   const [newDiscount, setNewDiscount] = useState({
     code: '',
     discount_percent: 10,
     discount_type: 'percentage',
     max_uses: null,
     valid_until: ''
-  });
-  const [newAffiliate, setNewAffiliate] = useState({
-    user_id: '',
-    affiliate_code: '',
-    commission_rate_tier1: 20,
-    commission_rate_tier2: 10,
-    commission_rate_tier3: 5
   });
   const [supportRequests, setSupportRequests] = useState([]);
   // Data Explorer state
@@ -92,12 +87,12 @@ const AdminPage = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [statsRes, orgsRes, usersRes, discountsRes, affiliatesRes, settingsRes, supportRes] = await Promise.all([
+      const [statsRes, orgsRes, usersRes, discountsRes, partnersRes, settingsRes, supportRes] = await Promise.all([
         axios.get(`${API}/admin/stats`, { headers, withCredentials: true }).catch(() => null),
         axios.get(`${API}/admin/organizations`, { headers, withCredentials: true }).catch(() => null),
         axios.get(`${API}/admin/users`, { headers, withCredentials: true }).catch(() => null),
         axios.get(`${API}/admin/discount-codes`, { headers, withCredentials: true }).catch(() => null),
-        axios.get(`${API}/admin/affiliates`, { headers, withCredentials: true }).catch(() => null),
+        axios.get(`${API}/admin/partners`, { headers, withCredentials: true }).catch(() => null),
         axios.get(`${API}/admin/settings`, { headers, withCredentials: true }).catch(() => null),
         axios.get(`${API}/admin/contact-requests`, { headers, withCredentials: true }).catch(() => null)
       ]);
@@ -106,7 +101,7 @@ const AdminPage = () => {
       if (orgsRes) setOrganizations(orgsRes.data);
       if (usersRes) setUsers(usersRes.data.users || []);
       if (discountsRes) setDiscountCodes(discountsRes.data.discount_codes || []);
-      if (affiliatesRes) setAffiliates(affiliatesRes.data.affiliates || []);
+      if (partnersRes) setPartners(partnersRes.data.partners || []);
       if (settingsRes) setPlatformSettings(settingsRes.data);
       if (supportRes) setSupportRequests(supportRes.data.contact_requests || []);
     } catch (error) {
@@ -244,40 +239,84 @@ const AdminPage = () => {
     }
   };
 
-  const handleCreateAffiliate = async (e) => {
-    e.preventDefault();
+  const handleApprovePartner = async (partnerId) => {
     try {
-      await axios.post(`${API}/admin/affiliates`, newAffiliate, { headers, withCredentials: true });
-      toast.success(t('admin.affiliateCreated'));
-      setIsAffiliateDialogOpen(false);
-      setNewAffiliate({ user_id: '', affiliate_code: '', commission_rate_tier1: 20, commission_rate_tier2: 10, commission_rate_tier3: 5 });
+      await axios.put(`${API}/admin/partners/${partnerId}/approve`, {}, { headers, withCredentials: true });
+      toast.success(t('admin.partnerApproved'));
       fetchAllData();
+      if (selectedPartner === partnerId) loadPartnerDetails(partnerId);
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('admin.affiliateCreateFailed'));
+      toast.error(error.response?.data?.detail || t('admin.partnerActionFailed'));
     }
   };
 
-  const handleDeleteAffiliate = async (affiliateId) => {
-    if (!confirm(t('admin.confirmDeleteAffiliate'))) return;
+  const handleSuspendPartner = async (partnerId) => {
+    if (!confirm(t('admin.confirmSuspendPartner'))) return;
     try {
-      await axios.delete(`${API}/admin/affiliates/${affiliateId}`, { headers, withCredentials: true });
-      toast.success(t('admin.affiliateDeleted'));
+      await axios.put(`${API}/admin/partners/${partnerId}/suspend`, {}, { headers, withCredentials: true });
+      toast.success(t('admin.partnerSuspended'));
       fetchAllData();
+      if (selectedPartner === partnerId) loadPartnerDetails(partnerId);
     } catch (error) {
-      toast.error(t('admin.affiliateDeleteFailed'));
+      toast.error(error.response?.data?.detail || t('admin.partnerActionFailed'));
     }
   };
 
-  const handleProcessPayout = async (affiliateId, pendingAmount) => {
-    const amount = prompt(t('admin.payoutPrompt').replace('{amount}', pendingAmount.toFixed(2)), pendingAmount.toFixed(2));
+  const handleReactivatePartner = async (partnerId) => {
+    try {
+      await axios.put(`${API}/admin/partners/${partnerId}/reactivate`, {}, { headers, withCredentials: true });
+      toast.success(t('admin.partnerReactivated'));
+      fetchAllData();
+      if (selectedPartner === partnerId) loadPartnerDetails(partnerId);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || t('admin.partnerActionFailed'));
+    }
+  };
+
+  const handleMarkOnboarding = async (partnerId) => {
+    const customer = prompt(t('admin.onboardingCustomerPrompt') || 'Customer email or org (optional):', '');
+    const notes = prompt(t('admin.onboardingNotesPrompt') || 'Notes (optional):', '');
+    try {
+      await axios.post(
+        `${API}/admin/partners/${partnerId}/mark-onboarding`,
+        { customer_email: customer || null, notes: notes || null },
+        { headers, withCredentials: true }
+      );
+      toast.success(t('admin.onboardingRecorded'));
+      fetchAllData();
+      if (selectedPartner === partnerId) loadPartnerDetails(partnerId);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || t('admin.partnerActionFailed'));
+    }
+  };
+
+  const handleMarkPaid = async (partnerId, pendingAmount) => {
+    const amount = prompt(
+      t('admin.payoutPrompt').replace('{amount}', (pendingAmount || 0).toFixed(2)),
+      (pendingAmount || 0).toFixed(2)
+    );
     if (!amount) return;
-
     try {
-      await axios.post(`${API}/admin/affiliates/${affiliateId}/payout?amount=${parseFloat(amount)}`, {}, { headers, withCredentials: true });
+      await axios.post(
+        `${API}/admin/partners/${partnerId}/mark-paid?amount=${parseFloat(amount)}`,
+        {},
+        { headers, withCredentials: true }
+      );
       toast.success(t('admin.payoutProcessed'));
       fetchAllData();
+      if (selectedPartner === partnerId) loadPartnerDetails(partnerId);
     } catch (error) {
       toast.error(error.response?.data?.detail || t('admin.payoutFailed'));
+    }
+  };
+
+  const loadPartnerDetails = async (partnerId) => {
+    try {
+      const res = await axios.get(`${API}/admin/partners/${partnerId}`, { headers, withCredentials: true });
+      setSelectedPartner(partnerId);
+      setPartnerDetails(res.data);
+    } catch (error) {
+      toast.error(t('admin.partnerActionFailed'));
     }
   };
 
@@ -323,9 +362,9 @@ const AdminPage = () => {
     { title: t('admin.totalUsers'), value: stats?.total_users || 0, icon: <Users className="w-5 h-5" />, color: 'bg-teal-100 text-[#0EA5A0]' },
     { title: t('admin.organizations'), value: stats?.total_organizations || 0, icon: <Building className="w-5 h-5" />, color: 'bg-emerald-100 text-emerald-600' },
     { title: t('admin.revenue'), value: `€${(stats?.total_revenue || 0).toLocaleString()}`, icon: <DollarSign className="w-5 h-5" />, color: 'bg-rose-100 text-rose-600' },
-    { title: t('admin.affiliates'), value: stats?.total_affiliates || 0, icon: <UserPlus className="w-5 h-5" />, color: 'bg-teal-100 text-teal-600' },
+    { title: t('admin.partners'), value: stats?.total_partners || 0, icon: <UserPlus className="w-5 h-5" />, color: 'bg-teal-100 text-teal-600' },
     { title: t('admin.discountCodes'), value: stats?.total_discount_codes || 0, icon: <Tag className="w-5 h-5" />, color: 'bg-amber-100 text-amber-600' },
-    { title: t('admin.affiliateEarnings'), value: `€${(stats?.total_affiliate_earnings || 0).toLocaleString()}`, icon: <Gift className="w-5 h-5" />, color: 'bg-cyan-100 text-cyan-600' }
+    { title: t('admin.partnerEarnings'), value: `€${(stats?.total_partner_earnings || 0).toLocaleString()}`, icon: <Gift className="w-5 h-5" />, color: 'bg-cyan-100 text-cyan-600' }
   ];
 
   return (
@@ -365,7 +404,7 @@ const AdminPage = () => {
             <TabsTrigger value="organizations">{t('admin.organizations')}</TabsTrigger>
             <TabsTrigger value="support" data-testid="admin-support-tab">{t('admin.support')}</TabsTrigger>
             <TabsTrigger value="discounts">{t('admin.discountCodes')}</TabsTrigger>
-            <TabsTrigger value="affiliates">{t('admin.affiliates')}</TabsTrigger>
+            <TabsTrigger value="partners">{t('admin.partners')}</TabsTrigger>
             <TabsTrigger value="explorer" data-testid="admin-explorer-tab" onClick={() => { if (!Object.keys(explorerCollections).length) fetchExplorerCollections(); }}>{t('admin.dataExplorer')}</TabsTrigger>
             <TabsTrigger value="reports" data-testid="admin-reports-tab">{t('admin.reports')}</TabsTrigger>
             <TabsTrigger value="settings">{t('admin.settings')}</TabsTrigger>
@@ -713,186 +752,199 @@ const AdminPage = () => {
             </Card>
           </TabsContent>
 
-          {/* Affiliates Tab */}
-          <TabsContent value="affiliates">
+          {/* Partners Tab */}
+          <TabsContent value="partners">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Layers className="w-5 h-5" />
-                    {t('admin.threeTierAffiliateSystem')}
-                  </CardTitle>
-                  <CardDescription>{t('admin.affiliatesDesc')}</CardDescription>
-                </div>
-                <Dialog open={isAffiliateDialogOpen} onOpenChange={setIsAffiliateDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-[#0EA5A0] hover:bg-teal-700" data-testid="create-affiliate-btn">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      {t('admin.addAffiliate')}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{t('admin.createAffiliate')}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateAffiliate} className="space-y-4 pt-4">
-                      <div className="space-y-2">
-                        <Label>{t('admin.userIdRequired')}</Label>
-                        <Select
-                          value={newAffiliate.user_id}
-                          onValueChange={(value) => setNewAffiliate({ ...newAffiliate, user_id: value })}
-                        >
-                          <SelectTrigger data-testid="affiliate-user-select">
-                            <SelectValue placeholder={t('admin.selectUserPlaceholder')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {users.map((u) => (
-                              <SelectItem key={u.user_id} value={u.user_id}>
-                                {u.name} ({u.email})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('admin.affiliateCodeOptional')}</Label>
-                        <Input
-                          value={newAffiliate.affiliate_code}
-                          onChange={(e) => setNewAffiliate({ ...newAffiliate, affiliate_code: e.target.value.toUpperCase() })}
-                          placeholder={t('admin.autoGenerated')}
-                          data-testid="affiliate-code-input"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('admin.commissionRates')}</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">{t('admin.tier1Percent')}</p>
-                            <Input
-                              type="number"
-                              value={newAffiliate.commission_rate_tier1}
-                              onChange={(e) => setNewAffiliate({ ...newAffiliate, commission_rate_tier1: parseFloat(e.target.value) })}
-                              data-testid="affiliate-tier1"
-                            />
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">{t('admin.tier2Percent')}</p>
-                            <Input
-                              type="number"
-                              value={newAffiliate.commission_rate_tier2}
-                              onChange={(e) => setNewAffiliate({ ...newAffiliate, commission_rate_tier2: parseFloat(e.target.value) })}
-                              data-testid="affiliate-tier2"
-                            />
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">{t('admin.tier3Percent')}</p>
-                            <Input
-                              type="number"
-                              value={newAffiliate.commission_rate_tier3}
-                              onChange={(e) => setNewAffiliate({ ...newAffiliate, commission_rate_tier3: parseFloat(e.target.value) })}
-                              data-testid="affiliate-tier3"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <Button type="submit" className="w-full bg-[#0EA5A0] hover:bg-teal-700" data-testid="submit-affiliate-btn">
-                        {t('admin.createAffiliate')}
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Layers className="w-5 h-5" />
+                      {t('admin.partnerProgramme')}
+                    </CardTitle>
+                    <CardDescription>{t('admin.partnersDesc')}</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {['all', 'referral', 'agency', 'pending'].map((f) => (
+                      <Button
+                        key={f}
+                        variant={partnerFilter === f ? 'default' : 'outline'}
+                        size="sm"
+                        className={partnerFilter === f ? 'bg-[#0EA5A0] hover:bg-teal-700' : ''}
+                        onClick={() => setPartnerFilter(f)}
+                        data-testid={`partner-filter-${f}`}
+                      >
+                        {t(`admin.partnerFilter.${f}`)}
                       </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                    ))}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                {/* Commission Structure Info */}
-                <div className="mb-6 p-4 bg-teal-50 rounded-lg">
-                  <h4 className="font-semibold text-indigo-900 mb-2">{t('admin.commissionStructure')}</h4>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center p-2 bg-white rounded">
-                      <p className="font-bold text-[#0EA5A0]">{t('admin.tier1')}</p>
-                      <p className="text-slate-600">{t('admin.directReferral')}</p>
-                      <p className="text-lg font-bold">20%</p>
-                    </div>
-                    <div className="text-center p-2 bg-white rounded">
-                      <p className="font-bold text-teal-600">{t('admin.tier2')}</p>
-                      <p className="text-slate-600">{t('admin.subReferral')}</p>
-                      <p className="text-lg font-bold">10%</p>
-                    </div>
-                    <div className="text-center p-2 bg-white rounded">
-                      <p className="font-bold text-cyan-600">{t('admin.tier3')}</p>
-                      <p className="text-slate-600">{t('admin.subSubReferral')}</p>
-                      <p className="text-lg font-bold">5%</p>
-                    </div>
+                {/* Commission structure info */}
+                <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-4 bg-teal-50 rounded-lg">
+                    <p className="font-semibold text-[#0EA5A0] text-sm mb-1">{t('admin.tierReferral')}</p>
+                    <p className="text-slate-600 text-xs mb-2">{t('admin.tierReferralDesc')}</p>
+                    <p className="text-lg font-bold text-slate-900">€500 / {t('admin.perSale')}</p>
+                  </div>
+                  <div className="p-4 bg-cyan-50 rounded-lg">
+                    <p className="font-semibold text-cyan-700 text-sm mb-1">{t('admin.tierAgency')}</p>
+                    <p className="text-slate-600 text-xs mb-2">{t('admin.tierAgencyDesc')}</p>
+                    <p className="text-lg font-bold text-slate-900">€500 + €750 / {t('admin.perOnboarding')}</p>
                   </div>
                 </div>
 
-                {affiliates.length === 0 ? (
-                  <p className="text-center text-slate-500 py-8">{t('admin.noAffiliates')}</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full" data-testid="affiliates-table">
-                      <thead>
-                        <tr className="border-b border-slate-200">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colAffiliate')}</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colCode')}</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colReferrals')}</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colEarnings')}</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colPending')}</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colActions')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {affiliates.map((aff, index) => (
-                          <tr key={aff.affiliate_id} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`affiliate-row-${index}`}>
-                            <td className="py-3 px-4">
-                              <p className="font-medium text-slate-900">{aff.user?.name || t('admin.unknown')}</p>
-                              <p className="text-xs text-slate-500">{aff.user?.email}</p>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-[#0EA5A0]">{aff.affiliate_code}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => copyToClipboard(aff.affiliate_code)}
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-slate-600">{aff.total_referrals}</td>
-                            <td className="py-3 px-4 font-semibold text-emerald-600">
-                              €{(aff.total_earnings || 0).toFixed(2)}
-                            </td>
-                            <td className="py-3 px-4 font-semibold text-amber-600">
-                              €{(aff.pending_earnings || 0).toFixed(2)}
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                {aff.pending_earnings > 0 && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleProcessPayout(aff.affiliate_id, aff.pending_earnings)}
-                                  >
-                                    <DollarSign className="w-3 h-3 mr-1" />
-                                    {t('admin.payout')}
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-rose-600 hover:text-rose-700"
-                                  onClick={() => handleDeleteAffiliate(aff.affiliate_id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </td>
+                {(() => {
+                  const filtered = partners.filter((p) => {
+                    if (partnerFilter === 'all') return true;
+                    if (partnerFilter === 'pending') return p.status === 'pending_approval';
+                    return p.partner_type === partnerFilter;
+                  });
+                  if (!filtered.length) {
+                    return <p className="text-center text-slate-500 py-8">{t('admin.noPartners')}</p>;
+                  }
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full" data-testid="partners-table">
+                        <thead>
+                          <tr className="border-b border-slate-200">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colPartner')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colType')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colStatus')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colCode')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colReferrals')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colEarnings')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colPending')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">{t('admin.colActions')}</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {filtered.map((p, index) => (
+                            <tr key={p.partner_id} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`partner-row-${index}`}>
+                              <td className="py-3 px-4">
+                                <p className="font-medium text-slate-900">{p.user?.name || p.company_name || t('admin.unknown')}</p>
+                                <p className="text-xs text-slate-500">{p.user?.email}</p>
+                                {p.company_name && (
+                                  <p className="text-xs text-slate-400 italic">{p.company_name}</p>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded text-xs font-semibold ${p.partner_type === 'agency' ? 'bg-cyan-100 text-cyan-700' : 'bg-teal-100 text-[#0EA5A0]'}`}>
+                                  {t(`admin.partnerType.${p.partner_type}`)}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded text-xs font-semibold ${p.status === 'active' ? 'bg-emerald-100 text-emerald-700' : p.status === 'pending_approval' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                                  {t(`admin.partnerStatus.${p.status}`)}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-[#0EA5A0]">{p.referral_code}</span>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(p.referral_code)}>
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-slate-600">{p.total_referrals || 0}</td>
+                              <td className="py-3 px-4 font-semibold text-emerald-600">€{(p.total_earned || 0).toFixed(2)}</td>
+                              <td className="py-3 px-4 font-semibold text-amber-600">€{(p.pending_balance || 0).toFixed(2)}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <Button variant="ghost" size="sm" onClick={() => loadPartnerDetails(p.partner_id)}>
+                                    {t('admin.view')}
+                                  </Button>
+                                  {p.status === 'pending_approval' && (
+                                    <Button variant="outline" size="sm" className="text-emerald-700 border-emerald-300" onClick={() => handleApprovePartner(p.partner_id)}>
+                                      <Check className="w-3 h-3 mr-1" />{t('admin.approve')}
+                                    </Button>
+                                  )}
+                                  {p.status === 'active' && p.partner_type === 'agency' && (
+                                    <Button variant="outline" size="sm" onClick={() => handleMarkOnboarding(p.partner_id)}>
+                                      <Gift className="w-3 h-3 mr-1" />{t('admin.logOnboarding')}
+                                    </Button>
+                                  )}
+                                  {(p.pending_balance || 0) > 0 && (
+                                    <Button variant="outline" size="sm" onClick={() => handleMarkPaid(p.partner_id, p.pending_balance)}>
+                                      <DollarSign className="w-3 h-3 mr-1" />{t('admin.markPaid')}
+                                    </Button>
+                                  )}
+                                  {p.status === 'active' ? (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:text-rose-700" onClick={() => handleSuspendPartner(p.partner_id)}>
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  ) : p.status === 'suspended' ? (
+                                    <Button variant="ghost" size="sm" onClick={() => handleReactivatePartner(p.partner_id)}>
+                                      {t('admin.reactivate')}
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+
+                {/* Partner details drawer */}
+                {partnerDetails && (
+                  <div className="mt-6 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-bold text-slate-900">
+                          {partnerDetails.partner?.company_name || partnerDetails.partner?.user?.name || t('admin.partnerDetails')}
+                        </h4>
+                        <p className="text-xs text-slate-500">{partnerDetails.partner?.user?.email}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedPartner(null); setPartnerDetails(null); }}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    {partnerDetails.partner?.application_text && (
+                      <div className="mb-3 p-3 bg-white rounded border border-slate-200">
+                        <p className="text-xs text-slate-500 mb-1">{t('admin.applicationNotes')}</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{partnerDetails.partner.application_text}</p>
+                        {partnerDetails.partner.company_website && (
+                          <p className="text-xs text-[#0EA5A0] mt-2">{partnerDetails.partner.company_website}</p>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">{t('admin.recentSales')}</p>
+                      {(!partnerDetails.sales || partnerDetails.sales.length === 0) ? (
+                        <p className="text-xs text-slate-400">{t('admin.noSales')}</p>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-200 text-xs text-slate-500">
+                              <th className="text-left py-2">{t('admin.colDate')}</th>
+                              <th className="text-left py-2">{t('admin.colSaleType')}</th>
+                              <th className="text-left py-2">{t('admin.colCustomer')}</th>
+                              <th className="text-right py-2">{t('admin.colCommission')}</th>
+                              <th className="text-left py-2">{t('admin.colStatus')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {partnerDetails.sales.map((s) => (
+                              <tr key={s.sale_id} className="border-b border-slate-100">
+                                <td className="py-2">{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
+                                <td className="py-2">{t(`admin.saleType.${s.sale_type}`)}</td>
+                                <td className="py-2 text-slate-600">{s.customer_email || '—'}</td>
+                                <td className="py-2 text-right font-semibold text-emerald-600">€{(s.commission_amount || 0).toFixed(2)}</td>
+                                <td className="py-2">
+                                  <span className={`px-2 py-0.5 rounded text-xs ${s.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    {t(`admin.saleStatus.${s.status}`)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>

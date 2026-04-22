@@ -54,7 +54,6 @@ const SettingsPage = () => {
   const [orgSettings, setOrgSettings] = useState(null);
   const [members, setMembers] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [affiliateStatus, setAffiliateStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [newOrgName, setNewOrgName] = useState('');
   const [creatingOrg, setCreatingOrg] = useState(false);
@@ -101,7 +100,6 @@ const SettingsPage = () => {
   useEffect(() => {
     fetchOrganization();
     fetchInvoices();
-    fetchAffiliateStatus();
     fetchApiKeysAndWebhooks();
     fetchAiStatus();
     fetchLlmKeys();
@@ -208,15 +206,6 @@ const SettingsPage = () => {
     }
   };
 
-  const fetchAffiliateStatus = async () => {
-    try {
-      const response = await axios.get(`${API}/affiliate/me`, { headers, withCredentials: true });
-      setAffiliateStatus(response.data);
-    } catch (error) {
-      console.error('Failed to fetch affiliate status');
-    }
-  };
-
   const fetchApiKeysAndWebhooks = async () => {
     try {
       const [keysRes, whRes] = await Promise.all([
@@ -272,39 +261,6 @@ const SettingsPage = () => {
       fetchOrgSettings();
     } catch (error) {
       toast.error(t('settings.dealStagesSaveFailed'));
-    }
-  };
-
-  const handleToggleAffiliate = async (enabled) => {
-    try {
-      await axios.put(`${API}/organizations/settings`, { affiliate_enabled: enabled }, {
-        headers,
-        withCredentials: true
-      });
-      // Auto-enroll user as affiliate when enabling
-      if (enabled && !affiliateStatus?.enrolled) {
-        try {
-          await axios.post(`${API}/affiliate/enroll`, {}, { headers, withCredentials: true });
-          fetchAffiliateStatus();
-        } catch (err) { console.error(err); }
-      }
-      toast.success(enabled ? t('settings.affiliateEnabled') : t('settings.affiliateDisabled'));
-      fetchOrgSettings();
-    } catch (error) {
-      toast.error(t('settings.affiliateSettingsFailed'));
-    }
-  };
-
-  const handleEnrollAffiliate = async () => {
-    try {
-      await axios.post(`${API}/affiliate/enroll`, {}, {
-        headers,
-        withCredentials: true
-      });
-      toast.success(t('settings.enrollSuccess'));
-      fetchAffiliateStatus();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || t('settings.enrollFailed'));
     }
   };
 
@@ -414,20 +370,6 @@ const SettingsPage = () => {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     toast.success(t('settings.copiedClipboard'));
-  };
-
-  const handleUnenrollAffiliate = async () => {
-    if (!confirm(t('settings.unenrollConfirm'))) return;
-    try {
-      await axios.post(`${API}/affiliate/unenroll`, {}, {
-        headers,
-        withCredentials: true
-      });
-      toast.success(t('settings.unenrollSuccess'));
-      fetchAffiliateStatus();
-    } catch (error) {
-      toast.error(t('settings.unenrollFailed'));
-    }
   };
 
   const handleUpdateMemberRole = async (userId, newRole) => {
@@ -975,157 +917,30 @@ const SettingsPage = () => {
               </CardContent>
             </Card>
 
-            {/* Affiliate Section */}
-            {orgSettings?.affiliate_enabled && (
-              <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Gift className="w-5 h-5" />
-                    {t('settings.affiliateProgram')}
-                  </CardTitle>
-                  <CardDescription>{t('settings.affiliateProgramDesc')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {affiliateStatus?.enrolled ? (
-                    <div className="space-y-4">
-                      {/* Level and Commission Info */}
-                      <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-[#0EA5A0] text-white">{affiliateStatus.level_label || t('settings.affiliateLevel').replace('{level}', affiliateStatus.level)}</Badge>
-                            <span className="text-sm font-medium text-teal-900">{t('settings.affiliateLevel').replace('{level}', affiliateStatus.level)}</span>
-                          </div>
-                          <span className="text-sm font-bold text-teal-900">{affiliateStatus.affiliate?.commission_rate}{t('settings.affiliateCommissionSuffix')}</span>
-                        </div>
-                        <p className="text-xs text-teal-700">{affiliateStatus.commission_summary}</p>
-                        <p className="text-xs text-teal-600 mt-1">{t('settings.affiliateLinkGivesDiscountPrefix')} <strong>{affiliateStatus.customer_discount} {t('settings.affiliateLinkGivesDiscountSuffix')}</strong></p>
-                      </div>
-
-                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <p className="text-sm font-medium text-emerald-800 mb-2">{t('settings.affiliateReferralLink')}</p>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            value={affiliateStatus.referral_link} 
-                            readOnly 
-                            className="font-mono text-sm"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={() => copyToClipboard(affiliateStatus.referral_link)}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="p-3 bg-slate-50 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-slate-900">{affiliateStatus.affiliate?.total_referrals || 0}</p>
-                          <p className="text-xs text-slate-500">{t('settings.affiliateTotalReferrals')}</p>
-                        </div>
-                        <div className="p-3 bg-slate-50 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-emerald-600">€{(affiliateStatus.affiliate?.total_earnings || 0).toFixed(2)}</p>
-                          <p className="text-xs text-slate-500">{t('settings.affiliateTotalEarnings')}</p>
-                        </div>
-                        <div className="p-3 bg-slate-50 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-amber-600">€{(affiliateStatus.affiliate?.pending_earnings || 0).toFixed(2)}</p>
-                          <p className="text-xs text-slate-500">{t('settings.affiliatePending')}</p>
-                        </div>
-                      </div>
-
-                      {/* Embed HTML Code */}
-                      <div className="border border-slate-200 rounded-lg p-4 space-y-2">
-                        <p className="text-sm font-medium text-slate-800">{t('settings.affiliateEmbedTitle')}</p>
-                        <p className="text-xs text-slate-500">{t('settings.affiliateEmbedDesc')}</p>
-                        <div className="relative">
-                          <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto max-h-40" data-testid="affiliate-embed-code">{`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
-  <div style="background:linear-gradient(135deg,#0EA5A0,#0B8C88);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;">
-    <p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p>
-    <p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p>
-    <span style="background:#fff;color:#0EA5A0;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span>
-  </div>
-</a>`}</pre>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="absolute top-2 right-2 h-7 text-xs"
-                            data-testid="copy-embed-btn"
-                            onClick={() => copyToClipboard(`<a href="${affiliateStatus.referral_link}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#0EA5A0,#0B8C88);border-radius:12px;padding:24px 32px;text-align:center;max-width:400px;font-family:Inter,sans-serif;"><p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px;">Try TAKO - Your CRM that pAIs you back</p><p style="color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 16px;">AI-powered lead management, deal pipeline & team collaboration</p><span style="background:#fff;color:#0EA5A0;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">Start Free Trial</span></div></a>`)}
-                          >
-                            <Copy className="w-3 h-3 mr-1" /> {t('settings.copy')}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Social Media Assets */}
-                      <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-                        <p className="text-sm font-medium text-slate-800">{t('settings.affiliateSocialTitle')}</p>
-                        <p className="text-xs text-slate-500">{t('settings.affiliateSocialDesc')}</p>
-                        <div className="grid grid-cols-3 gap-3">
-                          {[
-                            { label: t('settings.affiliateBannerLabel'), desc: t('settings.affiliateBannerDesc'), url: '/assets/social-banner.png' },
-                            { label: t('settings.affiliateStoryLabel'), desc: t('settings.affiliateStoryDesc'), url: '/assets/social-story.png' },
-                            { label: t('settings.affiliateSquareLabel'), desc: t('settings.affiliateSquareDesc'), url: '/assets/social-square.png' },
-                          ].map((asset, i) => (
-                            <div key={i} className="border border-slate-100 rounded-lg overflow-hidden">
-                              <img src={asset.url} alt={asset.label} className="w-full h-28 object-cover bg-slate-100" />
-                              <div className="p-2">
-                                <p className="text-xs font-medium text-slate-800 truncate">{asset.label}</p>
-                                <p className="text-[10px] text-slate-500">{asset.desc}</p>
-                                <a
-                                  href={asset.url}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="mt-1.5 flex items-center justify-center gap-1 text-xs text-[#0EA5A0] font-medium hover:underline"
-                                  data-testid={`download-asset-${i}`}
-                                >
-                                  <Download className="w-3 h-3" /> {t('settings.download')}
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {affiliateStatus.referrals?.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium text-slate-700 mb-2">{t('settings.recentReferrals')}</p>
-                          <div className="space-y-2">
-                            {affiliateStatus.referrals.slice(0, 5).map((ref, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
-                                <span className="text-slate-600">{ref.referred_user_id}</span>
-                                <Badge variant={ref.commission_status === 'paid' ? 'default' : 'secondary'}>
-                                  €{ref.commission_amount?.toFixed(2)} - {ref.commission_status}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <Button 
-                        variant="outline" 
-                        className="text-rose-600 border-rose-200"
-                        onClick={handleUnenrollAffiliate}
-                      >
-                        {t('settings.leaveAffiliate')}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <Gift className="w-12 h-12 mx-auto text-indigo-400 mb-3" />
-                      <p className="text-slate-600 mb-4">{t('settings.joinAffiliateCopy')}</p>
-                      <Button onClick={handleEnrollAffiliate} className="bg-[#0EA5A0] hover:bg-teal-700">
-                        <Link className="w-4 h-4 mr-2" />
-                        {t('settings.becomeAffiliate')}
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            {/* Partner Programme link card */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Gift className="w-5 h-5" />
+                  {t('settings.partnerProgramme')}
+                </CardTitle>
+                <CardDescription>{t('settings.partnerProgrammeDesc')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <p className="text-sm text-slate-600 max-w-lg">
+                    {t('settings.partnerProgrammeCta')}
+                  </p>
+                  <Button
+                    className="bg-[#0EA5A0] hover:bg-teal-700"
+                    onClick={() => navigate('/partners')}
+                    data-testid="open-partner-dashboard-btn"
+                  >
+                    {t('settings.openPartnerDashboard')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Organization Tab */}
@@ -1404,30 +1219,6 @@ const SettingsPage = () => {
               </Card>
             )}
 
-            {/* Affiliate Settings - Only for owner/admin */}
-            {organization && (user?.role === 'owner' || user?.role === 'admin' || user?.role === 'super_admin') && (
-              <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Gift className="w-5 h-5" />
-                    {t('settings.affiliateSettingsTitle')}
-                  </CardTitle>
-                  <CardDescription>{t('settings.affiliateSettingsDesc')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-slate-900">{t('settings.enableAffiliate')}</p>
-                      <p className="text-sm text-slate-500">{t('settings.enableAffiliateDesc')}</p>
-                    </div>
-                    <Switch 
-                      checked={orgSettings?.affiliate_enabled || false}
-                      onCheckedChange={handleToggleAffiliate}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
 
           {/* Team & Invites Tab */}

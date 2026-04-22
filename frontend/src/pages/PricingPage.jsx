@@ -102,6 +102,42 @@ const FAQS = [
 const CHECKOUT_INTENT_KEY = 'tako_checkout_intent';
 const ARBITRUM_CHAIN_ID_HEX = '0xa4b1'; // 42161
 
+// ── Partner referral attribution ────────────────────────────────────────────
+// Capture ?ref=CODE on first visit, persist in localStorage for 90 days, and
+// pass through to backend checkout. Buyer never sees the ref — no discount,
+// no acknowledgement. Commission is paid from TAKO's margin.
+const REF_STORAGE_KEY = 'tako_ref';
+const REF_EXPIRY_DAYS = 90;
+
+const readStoredRef = () => {
+  try {
+    const raw = localStorage.getItem(REF_STORAGE_KEY);
+    if (!raw) return null;
+    const { code, expiresAt } = JSON.parse(raw);
+    if (!code || !expiresAt) return null;
+    if (new Date(expiresAt).getTime() < Date.now()) {
+      localStorage.removeItem(REF_STORAGE_KEY);
+      return null;
+    }
+    return String(code).toUpperCase();
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredRef = (code) => {
+  if (!code) return;
+  const expiresAt = new Date(Date.now() + REF_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    localStorage.setItem(
+      REF_STORAGE_KEY,
+      JSON.stringify({ code: String(code).toUpperCase(), expiresAt })
+    );
+  } catch {
+    // Storage may be unavailable (private browsing, etc.) — silently skip.
+  }
+};
+
 // Minimal ERC-20 transfer ABI fragment (no full ethers import needed)
 const ERC20_TRANSFER_ABI = [
   {
@@ -123,6 +159,19 @@ const PricingPage = () => {
   const [checkoutLoading, setCheckoutLoading] = useState(null); // holds plan_id when busy
   const [unytLoading, setUnytLoading]         = useState(false);
 
+  // Capture ?ref=CODE on first mount — persists silently for 90 days.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const incoming = params.get('ref');
+      if (incoming && incoming.trim()) {
+        writeStoredRef(incoming.trim());
+      }
+    } catch {
+      // ignore — URL parsing failure is non-fatal
+    }
+  }, []);
+
   // ── Stripe checkout ────────────────────────────────────────────────────────
   const initiateCheckout = async (planId) => {
     setCheckoutLoading(planId);
@@ -132,6 +181,9 @@ const PricingPage = () => {
       currency:   'eur',
       user_count: 1,
     };
+    const storedRef = readStoredRef();
+    if (storedRef) payload.referral_code = storedRef;
+
     const config = { withCredentials: true };
     if (token) config.headers = { Authorization: `Bearer ${token}` };
 
@@ -205,11 +257,13 @@ const PricingPage = () => {
       }
 
       // 3. Create the UNYT payment order on the backend (gets amount & receiver)
+      const storedRef = readStoredRef();
       const orderRes = await axios.post(`${API}/checkout/launch-edition/unyt`, {
         plan_id: 'tako_selfhost_once',
         name:    user?.name || '',
         email:   user?.email || '',
         wallet,
+        ...(storedRef ? { referral_code: storedRef } : {}),
       });
       const { deal_id, unyt_amount_wei, receiver, contract } = orderRes.data;
 

@@ -467,7 +467,7 @@ class PaymentTransaction(BaseModel):
     metadata: Dict[str, Any] = {}
     created_at: datetime
 
-# ==================== DISCOUNT & AFFILIATE MODELS ====================
+# ==================== DISCOUNT & PARTNER MODELS ====================
 
 class DiscountCode(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -495,43 +495,64 @@ class DiscountCodeCreate(BaseModel):
     max_uses: Optional[int] = None
     applicable_plans: List[str] = []
 
-class Affiliate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    affiliate_id: str
-    user_id: str  # The user who is an affiliate
-    affiliate_code: str  # Unique referral code
-    tier: int = 1  # 1, 2, or 3
-    parent_affiliate_id: Optional[str] = None  # For tier 2 & 3
-    grandparent_affiliate_id: Optional[str] = None  # For tier 3
-    commission_rate_tier1: float = 20.0  # Direct referral commission %
-    commission_rate_tier2: float = 10.0  # Tier 2 commission %
-    commission_rate_tier3: float = 5.0   # Tier 3 commission %
-    total_referrals: int = 0
-    total_earnings: float = 0
-    pending_earnings: float = 0
-    paid_earnings: float = 0
-    created_at: datetime
-    is_active: bool = True
+# ---- Partner Programme (two-tier: referral + agency) ----
+# Flat commissions: €500 per license sale, €750 per onboarding delivered by an
+# agency partner. No customer discount. One referrer per sale. Non-chained.
 
-class AffiliateCreate(BaseModel):
+PARTNER_COMMISSION_LICENSE_EUR = 500.0
+PARTNER_COMMISSION_ONBOARDING_EUR = 750.0
+PARTNER_ONBOARDING_PRICE_EUR = 1500.0
+
+class Partner(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    partner_id: str
     user_id: str
-    affiliate_code: Optional[str] = None
-    parent_affiliate_id: Optional[str] = None
-    commission_rate_tier1: float = 20.0
-    commission_rate_tier2: float = 10.0
-    commission_rate_tier3: float = 5.0
-
-class AffiliateReferral(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    referral_id: str
-    affiliate_id: str  # Who referred
-    referred_user_id: str  # Who was referred
-    referred_org_id: Optional[str] = None
-    tier_level: int  # 1, 2, or 3
-    commission_amount: float = 0
-    commission_status: str = "pending"  # pending, paid, cancelled
-    payment_amount: float = 0  # The payment that triggered this
+    partner_type: str = "referral"  # "referral" | "agency"
+    status: str = "active"          # "active" | "pending_approval" | "suspended"
+    referral_code: str              # unique, short, uppercase
+    referral_link: str
+    # Agency-only fields (None for referral partners)
+    company_name: Optional[str] = None
+    company_website: Optional[str] = None
+    application_text: Optional[str] = None
+    estimated_annual_referrals: Optional[int] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    # Tracking
+    total_referrals: int = 0
+    total_earned: float = 0.0
+    pending_balance: float = 0.0
     created_at: datetime
+    updated_at: datetime
+
+class PartnerRegisterRequest(BaseModel):
+    # No body fields needed — identified by auth. Kept as a model for future
+    # extensibility (e.g. preferred payout method).
+    pass
+
+class AgencyApplicationRequest(BaseModel):
+    company_name: str
+    company_website: Optional[str] = None
+    application_text: str
+    estimated_annual_referrals: Optional[int] = None
+
+class ReferralSale(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    sale_id: str
+    partner_id: str
+    customer_org_id: Optional[str] = None
+    customer_email: Optional[str] = None
+    sale_type: str                  # "license" | "onboarding"
+    payment_method: str             # "stripe" | "unyt"
+    license_type: Optional[str] = None  # "onetime" | "installment_12" | "installment_24" | "unyt"
+    commission_amount: float
+    status: str = "confirmed"       # "pending" | "confirmed" | "paid"
+    stripe_session_id: Optional[str] = None
+    stripe_payment_id: Optional[str] = None
+    unyt_tx_hash: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    paid_at: Optional[datetime] = None
 
 class SuperAdminCreate(BaseModel):
     email: EmailStr
@@ -594,13 +615,14 @@ class PlatformSettings(BaseModel):
 # ==================== PAYMENT & INVOICE MODELS ====================
 
 class SubscriptionRequest(BaseModel):
-    plan_id: str  # e.g. "tako_pro_monthly"
+    plan_id: str  # e.g. "tako_selfhost_once"
     user_count: int = 1
     discount_code: Optional[str] = None
     coupon_code: Optional[str] = None
     use_crypto: bool = False  # If true, apply 5% crypto discount
     origin_url: str  # Frontend origin for success/cancel URLs
-    currency: str = "gbp"
+    currency: str = "eur"
+    referral_code: Optional[str] = None  # Partner referral code from URL / localStorage
 
 class PaymentTransaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -1111,15 +1133,21 @@ async def register(user_data: UserCreate, response: Response):
         super_admin = await db.users.find_one({"email": SUPER_ADMIN_EMAIL}, {"_id": 0})
         if super_admin and super_admin.get("organization_id"):
             lead_source = "signup"
-            affiliate_info = None
-            # Check if this is an affiliate referral (ref param stored in invite or URL)
+            partner_info = None
+            # Tag the lead if the signup carried a valid partner referral code.
             ref_code = getattr(user_data, 'ref_code', None)
             if ref_code:
-                affiliate = await db.affiliates.find_one({"affiliate_code": ref_code}, {"_id": 0})
-                if affiliate:
-                    lead_source = f"affiliate:{ref_code}"
-                    affiliate_info = {"affiliate_code": ref_code, "affiliate_id": affiliate.get("affiliate_id")}
-            
+                partner_match = await db.partners.find_one(
+                    {"referral_code": ref_code.upper(), "status": "active"}, {"_id": 0}
+                )
+                if partner_match:
+                    lead_source = f"partner:{partner_match['referral_code']}"
+                    partner_info = {
+                        "referral_code": partner_match["referral_code"],
+                        "partner_id": partner_match["partner_id"],
+                        "partner_type": partner_match.get("partner_type", "referral"),
+                    }
+
             auto_lead = {
                 "lead_id": f"lead_{uuid.uuid4().hex[:12]}",
                 "organization_id": super_admin["organization_id"],
@@ -1136,8 +1164,8 @@ async def register(user_data: UserCreate, response: Response):
                 "created_at": now.isoformat(),
                 "updated_at": now.isoformat()
             }
-            if affiliate_info:
-                auto_lead["affiliate_referral"] = affiliate_info
+            if partner_info:
+                auto_lead["partner_referral"] = partner_info
             await db.leads.insert_one(auto_lead)
     except Exception as e:
         logger.error(f"Auto-lead creation error: {e}")
@@ -1566,7 +1594,6 @@ async def get_organization_members(organization_id: str, current_user: dict = De
 class OrgSettingsUpdate(BaseModel):
     deal_stages: Optional[List[dict]] = None
     task_stages: Optional[List[dict]] = None
-    affiliate_enabled: Optional[bool] = None
 
 class PipelineCreate(BaseModel):
     name: str
@@ -1605,7 +1632,6 @@ async def get_organization_settings(current_user: dict = Depends(get_current_use
             {"id": "done", "name": "Done", "order": 3}
         ]),
         "pipelines": org.get("pipelines", []),
-        "affiliate_enabled": org.get("affiliate_enabled", False)
     }
 
 @api_router.put("/organizations/settings")
@@ -1627,9 +1653,7 @@ async def update_organization_settings(
         update_data["deal_stages"] = settings.deal_stages
     if settings.task_stages is not None:
         update_data["task_stages"] = settings.task_stages
-    if settings.affiliate_enabled is not None:
-        update_data["affiliate_enabled"] = settings.affiliate_enabled
-    
+
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         await db.organizations.update_one(
@@ -2089,113 +2113,312 @@ async def validate_invite(invite_code: str):
         "email": invite.get("email")  # For email-specific invites
     }
 
-# ==================== AFFILIATE SELF-ENROLLMENT ====================
+# ==================== PARTNER PROGRAMME ====================
+# Two-tier: (1) Referral Partner — open, auto-approved, €500 per sale.
+# (2) Agency Partner — admin-approved, same €500 per sale + €750 per
+# onboarding delivered. No customer discount. One referrer per sale.
 
-@api_router.post("/affiliate/enroll")
-async def enroll_as_affiliate(current_user: dict = Depends(get_current_user)):
-    """Self-enroll as an affiliate. Anyone can toggle this on."""
+def _public_url() -> str:
+    return os.environ.get('PUBLIC_URL') or os.environ.get('FRONTEND_URL') or ''
+
+def _generate_partner_code(name_hint: str = "") -> str:
+    """Short, uppercase, URL-safe partner code. Collision-retry lives at call site."""
+    prefix = re.sub(r'[^A-Za-z0-9]', '', (name_hint or 'tako')).upper()[:6] or "TAKO"
+    return f"{prefix}{uuid.uuid4().hex[:4].upper()}"
+
+def _partner_referral_link(code: str) -> str:
+    return f"{_public_url()}/pricing?ref={code}"
+
+async def _get_partner_by_code(code: str) -> Optional[dict]:
+    if not code:
+        return None
+    return await db.partners.find_one(
+        {"referral_code": code.upper(), "status": "active"},
+        {"_id": 0}
+    )
+
+async def _record_referral_sale(
+    *,
+    partner_id: str,
+    sale_type: str,                      # "license" | "onboarding"
+    payment_method: str,                 # "stripe" | "unyt"
+    commission_amount: float,
+    license_type: Optional[str] = None,
+    customer_org_id: Optional[str] = None,
+    customer_email: Optional[str] = None,
+    stripe_session_id: Optional[str] = None,
+    stripe_payment_id: Optional[str] = None,
+    unyt_tx_hash: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> Optional[dict]:
+    """Create a referral_sales row and update partner stats.
+
+    Idempotent on stripe_session_id / unyt_tx_hash — if a sale with the same
+    identifier already exists, no-op and return None. This is the minimum
+    idempotency guard the partner programme needs; broader webhook-event
+    idempotency (FOLLOWUPS #2) is out of scope here.
+    """
+    dedupe_query = None
+    if stripe_session_id:
+        dedupe_query = {"partner_id": partner_id, "stripe_session_id": stripe_session_id, "sale_type": sale_type}
+    elif unyt_tx_hash:
+        dedupe_query = {"partner_id": partner_id, "unyt_tx_hash": unyt_tx_hash, "sale_type": sale_type}
+    if dedupe_query:
+        existing = await db.referral_sales.find_one(dedupe_query, {"_id": 0})
+        if existing:
+            return None
+
+    now = datetime.now(timezone.utc)
+    sale_doc = {
+        "sale_id": f"rsale_{uuid.uuid4().hex[:12]}",
+        "partner_id": partner_id,
+        "customer_org_id": customer_org_id,
+        "customer_email": customer_email,
+        "sale_type": sale_type,
+        "payment_method": payment_method,
+        "license_type": license_type,
+        "commission_amount": commission_amount,
+        "status": "confirmed",
+        "stripe_session_id": stripe_session_id,
+        "stripe_payment_id": stripe_payment_id,
+        "unyt_tx_hash": unyt_tx_hash,
+        "notes": notes,
+        "created_at": now.isoformat(),
+        "paid_at": None,
+    }
+    await db.referral_sales.insert_one(sale_doc)
+    sale_doc.pop('_id', None)
+
+    await db.partners.update_one(
+        {"partner_id": partner_id},
+        {
+            "$inc": {
+                "total_referrals": 1,
+                "total_earned": commission_amount,
+                "pending_balance": commission_amount,
+            },
+            "$set": {"updated_at": now.isoformat()},
+        }
+    )
+    # TODO: send email notification to partner (Resend) — deferred.
+    return sale_doc
+
+async def _create_partner_for_user(
+    *,
+    user: dict,
+    partner_type: str = "referral",
+    status: str = "active",
+    agency: Optional[AgencyApplicationRequest] = None,
+) -> dict:
+    """Create a partner row. Caller is responsible for checking duplicates."""
+    now = datetime.now(timezone.utc)
+
+    # Generate a unique referral code (retry once on collision).
+    name_hint = (user.get("name") or user.get("email", "").split("@")[0] or "").split()[0]
+    code = _generate_partner_code(name_hint)
+    if await db.partners.find_one({"referral_code": code}, {"_id": 0}):
+        code = _generate_partner_code(name_hint)
+
+    partner_doc = {
+        "partner_id": f"ptnr_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "partner_type": partner_type,
+        "status": status,
+        "referral_code": code,
+        "referral_link": _partner_referral_link(code),
+        "company_name": agency.company_name if agency else None,
+        "company_website": agency.company_website if agency else None,
+        "application_text": agency.application_text if agency else None,
+        "estimated_annual_referrals": agency.estimated_annual_referrals if agency else None,
+        "approved_by": None,
+        "approved_at": None,
+        "total_referrals": 0,
+        "total_earned": 0.0,
+        "pending_balance": 0.0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    # Referral partners are auto-approved at creation time.
+    if partner_type == "referral" and status == "active":
+        partner_doc["approved_at"] = now.isoformat()
+
+    await db.partners.insert_one(partner_doc)
+    partner_doc.pop('_id', None)
+    return partner_doc
+
+def _plan_to_license_type(plan_id: Optional[str]) -> Optional[str]:
+    """Normalize internal plan IDs to the referral_sales.license_type enum."""
+    if not plan_id:
+        return None
+    mapping = {
+        "tako_selfhost_once": "onetime",
+        "tako_selfhost_12mo": "installment_12",
+        "tako_selfhost_24mo": "installment_24",
+        "launch_edition_4999": "onetime",  # legacy launch-edition sales
+    }
+    return mapping.get(plan_id, plan_id)
+
+async def _maybe_credit_stripe_referral(transaction: dict) -> Optional[dict]:
+    """If a Stripe transaction has a valid partner and hasn't been credited
+    yet, create the referral_sales row and flag the transaction.
+
+    Called from both the polling status endpoint and the webhook. Idempotent:
+    double invocation is a no-op thanks to `_record_referral_sale`'s dedupe
+    and the `referral_commission_credited` flag.
+    """
+    if not transaction:
+        return None
+    if transaction.get("referral_commission_credited"):
+        return None
+    partner_id = transaction.get("referral_partner_id")
+    if not partner_id:
+        return None
+    # Confirm the partner is still active at attribution time.
+    partner = await db.partners.find_one(
+        {"partner_id": partner_id, "status": "active"}, {"_id": 0}
+    )
+    if not partner:
+        return None
+
+    sale = await _record_referral_sale(
+        partner_id=partner_id,
+        sale_type="license",
+        payment_method="stripe",
+        commission_amount=PARTNER_COMMISSION_LICENSE_EUR,
+        license_type=_plan_to_license_type(transaction.get("plan_id")),
+        customer_org_id=transaction.get("organization_id"),
+        customer_email=transaction.get("email"),
+        stripe_session_id=transaction.get("stripe_session_id"),
+    )
+    await db.payment_transactions.update_one(
+        {"transaction_id": transaction["transaction_id"]},
+        {"$set": {
+            "referral_commission_credited": True,
+            "referral_credited_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return sale
+
+@api_router.post("/partners/register")
+async def partner_register(current_user: dict = Depends(get_current_user)):
+    """Self-register as a Referral Partner — auto-approved."""
     if not current_user.get("organization_id"):
         org_id = await ensure_user_org(current_user)
         current_user["organization_id"] = org_id
-    
-    existing = await db.affiliates.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
-    if existing:
-        return {"message": "Already enrolled", "affiliate": existing}
-    
-    affiliate_id = f"aff_{uuid.uuid4().hex[:12]}"
-    affiliate_code = f"{current_user.get('name','user').split()[0].lower()}_{uuid.uuid4().hex[:6]}"
-    now = datetime.now(timezone.utc)
-    
-    # Determine level based on who referred this user
-    level = 0  # Default: direct invite by super admin or self-enrolled
-    parent_affiliate_id = None
-    
-    # Check if user was referred by another affiliate
-    user_doc = await db.users.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
-    ref_code = user_doc.get("referred_by") if user_doc else None
-    if ref_code:
-        parent = await db.affiliates.find_one({"affiliate_code": ref_code}, {"_id": 0})
-        if parent:
-            parent_level = parent.get("level", 0)
-            level = min(parent_level + 1, 2)  # Max level 2
-            parent_affiliate_id = parent["affiliate_id"]
-    
-    # Commission rates by level
-    commission_rates = {0: 20.0, 1: 10.0, 2: 10.0}
-    
-    affiliate_doc = {
-        "affiliate_id": affiliate_id,
-        "user_id": current_user["user_id"],
-        "email": current_user.get("email", ""),
-        "name": current_user.get("name", ""),
-        "organization_id": current_user["organization_id"],
-        "affiliate_code": affiliate_code,
-        "level": level,
-        "parent_affiliate_id": parent_affiliate_id,
-        "commission_rate": commission_rates.get(level, 10.0),
-        "customer_discount": 20.0,  # Every affiliate link gives 20% off
-        "total_referrals": 0,
-        "total_earnings": 0,
-        "pending_earnings": 0,
-        "paid_earnings": 0,
-        "created_at": now.isoformat(),
-        "is_active": True
-    }
-    await db.affiliates.insert_one(affiliate_doc)
-    affiliate_doc.pop('_id', None)
-    
-    return {"message": "Successfully enrolled as affiliate", "affiliate": affiliate_doc}
 
-@api_router.get("/affiliate/me")
-async def get_my_affiliate_status(current_user: dict = Depends(get_current_user)):
-    """Get current user's affiliate status, link, and marketing material"""
-    affiliate = await db.affiliates.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
-    
-    if not affiliate:
-        return {"enrolled": False, "affiliate": None}
-    
-    referrals = await db.affiliate_referrals.find({"affiliate_id": affiliate["affiliate_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
-    
-    # Count downstream earnings (from levels below)
-    downstream = await db.affiliate_referrals.find({"upstream_affiliate_ids": affiliate["affiliate_id"]}, {"_id": 0}).to_list(500)
-    downstream_earnings = sum(r.get("upstream_commissions", {}).get(affiliate["affiliate_id"], 0) for r in downstream)
-    
-    public_url = os.environ.get('PUBLIC_URL', os.environ.get('FRONTEND_URL', ''))
-    ref_link = f"{public_url}/signup?ref={affiliate['affiliate_code']}"
-    level = affiliate.get("level", 0)
-    
-    # Marketing material per level
-    level_labels = {0: "Partner", 1: "Ambassador", 2: "Advocate"}
-    level_label = level_labels.get(level, "Affiliate")
-    
+    existing = await db.partners.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
+    if existing:
+        return {"message": "Already registered", "partner": existing}
+
+    partner = await _create_partner_for_user(
+        user=current_user,
+        partner_type="referral",
+        status="active",
+    )
+    return {"message": "Registered as referral partner", "partner": partner}
+
+@api_router.post("/partners/apply-agency")
+async def partner_apply_agency(
+    application: AgencyApplicationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Apply to become an Agency Partner — pending admin approval.
+
+    If the caller is already a referral partner, the application upgrades the
+    existing row to `partner_type=agency, status=pending_approval`. Referral
+    earnings continue while the application is reviewed.
+    """
+    if not current_user.get("organization_id"):
+        org_id = await ensure_user_org(current_user)
+        current_user["organization_id"] = org_id
+
+    now = datetime.now(timezone.utc)
+    existing = await db.partners.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
+
+    if existing:
+        if existing.get("partner_type") == "agency":
+            raise HTTPException(status_code=400, detail="Agency application already on file")
+        await db.partners.update_one(
+            {"partner_id": existing["partner_id"]},
+            {"$set": {
+                "partner_type": "agency",
+                "status": "pending_approval",
+                "company_name": application.company_name,
+                "company_website": application.company_website,
+                "application_text": application.application_text,
+                "estimated_annual_referrals": application.estimated_annual_referrals,
+                "approved_by": None,
+                "approved_at": None,
+                "updated_at": now.isoformat(),
+            }}
+        )
+        partner = await db.partners.find_one({"partner_id": existing["partner_id"]}, {"_id": 0})
+        return {"message": "Agency application submitted", "partner": partner}
+
+    partner = await _create_partner_for_user(
+        user=current_user,
+        partner_type="agency",
+        status="pending_approval",
+        agency=application,
+    )
+    # TODO: email admin on new agency application — deferred.
+    return {"message": "Agency application submitted", "partner": partner}
+
+@api_router.get("/partners/me")
+async def partner_me(current_user: dict = Depends(get_current_user)):
+    """Return the caller's partner profile + summary stats."""
+    partner = await db.partners.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
+    if not partner:
+        return {"enrolled": False, "partner": None}
+
+    # Recent sales for dashboard preview
+    sales = await db.referral_sales.find(
+        {"partner_id": partner["partner_id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(20)
+
     return {
         "enrolled": True,
-        "affiliate": affiliate,
-        "referral_link": ref_link,
-        "referrals": referrals,
-        "downstream_earnings": downstream_earnings,
-        "level": level,
-        "level_label": level_label,
-        "customer_discount": "20%",
-        "commission_summary": {
-            0: "You earn 20% on direct referrals",
-            1: "You earn 10% on direct referrals. Your inviter earns 10%.",
-            2: "You earn 10% on direct referrals. Upstream affiliates each earn 10%."
-        }.get(level, ""),
-        "marketing_assets": {
-            "banner": "https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/d4c7d179cc49d6bcdd5bdeba2bd3c0ee15d214451c0e4ac91a8035ff9554f03b.png",
-            "story": "https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/787c03120f149891b257071153f2eb541a6f5057f2cc6d8c73a78a8d7720db63.png",
-            "square": "https://static.prod-images.emergentagent.com/jobs/e7e50724-a043-4fd3-87b9-ed080078094d/images/21cf5a85c9e37c38bbb86ca92cb16d4d2f280e64b08783bff72de6dc2ce7650b.png"
-        }
+        "partner": partner,
+        "recent_sales": sales,
+        "commission_license_eur": PARTNER_COMMISSION_LICENSE_EUR,
+        "commission_onboarding_eur": PARTNER_COMMISSION_ONBOARDING_EUR,
     }
 
-@api_router.post("/affiliate/unenroll")
-async def unenroll_from_affiliate(current_user: dict = Depends(get_current_user)):
-    """Unenroll from affiliate program"""
-    result = await db.affiliates.delete_one({"user_id": current_user["user_id"]})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Not enrolled as affiliate")
-    return {"message": "Successfully unenrolled from affiliate program"}
+@api_router.get("/partners/referrals")
+async def partner_referrals(current_user: dict = Depends(get_current_user)):
+    """Full list of referral sales for the caller."""
+    partner = await db.partners.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Not a partner")
+    sales = await db.referral_sales.find(
+        {"partner_id": partner["partner_id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    return {"sales": sales, "count": len(sales)}
+
+@api_router.get("/partners/balance")
+async def partner_balance(current_user: dict = Depends(get_current_user)):
+    """Current pending balance + lifetime stats for the caller."""
+    partner = await db.partners.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Not a partner")
+    return {
+        "partner_id": partner["partner_id"],
+        "total_referrals": partner.get("total_referrals", 0),
+        "total_earned": partner.get("total_earned", 0.0),
+        "pending_balance": partner.get("pending_balance", 0.0),
+    }
+
+@api_router.get("/partners/validate/{code}")
+async def partner_validate_code(code: str):
+    """Public endpoint — validate a referral code without leaking partner identity."""
+    partner = await _get_partner_by_code(code.upper())
+    if not partner:
+        raise HTTPException(status_code=404, detail="Invalid or inactive referral code")
+    return {
+        "valid": True,
+        "referral_code": partner["referral_code"],
+        "partner_type": partner.get("partner_type", "referral"),
+    }
 
 # ==================== LEADS ROUTES ====================
 
@@ -4341,6 +4564,9 @@ async def launch_edition_unyt(request: Request):
     buyer_email = body.get("email", "")
     buyer_wallet = body.get("wallet", "")
     plan_id = body.get("plan_id") or "launch_edition_4999"
+    referral_code_raw = (body.get("referral_code") or "").strip().upper() or None
+    partner = await _get_partner_by_code(referral_code_raw) if referral_code_raw else None
+    referral_code_valid = partner["referral_code"] if partner else None
 
     # Map plan_id → EUR amount. Installment plans pay the full contract value
     # upfront in UNYT (there is no UNYT recurring billing).
@@ -4386,7 +4612,10 @@ async def launch_edition_unyt(request: Request):
         "amount": amount_eur, "currency": "eur",
         "payment_method": "unyt", "unyt_amount": unyt_amount,
         "buyer_wallet": buyer_wallet, "buyer_name": buyer_name, "buyer_email": buyer_email,
-        "status": "pending", "created_at": now.isoformat()
+        "status": "pending", "created_at": now.isoformat(),
+        "referral_code": referral_code_valid,
+        "referral_partner_id": partner["partner_id"] if partner else None,
+        "referral_commission_credited": False,
     })
     
     return {
@@ -4404,20 +4633,20 @@ async def launch_edition_unyt(request: Request):
 async def confirm_unyt_payment(deal_id: str, tx_hash: str):
     """Confirm UNYT payment after transaction is sent"""
     now = datetime.now(timezone.utc)
-    
+
     await db.payment_transactions.update_one(
         {"deal_id": deal_id, "payment_method": "unyt"},
         {"$set": {"status": "submitted", "tx_hash": tx_hash, "submitted_at": now.isoformat()}}
     )
-    
+
     # Update deal to won
     await db.deals.update_one({"deal_id": deal_id}, {"$set": {"stage": "won", "probability": 100, "updated_at": now.isoformat(), "notes_extra": f"UNYT tx: {tx_hash}"}})
-    
+
     # Create delivery task
     super_admin = await db.users.find_one({"email": SUPER_ADMIN_EMAIL}, {"_id": 0})
     admin_uid = super_admin.get("user_id") if super_admin else None
     org_id = super_admin.get("organization_id") if super_admin else None
-    
+
     await db.tasks.insert_one({
         "task_id": f"task_{uuid.uuid4().hex[:12]}", "organization_id": org_id,
         "title": f"Deliver Launch Edition (UNYT): {deal_id}",
@@ -4426,7 +4655,37 @@ async def confirm_unyt_payment(deal_id: str, tx_hash: str):
         "subtasks": [], "comments": [], "activity": [{"action": "created", "by": admin_uid or "", "by_name": "System", "at": now.isoformat()}],
         "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
     })
-    
+
+    # Credit partner referral commission (idempotent on tx_hash).
+    try:
+        txn = await db.payment_transactions.find_one(
+            {"deal_id": deal_id, "payment_method": "unyt"}, {"_id": 0}
+        )
+        if txn and not txn.get("referral_commission_credited") and txn.get("referral_partner_id"):
+            partner = await db.partners.find_one(
+                {"partner_id": txn["referral_partner_id"], "status": "active"}, {"_id": 0}
+            )
+            if partner:
+                await _record_referral_sale(
+                    partner_id=partner["partner_id"],
+                    sale_type="license",
+                    payment_method="unyt",
+                    commission_amount=PARTNER_COMMISSION_LICENSE_EUR,
+                    license_type="unyt",
+                    customer_email=txn.get("buyer_email"),
+                    unyt_tx_hash=tx_hash,
+                    notes=f"UNYT payment confirmed (deal {deal_id})",
+                )
+                await db.payment_transactions.update_one(
+                    {"transaction_id": txn["transaction_id"]},
+                    {"$set": {
+                        "referral_commission_credited": True,
+                        "referral_credited_at": now.isoformat(),
+                    }}
+                )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Partner referral crediting failed (UNYT) for deal {deal_id}: {exc}")
+
     return {"status": "submitted", "deal_id": deal_id, "tx_hash": tx_hash, "message": "Payment submitted. Delivery task created."}
 
 
@@ -4508,9 +4767,10 @@ async def admin_get_stats(current_user: dict = Depends(get_current_user)):
     total_orgs = await db.organizations.count_documents({})
     total_leads = await db.leads.count_documents({})
     total_deals = await db.deals.count_documents({})
-    total_affiliates = await db.affiliates.count_documents({})
+    total_partners = await db.partners.count_documents({})
+    total_partners_pending = await db.partners.count_documents({"status": "pending_approval"})
     total_discount_codes = await db.discount_codes.count_documents({})
-    
+
     # Revenue calculation
     pipeline = [
         {"$match": {"status": "completed"}},
@@ -4518,23 +4778,24 @@ async def admin_get_stats(current_user: dict = Depends(get_current_user)):
     ]
     revenue_result = await db.payment_transactions.aggregate(pipeline).to_list(1)
     total_revenue = revenue_result[0]["total"] if revenue_result else 0
-    
-    # Affiliate earnings
-    affiliate_pipeline = [
-        {"$group": {"_id": None, "total": {"$sum": "$total_earnings"}}}
+
+    # Partner commission totals
+    partner_pipeline = [
+        {"$group": {"_id": None, "total": {"$sum": "$total_earned"}}}
     ]
-    affiliate_result = await db.affiliates.aggregate(affiliate_pipeline).to_list(1)
-    total_affiliate_earnings = affiliate_result[0]["total"] if affiliate_result else 0
-    
+    partner_result = await db.partners.aggregate(partner_pipeline).to_list(1)
+    total_partner_earnings = partner_result[0]["total"] if partner_result else 0
+
     return {
         "total_users": total_users,
         "total_organizations": total_orgs,
         "total_leads": total_leads,
         "total_deals": total_deals,
         "total_revenue": total_revenue,
-        "total_affiliates": total_affiliates,
+        "total_partners": total_partners,
+        "total_partners_pending": total_partners_pending,
         "total_discount_codes": total_discount_codes,
-        "total_affiliate_earnings": total_affiliate_earnings
+        "total_partner_earnings": total_partner_earnings,
     }
 
 @api_router.get("/admin/users")
@@ -4981,265 +5242,195 @@ async def validate_discount_code(request: DiscountCodeValidateRequest):
         }
     }
 
-# ==================== AFFILIATE SYSTEM ROUTES ====================
+# ==================== PARTNER PROGRAMME — ADMIN ROUTES ====================
 
-@api_router.get("/admin/affiliates")
-async def get_all_affiliates(current_user: dict = Depends(require_super_admin)):
-    """Get all affiliates (super admin only)"""
-    affiliates = await db.affiliates.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    
-    # Enrich with user info
-    for affiliate in affiliates:
-        user = await db.users.find_one({"user_id": affiliate["user_id"]}, {"_id": 0, "password_hash": 0})
-        affiliate["user"] = user
-        
-        # Get referral stats
-        referrals = await db.affiliate_referrals.find({"affiliate_id": affiliate["affiliate_id"]}, {"_id": 0}).to_list(100)
-        affiliate["referrals"] = referrals
-    
-    return {"affiliates": affiliates, "count": len(affiliates)}
+@api_router.get("/admin/partners")
+async def admin_list_partners(
+    partner_type: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: dict = Depends(require_super_admin)
+):
+    """List all partners with filters + enriched user info."""
+    query: Dict[str, Any] = {}
+    if partner_type in ("referral", "agency"):
+        query["partner_type"] = partner_type
+    if status in ("active", "pending_approval", "suspended"):
+        query["status"] = status
 
-@api_router.post("/admin/affiliates")
-async def create_affiliate(data: AffiliateCreate, current_user: dict = Depends(require_super_admin)):
-    """Create a new affiliate (super admin only)"""
-    # Check if user exists
-    user = await db.users.find_one({"user_id": data.user_id}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Check if already an affiliate
-    existing = await db.affiliates.find_one({"user_id": data.user_id}, {"_id": 0})
-    if existing:
-        raise HTTPException(status_code=400, detail="User is already an affiliate")
-    
-    affiliate_id = f"aff_{uuid.uuid4().hex[:12]}"
-    affiliate_code = data.affiliate_code or f"REF{uuid.uuid4().hex[:8].upper()}"
+    partners = await db.partners.find(query, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    for p in partners:
+        user = await db.users.find_one(
+            {"user_id": p["user_id"]}, {"_id": 0, "password_hash": 0}
+        )
+        p["user"] = user
+    return {"partners": partners, "count": len(partners)}
+
+@api_router.get("/admin/partners/{partner_id}")
+async def admin_get_partner(
+    partner_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Full partner profile including their referral sales history."""
+    partner = await db.partners.find_one({"partner_id": partner_id}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    user = await db.users.find_one(
+        {"user_id": partner["user_id"]}, {"_id": 0, "password_hash": 0}
+    )
+    sales = await db.referral_sales.find(
+        {"partner_id": partner_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    return {"partner": partner, "user": user, "sales": sales}
+
+@api_router.put("/admin/partners/{partner_id}/approve")
+async def admin_approve_partner(
+    partner_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Approve a pending agency partner application."""
+    partner = await db.partners.find_one({"partner_id": partner_id}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
     now = datetime.now(timezone.utc)
-    
-    # Determine tier based on parent
-    tier = 1
-    grandparent_id = None
-    if data.parent_affiliate_id:
-        parent = await db.affiliates.find_one({"affiliate_id": data.parent_affiliate_id}, {"_id": 0})
-        if parent:
-            tier = min(parent["tier"] + 1, 3)
-            grandparent_id = parent.get("parent_affiliate_id")
-    
-    affiliate_doc = {
-        "affiliate_id": affiliate_id,
-        "user_id": data.user_id,
-        "affiliate_code": affiliate_code.upper(),
-        "tier": tier,
-        "parent_affiliate_id": data.parent_affiliate_id,
-        "grandparent_affiliate_id": grandparent_id,
-        "commission_rate_tier1": data.commission_rate_tier1,
-        "commission_rate_tier2": data.commission_rate_tier2,
-        "commission_rate_tier3": data.commission_rate_tier3,
-        "total_referrals": 0,
-        "total_earnings": 0,
-        "pending_earnings": 0,
-        "paid_earnings": 0,
-        "created_at": now.isoformat(),
-        "is_active": True
-    }
-    await db.affiliates.insert_one(affiliate_doc)
-    
-    # Remove MongoDB's _id field before returning
-    affiliate_doc.pop('_id', None)
-    return {"message": "Affiliate created", "affiliate": affiliate_doc}
+    await db.partners.update_one(
+        {"partner_id": partner_id},
+        {"$set": {
+            "status": "active",
+            "approved_by": current_user["user_id"],
+            "approved_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+        }}
+    )
+    return {"message": "Partner approved"}
 
-@api_router.put("/admin/affiliates/{affiliate_id}")
-async def update_affiliate(affiliate_id: str, updates: dict, current_user: dict = Depends(require_super_admin)):
-    """Update an affiliate (super admin only)"""
-    allowed_fields = ["commission_rate_tier1", "commission_rate_tier2", "commission_rate_tier3", "is_active", "parent_affiliate_id"]
-    filtered_updates = {k: v for k, v in updates.items() if k in allowed_fields}
-    
-    result = await db.affiliates.update_one(
-        {"affiliate_id": affiliate_id},
-        {"$set": filtered_updates}
+@api_router.put("/admin/partners/{partner_id}/suspend")
+async def admin_suspend_partner(
+    partner_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Suspend a partner — freezes new attribution, preserves history."""
+    now = datetime.now(timezone.utc)
+    result = await db.partners.update_one(
+        {"partner_id": partner_id},
+        {"$set": {"status": "suspended", "updated_at": now.isoformat()}}
     )
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Affiliate not found")
-    
-    return {"message": "Affiliate updated"}
+        raise HTTPException(status_code=404, detail="Partner not found")
+    return {"message": "Partner suspended"}
 
-@api_router.delete("/admin/affiliates/{affiliate_id}")
-async def delete_affiliate(affiliate_id: str, current_user: dict = Depends(require_super_admin)):
-    """Delete an affiliate (super admin only)"""
-    result = await db.affiliates.delete_one({"affiliate_id": affiliate_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Affiliate not found")
-    return {"message": "Affiliate deleted"}
-
-@api_router.post("/admin/affiliates/{affiliate_id}/payout")
-async def process_affiliate_payout(affiliate_id: str, amount: float, current_user: dict = Depends(require_super_admin)):
-    """Process a payout to an affiliate (super admin only)"""
-    affiliate = await db.affiliates.find_one({"affiliate_id": affiliate_id}, {"_id": 0})
-    if not affiliate:
-        raise HTTPException(status_code=404, detail="Affiliate not found")
-    
-    if amount > affiliate["pending_earnings"]:
-        raise HTTPException(status_code=400, detail="Payout amount exceeds pending earnings")
-    
-    await db.affiliates.update_one(
-        {"affiliate_id": affiliate_id},
-        {
-            "$inc": {
-                "pending_earnings": -amount,
-                "paid_earnings": amount
-            }
-        }
+@api_router.put("/admin/partners/{partner_id}/reactivate")
+async def admin_reactivate_partner(
+    partner_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Reactivate a suspended partner."""
+    now = datetime.now(timezone.utc)
+    result = await db.partners.update_one(
+        {"partner_id": partner_id},
+        {"$set": {"status": "active", "updated_at": now.isoformat()}}
     )
-    
-    # Record payout
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    return {"message": "Partner reactivated"}
+
+@api_router.post("/admin/partners/{partner_id}/mark-onboarding")
+async def admin_mark_onboarding_delivered(
+    partner_id: str,
+    payload: Dict[str, Any] = Body(default_factory=dict),
+    current_user: dict = Depends(require_super_admin)
+):
+    """Agency partner delivered onboarding — create €750 commission row.
+
+    Payload (all optional):
+      - customer_org_id: str
+      - customer_email:  str
+      - notes:           str
+    Onboarding is sold offline by the agency; this endpoint just logs the
+    commission once TAKO has been paid the €1,500 package fee.
+    """
+    partner = await db.partners.find_one({"partner_id": partner_id}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    if partner.get("partner_type") != "agency":
+        raise HTTPException(status_code=400, detail="Only agency partners earn onboarding commissions")
+    if partner.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Partner is not active")
+
+    sale = await _record_referral_sale(
+        partner_id=partner_id,
+        sale_type="onboarding",
+        payment_method="stripe",  # onboarding is sold offline, logged here as the paid channel
+        commission_amount=PARTNER_COMMISSION_ONBOARDING_EUR,
+        customer_org_id=payload.get("customer_org_id"),
+        customer_email=payload.get("customer_email"),
+        notes=payload.get("notes") or "Onboarding delivered (manual log)",
+    )
+    return {"message": "Onboarding commission logged", "sale": sale}
+
+@api_router.post("/admin/partners/{partner_id}/mark-paid")
+async def admin_mark_partner_paid(
+    partner_id: str,
+    payload: Dict[str, Any] = Body(default_factory=dict),
+    current_user: dict = Depends(require_super_admin)
+):
+    """Zero out pending balance and log a payout entry.
+
+    Payload (optional):
+      - amount: float — defaults to the partner's full pending_balance
+      - reference: str — e.g. bank transfer reference
+    """
+    partner = await db.partners.find_one({"partner_id": partner_id}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    pending = float(partner.get("pending_balance", 0.0))
+    amount = float(payload.get("amount", pending))
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Nothing to pay out")
+    if amount > pending + 0.01:
+        raise HTTPException(status_code=400, detail="Amount exceeds pending balance")
+
+    now = datetime.now(timezone.utc)
+    await db.partners.update_one(
+        {"partner_id": partner_id},
+        {"$inc": {"pending_balance": -amount}, "$set": {"updated_at": now.isoformat()}}
+    )
+    # Mark the oldest unpaid sales as paid until `amount` is covered (FIFO).
+    remaining = amount
+    unpaid = await db.referral_sales.find(
+        {"partner_id": partner_id, "status": "confirmed"}, {"_id": 0}
+    ).sort("created_at", 1).to_list(1000)
+    for sale in unpaid:
+        if remaining <= 0:
+            break
+        if sale["commission_amount"] <= remaining + 0.01:
+            await db.referral_sales.update_one(
+                {"sale_id": sale["sale_id"]},
+                {"$set": {"status": "paid", "paid_at": now.isoformat()}}
+            )
+            remaining -= sale["commission_amount"]
+
     payout_doc = {
         "payout_id": f"payout_{uuid.uuid4().hex[:12]}",
-        "affiliate_id": affiliate_id,
+        "partner_id": partner_id,
         "amount": amount,
+        "reference": payload.get("reference"),
         "processed_by": current_user["user_id"],
-        "processed_at": datetime.now(timezone.utc).isoformat()
+        "processed_at": now.isoformat(),
     }
-    await db.affiliate_payouts.insert_one(payout_doc)
-    
-    return {"message": f"Payout of €{amount} processed", "payout": payout_doc}
+    await db.partner_payouts.insert_one(payout_doc)
+    payout_doc.pop("_id", None)
+    return {"message": f"Payout of €{amount:.2f} logged", "payout": payout_doc}
 
-@api_router.get("/admin/affiliates/{affiliate_id}/referrals")
-async def get_affiliate_referrals(affiliate_id: str, current_user: dict = Depends(require_super_admin)):
-    """Get referrals for a specific affiliate (super admin only)"""
-    referrals = await db.affiliate_referrals.find(
-        {"affiliate_id": affiliate_id},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(1000)
-    
-    # Enrich with user info
-    for ref in referrals:
-        user = await db.users.find_one({"user_id": ref["referred_user_id"]}, {"_id": 0, "password_hash": 0})
-        ref["referred_user"] = user
-    
-    return {"referrals": referrals, "count": len(referrals)}
-
-# Public affiliate endpoints
-@api_router.get("/affiliates/validate/{code}")
-async def validate_affiliate_code(code: str):
-    """Validate an affiliate referral code (public endpoint)"""
-    affiliate = await db.affiliates.find_one(
-        {"affiliate_code": code.upper(), "is_active": True},
-        {"_id": 0}
-    )
-    
-    if not affiliate:
-        raise HTTPException(status_code=404, detail="Invalid affiliate code")
-    
-    user = await db.users.find_one({"user_id": affiliate["user_id"]}, {"_id": 0, "password_hash": 0})
-    
-    return {
-        "valid": True,
-        "affiliate_code": affiliate["affiliate_code"],
-        "affiliate_name": user.get("name") if user else "Unknown"
-    }
-
-@api_router.post("/affiliates/track-referral")
-async def track_affiliate_referral(
-    affiliate_code: str,
-    referred_user_id: str,
-    payment_amount: float = 0
+@api_router.get("/admin/partners/{partner_id}/payouts")
+async def admin_list_partner_payouts(
+    partner_id: str,
+    current_user: dict = Depends(require_super_admin)
 ):
-    """Track a new referral through affiliate link (internal use)"""
-    affiliate = await db.affiliates.find_one(
-        {"affiliate_code": affiliate_code.upper(), "is_active": True},
-        {"_id": 0}
-    )
-    
-    if not affiliate:
-        return {"success": False, "message": "Invalid affiliate code"}
-    
-    now = datetime.now(timezone.utc)
-    
-    # Calculate commission for tier 1
-    tier1_commission = payment_amount * (affiliate["commission_rate_tier1"] / 100)
-    
-    # Create referral record
-    referral_doc = {
-        "referral_id": f"ref_{uuid.uuid4().hex[:12]}",
-        "affiliate_id": affiliate["affiliate_id"],
-        "referred_user_id": referred_user_id,
-        "tier_level": 1,
-        "commission_amount": tier1_commission,
-        "commission_status": "pending" if tier1_commission > 0 else "none",
-        "payment_amount": payment_amount,
-        "created_at": now.isoformat()
-    }
-    await db.affiliate_referrals.insert_one(referral_doc)
-    
-    # Update affiliate stats
-    await db.affiliates.update_one(
-        {"affiliate_id": affiliate["affiliate_id"]},
-        {
-            "$inc": {
-                "total_referrals": 1,
-                "total_earnings": tier1_commission,
-                "pending_earnings": tier1_commission
-            }
-        }
-    )
-    
-    # Process tier 2 commission if parent exists
-    if affiliate.get("parent_affiliate_id"):
-        parent = await db.affiliates.find_one({"affiliate_id": affiliate["parent_affiliate_id"]}, {"_id": 0})
-        if parent and parent["is_active"]:
-            tier2_commission = payment_amount * (parent["commission_rate_tier2"] / 100)
-            
-            tier2_referral = {
-                "referral_id": f"ref_{uuid.uuid4().hex[:12]}",
-                "affiliate_id": parent["affiliate_id"],
-                "referred_user_id": referred_user_id,
-                "tier_level": 2,
-                "commission_amount": tier2_commission,
-                "commission_status": "pending" if tier2_commission > 0 else "none",
-                "payment_amount": payment_amount,
-                "created_at": now.isoformat()
-            }
-            await db.affiliate_referrals.insert_one(tier2_referral)
-            
-            await db.affiliates.update_one(
-                {"affiliate_id": parent["affiliate_id"]},
-                {
-                    "$inc": {
-                        "total_earnings": tier2_commission,
-                        "pending_earnings": tier2_commission
-                    }
-                }
-            )
-            
-            # Process tier 3 commission if grandparent exists
-            if parent.get("parent_affiliate_id"):
-                grandparent = await db.affiliates.find_one({"affiliate_id": parent["parent_affiliate_id"]}, {"_id": 0})
-                if grandparent and grandparent["is_active"]:
-                    tier3_commission = payment_amount * (grandparent["commission_rate_tier3"] / 100)
-                    
-                    tier3_referral = {
-                        "referral_id": f"ref_{uuid.uuid4().hex[:12]}",
-                        "affiliate_id": grandparent["affiliate_id"],
-                        "referred_user_id": referred_user_id,
-                        "tier_level": 3,
-                        "commission_amount": tier3_commission,
-                        "commission_status": "pending" if tier3_commission > 0 else "none",
-                        "payment_amount": payment_amount,
-                        "created_at": now.isoformat()
-                    }
-                    await db.affiliate_referrals.insert_one(tier3_referral)
-                    
-                    await db.affiliates.update_one(
-                        {"affiliate_id": grandparent["affiliate_id"]},
-                        {
-                            "$inc": {
-                                "total_earnings": tier3_commission,
-                                "pending_earnings": tier3_commission
-                            }
-                        }
-                    )
-    
-    return {"success": True, "message": "Referral tracked", "referral_id": referral_doc["referral_id"]}
+    payouts = await db.partner_payouts.find(
+        {"partner_id": partner_id}, {"_id": 0}
+    ).sort("processed_at", -1).to_list(500)
+    return {"payouts": payouts, "count": len(payouts)}
 
 # ==================== SUPPORT & CONTACT ROUTES ====================
 
@@ -5402,7 +5593,9 @@ async def data_explorer(collection: str, skip: int = 0, limit: int = 50, search:
     
     allowed = ["users", "organizations", "leads", "contacts", "deals", "tasks", "companies", "campaigns",
                "calls", "scheduled_calls", "chat_channels", "messages", "notifications", "invites",
-               "affiliates", "affiliate_referrals", "discount_codes", "payment_transactions", "invoices",
+               "partners", "referral_sales", "partner_payouts",
+               "affiliates", "affiliate_referrals",  # legacy — preserved, read-only
+               "discount_codes", "payment_transactions", "invoices",
                "contact_requests", "platform_settings", "user_sessions"]
     if collection not in allowed:
         raise HTTPException(status_code=400, detail=f"Collection not allowed. Available: {', '.join(allowed)}")
@@ -5440,7 +5633,9 @@ async def list_collections(current_user: dict = Depends(get_current_user)):
     
     collections = ["users", "organizations", "leads", "contacts", "deals", "tasks", "companies", "campaigns",
                     "calls", "scheduled_calls", "chat_channels", "messages", "notifications", "invites",
-                    "affiliates", "discount_codes", "payment_transactions", "invoices", "contact_requests"]
+                    "partners", "referral_sales", "partner_payouts",
+                    "affiliates",  # legacy — preserved, read-only
+                    "discount_codes", "payment_transactions", "invoices", "contact_requests"]
     
     stats = {}
     for c in collections:
@@ -5780,6 +5975,12 @@ async def create_subscription_checkout(
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
+    # Validate referral code (silent — buyer never sees an error; invalid
+    # codes are simply dropped).
+    referral_code = (request.referral_code or '').strip().upper() or None
+    partner = await _get_partner_by_code(referral_code) if referral_code else None
+    referral_code_valid = partner["referral_code"] if partner else None
+
     # Create checkout session
     metadata = {
         "organization_id": current_user.get("organization_id", ""),
@@ -5788,7 +5989,8 @@ async def create_subscription_checkout(
         "plan_id": request.plan_id,
         "user_count": str(request.user_count),
         "discount_code": discount_code or "",
-        "vat_rate": str(vat_rate)
+        "vat_rate": str(vat_rate),
+        "referral_code": referral_code_valid or "",
     }
     
     payment_methods = ["card", "crypto"] if request.use_crypto else ["card"]
@@ -5831,6 +6033,9 @@ async def create_subscription_checkout(
         "total_amount": total_amount,
         "stripe_session_id": session.session_id,
         "payment_status": "pending",
+        "referral_code": referral_code_valid,
+        "referral_partner_id": partner["partner_id"] if partner else None,
+        "referral_commission_credited": False,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
@@ -5890,7 +6095,7 @@ async def get_subscription_status(session_id: str, http_request: Request):
                 {"stripe_session_id": session_id},
                 {"$set": {"invoice_id": invoice_id}}
             )
-            
+
             # Update organization subscription status
             if transaction.get("organization_id"):
                 await db.organizations.update_one(
@@ -5902,6 +6107,12 @@ async def get_subscription_status(session_id: str, http_request: Request):
                         "subscription_updated_at": now.isoformat()
                     }}
                 )
+
+            # Credit partner referral commission (idempotent).
+            try:
+                await _maybe_credit_stripe_referral(transaction)
+            except Exception as exc:  # noqa: BLE001 — never fail a customer payment on partner bookkeeping
+                logger.error(f"Partner referral crediting failed (status path) for txn {transaction.get('transaction_id')}: {exc}")
     
     return {
         "status": status.status,
@@ -5927,7 +6138,7 @@ async def stripe_webhook(request: Request):
     
     try:
         webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        
+
         # Update payment transaction
         if webhook_response.session_id:
             now = datetime.now(timezone.utc)
@@ -5938,7 +6149,18 @@ async def stripe_webhook(request: Request):
                     "updated_at": now.isoformat()
                 }}
             )
-        
+
+            # Credit partner referral commission on first paid event.
+            if webhook_response.payment_status == "paid":
+                try:
+                    txn = await db.payment_transactions.find_one(
+                        {"stripe_session_id": webhook_response.session_id}, {"_id": 0}
+                    )
+                    if txn:
+                        await _maybe_credit_stripe_referral(txn)
+                except Exception as exc:  # noqa: BLE001
+                    logger.error(f"Partner referral crediting failed (webhook) for session {webhook_response.session_id}: {exc}")
+
         return {"received": True, "event_type": webhook_response.event_type}
     except Exception as e:
         logger.error(f"Webhook error: {str(e)}")

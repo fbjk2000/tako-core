@@ -34,6 +34,7 @@ import FilesPage from './pages/FilesPage';
 import ListenersPage from './pages/ListenersPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
 import LegalPage from './pages/LegalPage';
+import PartnerDashboardPage from './pages/PartnerDashboardPage';
 
 import './App.css';
 
@@ -493,6 +494,14 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <ListenersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/partners"
+        element={
+          <ProtectedRoute>
+            <PartnerDashboardPage />
           </ProtectedRoute>
         }
       />

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" aria-label="TAKO Partner badge">
+  <defs>
+    <linearGradient id="tako-partner-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0EA5A0"/>
+      <stop offset="100%" stop-color="#0C1024"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer ring -->
+  <circle cx="160" cy="160" r="150" fill="none" stroke="url(#tako-partner-ring)" stroke-width="6"/>
+  <circle cx="160" cy="160" r="140" fill="#0C1024"/>
+
+  <!-- Accent dot -->
+  <circle cx="236" cy="84" r="10" fill="#0EA5A0"/>
+
+  <!-- Wordmark -->
+  <text x="160" y="150" font-family="'DM Serif Display', Georgia, serif" font-size="64" font-weight="400" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">TAKO</text>
+
+  <!-- Divider -->
+  <line x1="90" y1="172" x2="230" y2="172" stroke="#0EA5A0" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Partner label -->
+  <text x="160" y="202" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#E2E8F0" text-anchor="middle" letter-spacing="6">PARTNER</text>
+
+  <!-- Year / edition -->
+  <text x="160" y="236" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="11" font-weight="500" fill="#94A3B8" text-anchor="middle" letter-spacing="3">CERTIFIED AGENCY</text>
+
+  <!-- Small stars flanking the divider -->
+  <g fill="#0EA5A0">
+    <circle cx="72" cy="172" r="3"/>
+    <circle cx="248" cy="172" r="3"/>
+  </g>
+</svg>
