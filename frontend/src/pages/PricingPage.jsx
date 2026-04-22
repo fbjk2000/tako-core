@@ -1,196 +1,151 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
-import { useT } from '../useT';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Switch } from '../components/ui/switch';
-import { Input } from '../components/ui/input';
 import {
   Check,
-  X,
   ChevronDown,
-  ChevronUp,
-  Info,
-  Zap,
   Shield,
-  Users,
   Sparkles,
+  Wallet,
+  ExternalLink,
 } from 'lucide-react';
 
-// ─── Pricing constants (mirrors SUBSCRIPTION_PLANS in backend) ───────────────
-const PRICES = {
-  tako_pro_monthly:  { gbp: 25, eur: 29, usd: 29 },
-  tako_pro_annual:   { gbp: 22, eur: 25, usd: 25 },   // per month
-  tako_ent_monthly:  { gbp: 45, eur: 49, usd: 55 },
-  tako_ent_annual:   { gbp: 39, eur: 45, usd: 49 },   // per month
-};
-const ANNUAL_TOTAL = {
-  tako_pro_annual:   { gbp: 264, eur: 300, usd: 300 },
-  tako_ent_annual:   { gbp: 468, eur: 540, usd: 588 },
-};
-const CURRENCY_SYMBOL = { gbp: '£', eur: '€', usd: '$' };
-
-function detectCurrency() {
-  const saved = localStorage.getItem('tako_currency');
-  if (saved && ['gbp', 'eur', 'usd'].includes(saved)) return saved;
-  const lang = (navigator.language || '').toLowerCase();
-  if (lang.startsWith('en-gb')) return 'gbp';
-  if (/^(de|fr|it|es|nl|pt|pl|sv|fi|da|nb|el|cs|sk|hu|ro)/.test(lang)) return 'eur';
-  return 'usd';
-}
-
-// ─── Comparison table data ────────────────────────────────────────────────────
-const COMPARISON_ROWS = [
-  { label: 'Users',               solo: '1',                    pro: 'Unlimited',          ent: 'Unlimited' },
-  { label: 'Pipelines',           solo: '1',                    pro: 'Unlimited',          ent: 'Unlimited' },
-  { label: 'Contacts',            solo: '500',                  pro: '10,000',             ent: 'Unlimited' },
-  { label: 'AI agents',           solo: 'All 8',                pro: 'All 8',              ent: 'All 8' },
-  { label: 'AI tokens/month',     solo: '250 (5,000 trial)',    pro: '5,000/user',         ent: 'Unlimited' },
-  { label: 'Token top-ups',       solo: false,                  pro: '£5/1,000',           ent: 'Not needed' },
-  { label: 'Call recording',      solo: false,                  pro: true,                 ent: true },
-  { label: 'Email sequences',     solo: false,                  pro: true,                 ent: true },
-  { label: 'Booking links',       solo: true,                   pro: true,                 ent: true },
-  { label: 'Team projects',       solo: false,                  pro: true,                 ent: true },
-  { label: 'Reporting',           solo: 'Basic',                pro: 'Full',               ent: 'Full + custom' },
-  { label: 'EU data hosting',     solo: true,                   pro: true,                 ent: true },
-  { label: 'SSO / SAML',          solo: false,                  pro: false,                ent: true },
-  { label: 'Priority support',    solo: false,                  pro: false,                ent: '✓ (4hr SLA)' },
-  { label: 'API access',          solo: false,                  pro: 'Standard',           ent: 'Elevated' },
-  { label: 'Audit logs',          solo: false,                  pro: false,                ent: true },
-  { label: 'Dedicated onboarding',solo: false,                  pro: false,                ent: true },
+// ─── Three payment structures for the same self-hosted product ──────────────
+const PLANS = [
+  {
+    id: 'tako_selfhost_once',
+    label: 'Pay Once',
+    badge: 'Best Value',
+    headline: '€5,000',
+    subHeadline: 'one-time',
+    subtitle: 'Save €2,200 vs. 24-month plan',
+    cta: 'Buy Now',
+    elevated: false,
+  },
+  {
+    id: 'tako_selfhost_12mo',
+    label: '12 Monthly Payments',
+    badge: 'Most Popular',
+    headline: '12 × €500',
+    subHeadline: 'per month',
+    subtitle: '€6,000 total · Own it from day one',
+    cta: 'Start Plan',
+    elevated: true,
+  },
+  {
+    id: 'tako_selfhost_24mo',
+    label: '24 Monthly Payments',
+    badge: null,
+    headline: '24 × €300',
+    subHeadline: 'per month',
+    subtitle: '€7,200 total · Lowest monthly commitment',
+    cta: 'Start Plan',
+    elevated: false,
+  },
 ];
 
-function CellValue({ value }) {
-  if (value === true)  return <Check className="w-4 h-4 text-[#0EA5A0] mx-auto" />;
-  if (value === false) return <span className="text-slate-300 text-lg leading-none">—</span>;
-  return <span className="text-slate-700 text-sm">{value}</span>;
-}
+// All three plans deliver the same product; features list once, not per card.
+const INCLUDED_FEATURES = [
+  'Full source code access',
+  'Unlimited users — no per-seat fees, ever',
+  'CRM + Pipeline Management',
+  'AI Lead Scoring (1–100)',
+  'AI Email Drafting',
+  'Outbound Calling with AI Transcription',
+  'Calendar & Booking (Calendly alternative)',
+  'Prospect Intelligence',
+  'Analytics & Reporting',
+  'Team Projects',
+  '12 months maintenance & support included',
+  '30-day money-back guarantee',
+];
 
-// ─── Main component ────────────────────────────────────────────────────────────
+const FAQS = [
+  {
+    q: 'What exactly do I own?',
+    a: 'You get full source code access. Install TAKO on your own server — any Linux VPS, Docker, Kubernetes, or traditional VM. The software is yours. No kill switches, no phone-home license checks, no vendor lock-in.',
+  },
+  {
+    q: 'Are there any per-user fees?',
+    a: 'No. Every payment option includes unlimited users. Whether your team is 3 people or 300, the price is the same.',
+  },
+  {
+    q: 'What\u2019s the difference between the three payment options?',
+    a: 'Nothing feature-wise — all three give you the exact same product. The one-time payment saves you €2,200 compared to the 24-month plan. The installment options spread the cost but you own the software from day one.',
+  },
+  {
+    q: 'What happens if I stop paying the installment?',
+    a: 'You keep the version you have. It continues to run on your server. You won\u2019t receive further updates or support until the plan is completed.',
+  },
+  {
+    q: 'Is there a free trial?',
+    a: 'We offer a free sandbox demo with sample data so you can explore TAKO before buying. Plus a 30-day money-back guarantee on all purchases — no questions asked.',
+  },
+  {
+    q: 'What happens after the first year?',
+    a: 'You can optionally renew maintenance and support for €999/year. This gets you all new features, major updates, and priority support. If you don\u2019t renew, your TAKO instance keeps running and you still get critical security patches.',
+  },
+  {
+    q: 'Where can I host TAKO?',
+    a: 'Anywhere you want. Your own servers, any EU cloud provider, AWS, Hetzner, DigitalOcean — you have the source code and Docker setup. We recommend EU-based hosting for GDPR compliance.',
+  },
+  {
+    q: 'Is VAT included?',
+    a: 'No. All prices exclude VAT. VAT is calculated at checkout based on your billing country.',
+  },
+];
+
 const CHECKOUT_INTENT_KEY = 'tako_checkout_intent';
+const ARBITRUM_CHAIN_ID_HEX = '0xa4b1'; // 42161
+
+// Minimal ERC-20 transfer ABI fragment (no full ethers import needed)
+const ERC20_TRANSFER_ABI = [
+  {
+    name: 'transfer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+];
 
 const PricingPage = () => {
   const { user, token } = useAuth();
-  const { t } = useT();
-  const location = useLocation();
   const navigate = useNavigate();
 
-  const [billing, setBilling]               = useState('annual');
-  const [currency, setCurrency]             = useState(detectCurrency);
-  const [couponCode, setCouponCode]         = useState('');
-  const [appliedCoupon, setAppliedCoupon]   = useState(null);
-  const [couponError, setCouponError]       = useState(null);
-  const [couponLoading, setCouponLoading]   = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
-  const [couponOpen, setCouponOpen]         = useState({ pro: false, ent: false });
-  const [countdown, setCountdown]           = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(null); // holds plan_id when busy
+  const [unytLoading, setUnytLoading]         = useState(false);
 
-  // Launch Edition countdown — expires 2026-06-30 23:59 BST
-  useEffect(() => {
-    const end = new Date('2026-06-30T22:59:59Z').getTime();
-    const tick = () => {
-      const diff = Math.max(0, end - Date.now());
-      setCountdown({
-        days:    Math.floor(diff / 86400000),
-        hours:   Math.floor((diff / 3600000) % 24),
-        minutes: Math.floor((diff / 60000) % 60),
-        seconds: Math.floor((diff / 1000) % 60),
-      });
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const padT = (n) => String(n).padStart(2, '0');
-
-  // Persist currency choice
-  useEffect(() => {
-    localStorage.setItem('tako_currency', currency);
-  }, [currency]);
-
-  // Read ?code= param on mount → auto-populate & validate for Pro
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const code = params.get('code');
-    if (code) {
-      setCouponCode(code.toUpperCase());
-      const planId = billing === 'annual' ? 'tako_pro_annual' : 'tako_pro_monthly';
-      validateCoupon(code, planId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const validateCoupon = async (code, planId) => {
-    setCouponLoading(true);
-    setCouponError(null);
-    try {
-      const res = await axios.post(`${API}/validate-coupon`, {
-        code: code.toUpperCase(),
-        plan_id: planId,
-        currency,
-      });
-      setAppliedCoupon(res.data);
-    } catch (err) {
-      setCouponError(err?.response?.data?.detail || 'Code not recognised');
-      setAppliedCoupon(null);
-    } finally {
-      setCouponLoading(false);
-    }
-  };
-
-  // Derived plan IDs
-  const proPlanId = billing === 'annual' ? 'tako_pro_annual' : 'tako_pro_monthly';
-  const entPlanId = billing === 'annual' ? 'tako_ent_annual' : 'tako_ent_monthly';
-
-  const proPrice  = PRICES[proPlanId][currency];
-  const entPrice  = PRICES[entPlanId][currency];
-  const sym       = CURRENCY_SYMBOL[currency];
-
-  /**
-   * POST to /api/subscriptions/checkout and redirect to the returned Stripe URL.
-   * opts: { currency?: string, couponCode?: string }
-   *   currency   — override currency (used when restoring from stored intent)
-   *   couponCode — TAKO discount code to apply (sent as discount_code in body)
-   */
-  const initiateCheckout = async (planId, opts = {}) => {
-    setCheckoutLoading(true);
-    const effectiveCurrency = opts.currency || currency;
-
-    // Prefer an explicit coupon from opts (intent restore), otherwise use validated state
-    const effectiveCoupon = opts.couponCode ||
-      (appliedCoupon && appliedCoupon.plan_id === planId ? couponCode : null);
-
+  // ── Stripe checkout ────────────────────────────────────────────────────────
+  const initiateCheckout = async (planId) => {
+    setCheckoutLoading(planId);
     const payload = {
-      plan_id: planId,
+      plan_id:    planId,
       origin_url: window.location.origin,
-      currency: effectiveCurrency,
+      currency:   'eur',
       user_count: 1,
     };
-    const normalizedCoupon = (effectiveCoupon || '').trim().toUpperCase();
-    if (normalizedCoupon) payload.discount_code = normalizedCoupon;
-
     const config = { withCredentials: true };
     if (token) config.headers = { Authorization: `Bearer ${token}` };
 
     try {
       const res = await axios.post(`${API}/subscriptions/checkout`, payload, config);
-      // Backend returns { checkout_url, session_id, ... }
       window.location.href = res.data.checkout_url;
-      // No setCheckoutLoading(false) here — page navigates away on success
     } catch (err) {
       const msg = err?.response?.data?.detail || 'Could not start checkout. Please try again.';
       toast.error(msg);
-      setCheckoutLoading(false);
+      setCheckoutLoading(null);
     }
   };
 
-  // If the user just authenticated and we have a stored intent, trigger checkout.
+  // Restore an intent captured before signup
   useEffect(() => {
     if (!user) return;
     const raw = localStorage.getItem(CHECKOUT_INTENT_KEY);
@@ -198,36 +153,91 @@ const PricingPage = () => {
     try {
       const intent = JSON.parse(raw);
       localStorage.removeItem(CHECKOUT_INTENT_KEY);
-      if (intent.billing) setBilling(intent.billing);
-      if (intent.currency) { setCurrency(intent.currency); localStorage.setItem('tako_currency', intent.currency); }
-      // couponCode is now forwarded via POST body — no longer a GET-only limitation
-      initiateCheckout(intent.planId, {
-        currency: intent.currency,
-        couponCode: intent.couponCode || null,
-      });
+      if (intent.planId) initiateCheckout(intent.planId);
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleCheckout = (planId) => {
     if (!user) {
-      // Persist intent so it can be restored after the auth flow.
-      // couponCode is now included: sent as POST body `discount_code` after auth.
-      localStorage.setItem(CHECKOUT_INTENT_KEY, JSON.stringify({
-        planId,
-        billing,
-        currency,
-        couponCode: appliedCoupon && appliedCoupon.plan_id === planId ? couponCode : '',
-      }));
+      localStorage.setItem(CHECKOUT_INTENT_KEY, JSON.stringify({ planId }));
       navigate('/signup');
       return;
     }
     initiateCheckout(planId);
   };
 
+  // ── MetaMask / UNYT on Arbitrum ───────────────────────────────────────────
+  // Lazily loads ethers so the crypto code path doesn't hit cold-start users.
+  const payWithMetaMask = async () => {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      toast.error('MetaMask is not installed. Please install MetaMask to pay with UNYT.');
+      return;
+    }
+    setUnytLoading(true);
+    try {
+      // 1. Request wallet connection
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const wallet   = accounts?.[0];
+      if (!wallet) throw new Error('No wallet returned');
+
+      // 2. Ensure Arbitrum One
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: ARBITRUM_CHAIN_ID_HEX }],
+        });
+      } catch (switchErr) {
+        if (switchErr?.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: ARBITRUM_CHAIN_ID_HEX,
+              chainName: 'Arbitrum One',
+              rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              blockExplorerUrls: ['https://arbiscan.io'],
+            }],
+          });
+        } else {
+          throw switchErr;
+        }
+      }
+
+      // 3. Create the UNYT payment order on the backend (gets amount & receiver)
+      const orderRes = await axios.post(`${API}/checkout/launch-edition/unyt`, {
+        plan_id: 'tako_selfhost_once',
+        name:    user?.name || '',
+        email:   user?.email || '',
+        wallet,
+      });
+      const { deal_id, unyt_amount_wei, receiver, contract } = orderRes.data;
+
+      // 4. Build an ERC-20 transfer transaction via ethers
+      const { ethers } = await import('ethers');
+      const provider   = new ethers.providers.Web3Provider(window.ethereum);
+      const signer     = provider.getSigner();
+      const unyt       = new ethers.Contract(contract, ERC20_TRANSFER_ABI, signer);
+
+      const tx = await unyt.transfer(receiver, unyt_amount_wei);
+      toast.success('UNYT transaction submitted. Confirming on-chain…');
+
+      // 5. Report the tx hash back — backend will mark deal submitted & queue delivery
+      await axios.post(
+        `${API}/checkout/launch-edition/unyt/confirm?deal_id=${encodeURIComponent(deal_id)}&tx_hash=${encodeURIComponent(tx.hash)}`
+      );
+      toast.success('Payment submitted. We\u2019ll be in touch shortly to deliver your source code.');
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'MetaMask payment failed.';
+      toast.error(msg);
+    } finally {
+      setUnytLoading(false);
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50">
-
       {/* ── Page header ── */}
       <header className="py-4 px-6 border-b border-slate-100 bg-white">
         <Link to="/" className="text-sm text-slate-500 hover:text-slate-800 transition-colors">
@@ -236,429 +246,160 @@ const PricingPage = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-
-        {/* ── Section heading ── */}
+        {/* ── Hero ── */}
         <div className="text-center mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-3">
-            One price. Every agent included.
+            One product. One price. Unlimited users.
           </h1>
-          <p className="text-lg text-slate-500 max-w-xl mx-auto">
-            No seat surprises. No AI credits to top up. No US data transfers.
+          <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+            Full source code. Deploy on your own server. Your data never leaves your infrastructure.
           </p>
         </div>
 
-        {/* ── Billing toggle ── */}
-        <div className="flex items-center justify-center gap-3 mb-6" role="group" aria-label="Billing period">
-          <button
-            type="button"
-            aria-pressed={billing === 'monthly'}
-            onClick={() => setBilling('monthly')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] ${
-              billing === 'monthly'
-                ? 'bg-slate-900 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            aria-pressed={billing === 'annual'}
-            onClick={() => setBilling('annual')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] ${
-              billing === 'annual'
-                ? 'bg-slate-900 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
-            }`}
-          >
-            Annual
-            {billing === 'annual' && (
-              <span className="bg-[#0EA5A0] text-white text-xs px-2 py-0.5 rounded-full font-semibold">
-                Save up to 15%
-              </span>
-            )}
-          </button>
-          {billing === 'annual' && (
-            <span className="text-xs text-slate-400 italic">Save up to 15% vs monthly</span>
-          )}
-        </div>
+        {/* ── VAT notice ── */}
+        <p className="text-center text-xs text-slate-400 mb-8">
+          All prices in EUR, excluding VAT. VAT is calculated at checkout based on your billing country.
+        </p>
 
-        {/* ── Currency toggle ── */}
-        <div className="flex items-center justify-center gap-2 mb-12" role="group" aria-label="Currency">
-          {(['gbp', 'eur', 'usd']).map((c) => (
-            <button
-              type="button"
-              key={c}
-              aria-pressed={currency === c}
-              aria-label={`${c.toUpperCase()} — ${c === 'gbp' ? 'British Pound' : c === 'eur' ? 'Euro' : 'US Dollar'}`}
-              onClick={() => { setCurrency(c); setAppliedCoupon(null); setCouponError(null); }}
-              className={`w-9 h-9 rounded-full text-sm font-semibold border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] ${
-                currency === c
-                  ? 'bg-[#0EA5A0] text-white border-[#0EA5A0]'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-[#0EA5A0]'
-              }`}
+        {/* ── Three payment-option cards ── */}
+        <div className="grid md:grid-cols-3 gap-6 items-start">
+          {PLANS.map((plan) => (
+            <Card
+              key={plan.id}
+              className={
+                plan.elevated
+                  ? 'border-slate-200 bg-white ring-2 ring-[#0EA5A0] shadow-lg md:scale-[1.03] relative'
+                  : 'border-slate-200 bg-white relative'
+              }
             >
-              {CURRENCY_SYMBOL[c]}
-            </button>
+              {plan.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className={
+                    plan.elevated
+                      ? 'bg-[#0F0A1E] text-white text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1'
+                      : 'bg-[#0EA5A0] text-white text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1'
+                  }>
+                    {plan.elevated && <Sparkles className="w-3 h-3" />}
+                    {plan.badge}
+                  </span>
+                </div>
+              )}
+              <CardHeader className="pb-4 pt-6">
+                <CardTitle className="text-lg font-bold text-slate-900">{plan.label}</CardTitle>
+                <div className="mt-3">
+                  <span className="text-3xl font-extrabold text-slate-900">{plan.headline}</span>
+                  <span className="text-slate-500 text-sm ml-2">{plan.subHeadline}</span>
+                </div>
+                <CardDescription className="mt-2 text-slate-600">
+                  {plan.subtitle}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  className={
+                    plan.elevated
+                      ? 'w-full bg-[#0EA5A0] hover:bg-teal-700 text-white'
+                      : 'w-full bg-slate-900 hover:bg-slate-800 text-white'
+                  }
+                  onClick={() => handleCheckout(plan.id)}
+                  disabled={checkoutLoading === plan.id}
+                  aria-label={`${plan.cta} for ${plan.label}`}
+                >
+                  {checkoutLoading === plan.id ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                      Redirecting…
+                    </span>
+                  ) : plan.cta}
+                </Button>
+                <p className="text-center text-xs text-slate-400">
+                  Secure checkout via Stripe
+                </p>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
-        {/* ── VAT notice ── */}
-        <p className="text-center text-xs text-slate-400 mb-8 -mt-6">
-          All prices exclude VAT where applicable. VAT is calculated at checkout based on your billing country.
-        </p>
-
-        {/* ── Three pricing cards ── */}
-        <div className="grid md:grid-cols-3 gap-6 items-start">
-
-          {/* Solo */}
-          <Card className="border-slate-200 bg-white">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold text-slate-900">Solo</CardTitle>
-              <div className="mt-2">
-                <span className="text-3xl font-extrabold text-slate-900">{sym}0</span>
-                <span className="text-slate-500 text-sm ml-1">forever</span>
-              </div>
-              <CardDescription className="mt-2 text-slate-600">
-                One user. One pipeline. All 8 AI agents for 30 days.
-              </CardDescription>
-              <p className="text-xs text-slate-400 mt-1">
-                Then 250 AI tokens/mo — enough to keep exploring.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Link to="/signup">
-                <Button variant="outline" className="w-full border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]">
-                  Start free
-                </Button>
-              </Link>
-              <ul className="space-y-2 pt-2">
-                {[
-                  '1 user',
-                  '1 pipeline',
-                  '500 contacts',
-                  'All 8 AI agents (30-day trial)',
-                  'EU data hosting',
-                  'Booking links',
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
-                    <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Pro — elevated */}
-          <Card className="border-slate-200 bg-white ring-2 ring-[#0EA5A0] shadow-lg scale-[1.03] relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className="bg-[#0F0A1E] text-white text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Most popular
-              </span>
-            </div>
-            <CardHeader className="pb-4 pt-6">
-              <CardTitle className="text-xl font-bold text-slate-900">Pro</CardTitle>
-              <div className="mt-2">
-                {appliedCoupon && appliedCoupon.plan_id === proPlanId ? (
-                  <div className="space-y-0.5">
-                    <div>
-                      <span className="text-xl text-slate-400 line-through mr-2">
-                        {sym}{proPrice}
-                      </span>
-                      <span className="text-3xl font-extrabold text-[#0EA5A0]">
-                        {sym}{appliedCoupon.discounted_price}
-                      </span>
-                      <span className="text-slate-500 text-sm ml-1">/user/mo</span>
-                    </div>
-                    <p className="text-xs text-emerald-600 font-medium">{appliedCoupon.discount_label}</p>
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-3xl font-extrabold text-slate-900">{sym}{proPrice}</span>
-                    <span className="text-slate-500 text-sm ml-1">/user/mo</span>
-                  </>
-                )}
-                {billing === 'annual' && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    billed as {sym}{ANNUAL_TOTAL.tako_pro_annual[currency]}/year
-                  </p>
-                )}
-              </div>
-              <CardDescription className="mt-2 text-slate-600">
-                Your full sales team. 5,000 AI tokens per rep, per month.
-              </CardDescription>
-              <p className="text-xs text-slate-400 mt-1">
-                Unlimited pipelines. EU-hosted. Everything you need to close.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* ── UNYT alternative payment ─────────────────────────────────────── */}
+        <div className="mt-10 max-w-2xl mx-auto rounded-xl border border-slate-200 bg-white px-5 py-4">
+          <p className="text-sm text-slate-600 mb-3 text-center">
+            You can also pay with UNYT tokens via MetaMask or UNYT.shop.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              variant="outline"
+              className="flex-1 border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]"
+              onClick={payWithMetaMask}
+              disabled={unytLoading}
+              aria-label="Pay with MetaMask using UNYT on Arbitrum"
+            >
+              {unytLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                  Connecting wallet…
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4" />
+                  Pay with MetaMask
+                </span>
+              )}
+            </Button>
+            <a
+              href="https://unyt.shop"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1"
+            >
               <Button
-                className="w-full bg-[#0EA5A0] hover:bg-teal-700 text-white"
-                onClick={() => handleCheckout(proPlanId)}
-                disabled={checkoutLoading}
-                aria-label="Subscribe to Pro plan"
+                variant="outline"
+                className="w-full border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]"
               >
-                {checkoutLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                    Redirecting…
-                  </span>
-                ) : 'Start with Pro'}
+                <span className="flex items-center gap-2">
+                  Pay via UNYT.shop
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </span>
               </Button>
-
-              {/* Trust microcopy */}
-              <p className="text-center text-xs text-slate-400 !mt-1.5">
-                Secure checkout via Stripe · Cancel anytime · <a href="mailto:support@tako.software" className="hover:text-slate-600 underline underline-offset-2">support@tako.software</a>
-              </p>
-
-              {/* Coupon toggle */}
-              <button
-                type="button"
-                className="text-xs text-[#0EA5A0] hover:underline w-full text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
-                onClick={() => setCouponOpen((prev) => ({ ...prev, pro: !prev.pro }))}
-                aria-expanded={couponOpen.pro}
-              >
-                {couponOpen.pro ? 'Hide code field' : 'Have a code?'}
-              </button>
-
-              {couponOpen.pro && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="FOUNDER40"
-                      className="flex-1 h-9 text-sm uppercase"
-                      aria-label="Discount code"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 px-3 border-[#0EA5A0] text-[#0EA5A0] hover:bg-teal-50"
-                      disabled={couponLoading || !couponCode.trim()}
-                      onClick={() => validateCoupon(couponCode, proPlanId)}
-                    >
-                      {couponLoading ? '...' : 'Apply'}
-                    </Button>
-                  </div>
-                  {couponError && (
-                    <p className="text-red-500 text-xs">{couponError}</p>
-                  )}
-                  {appliedCoupon && appliedCoupon.plan_id === proPlanId && (
-                    <p className="text-emerald-600 text-xs font-medium">
-                      ✓ {appliedCoupon.code} — {appliedCoupon.discount_label}
-                      {appliedCoupon.duration_label ? ` · ${appliedCoupon.duration_label}` : ''}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <ul className="space-y-2 pt-2">
-                {[
-                  'Unlimited users',
-                  'Unlimited pipelines',
-                  '10,000 contacts',
-                  'All 8 AI agents',
-                  '5,000 tokens/user/mo',
-                  'Call recording',
-                  'Email sequences',
-                  'Booking links',
-                  'Team projects',
-                  'Full reporting',
-                  'EU data hosting',
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
-                    <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Enterprise */}
-          <Card className="border-slate-200 bg-white">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold text-slate-900">Enterprise</CardTitle>
-              <div className="mt-2">
-                {appliedCoupon && appliedCoupon.plan_id === entPlanId ? (
-                  <div className="space-y-0.5">
-                    <div>
-                      <span className="text-xl text-slate-400 line-through mr-2">
-                        {sym}{entPrice}
-                      </span>
-                      <span className="text-3xl font-extrabold text-[#0EA5A0]">
-                        {sym}{appliedCoupon.discounted_price}
-                      </span>
-                      <span className="text-slate-500 text-sm ml-1">/user/mo</span>
-                    </div>
-                    <p className="text-xs text-emerald-600 font-medium">{appliedCoupon.discount_label}</p>
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-3xl font-extrabold text-slate-900">{sym}{entPrice}</span>
-                    <span className="text-slate-500 text-sm ml-1">/user/mo</span>
-                  </>
-                )}
-                {billing === 'annual' && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    billed as {sym}{ANNUAL_TOTAL.tako_ent_annual[currency]}/year
-                  </p>
-                )}
-              </div>
-              <CardDescription className="mt-2 text-slate-600">
-                Unlimited AI. SSO. SLAs. A team that knows your name.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Link to="/support?tab=contact">
-                <Button variant="outline" className="w-full border-slate-300 hover:border-[#0EA5A0] hover:text-[#0EA5A0]">
-                  Talk to sales
-                </Button>
-              </Link>
-
-              {/* Coupon toggle */}
-              <button
-                type="button"
-                className="text-xs text-[#0EA5A0] hover:underline w-full text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
-                onClick={() => setCouponOpen((prev) => ({ ...prev, ent: !prev.ent }))}
-                aria-expanded={couponOpen.ent}
-              >
-                {couponOpen.ent ? 'Hide code field' : 'Have a code?'}
-              </button>
-
-              {couponOpen.ent && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="FOUNDER40"
-                      className="flex-1 h-9 text-sm uppercase"
-                      aria-label="Discount code"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 px-3 border-[#0EA5A0] text-[#0EA5A0] hover:bg-teal-50"
-                      disabled={couponLoading || !couponCode.trim()}
-                      onClick={() => validateCoupon(couponCode, entPlanId)}
-                    >
-                      {couponLoading ? '...' : 'Apply'}
-                    </Button>
-                  </div>
-                  {couponError && (
-                    <p className="text-red-500 text-xs">{couponError}</p>
-                  )}
-                  {appliedCoupon && appliedCoupon.plan_id === entPlanId && (
-                    <p className="text-emerald-600 text-xs font-medium">
-                      ✓ {appliedCoupon.code} — {appliedCoupon.discount_label}
-                      {appliedCoupon.duration_label ? ` · ${appliedCoupon.duration_label}` : ''}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <ul className="space-y-2 pt-2">
-                {[
-                  'Everything in Pro',
-                  'Unlimited contacts',
-                  'Unlimited AI tokens',
-                  'SSO / SAML',
-                  'Advanced permissions',
-                  'Priority support (4hr SLA)',
-                  'Custom integrations',
-                  'Dedicated onboarding',
-                  'API rate limit uplift',
-                  'Audit logs',
-                  'Custom data retention',
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
-                    <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+            </a>
+          </div>
         </div>
 
-        {/* ── Social proof ── */}
-        <p className="text-center text-sm text-slate-400 italic mt-10">
-          "TAKO Pro for a 5-person team costs less per month than one Salesforce seat."
-        </p>
-
-        {/* ── Collapsible comparison table ── */}
-        <div className="mt-12">
-          <button
-            type="button"
-            aria-expanded={showComparison}
-            aria-controls="plan-comparison-table"
-            onClick={() => setShowComparison((v) => !v)}
-            className="flex items-center gap-2 mx-auto text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded"
-          >
-            Compare all plans
-            {showComparison ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {showComparison && (
-            <div id="plan-comparison-table" className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-left px-4 py-3 text-slate-500 font-medium w-1/2">Feature</th>
-                    <th className="text-center px-4 py-3 text-slate-700 font-semibold">Solo</th>
-                    <th className="text-center px-4 py-3 text-[#0EA5A0] font-semibold">Pro</th>
-                    <th className="text-center px-4 py-3 text-slate-700 font-semibold">Enterprise</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_ROWS.map((row, i) => (
-                    <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
-                      <td className="px-4 py-3 text-slate-600">{row.label}</td>
-                      <td className="px-4 py-3 text-center"><CellValue value={row.solo} /></td>
-                      <td className="px-4 py-3 text-center"><CellValue value={row.pro} /></td>
-                      <td className="px-4 py-3 text-center"><CellValue value={row.ent} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* ── What's included ── */}
+        <div className="mt-16 max-w-3xl mx-auto">
+          <h2 className="text-xl font-bold text-slate-900 mb-5 text-center">{'What\u2019s included'}</h2>
+          <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3 bg-white border border-slate-200 rounded-xl px-6 py-6">
+            {INCLUDED_FEATURES.map((f) => (
+              <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
+                <Check className="w-4 h-4 text-[#0EA5A0] flex-shrink-0 mt-0.5" />
+                {f}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* ── Pricing FAQ ── */}
+        {/* ── After year one ── */}
+        <div className="mt-12 max-w-3xl mx-auto">
+          <div className="rounded-xl border border-slate-200 bg-white px-6 py-6">
+            <h3 className="text-base font-bold text-slate-900 mb-2">Maintenance & Support Renewal</h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Your first year of updates and priority support is included. After that, optionally
+              renew for <strong>€999/year</strong> to keep receiving new features, major updates,
+              and priority support with a 4-hour SLA. If you choose not to renew, your software
+              keeps running — you just {'won\u2019t'} receive new features. Critical security patches
+              remain free.
+            </p>
+          </div>
+        </div>
+
+        {/* ── FAQ ── */}
         <div className="mt-16 max-w-3xl mx-auto">
           <h2 className="text-xl font-bold text-slate-900 mb-5 text-center">Common questions</h2>
           <div className="space-y-2">
-            {[
-              {
-                q: 'Is VAT included in the prices shown?',
-                a: 'No. All prices shown exclude VAT. VAT is calculated at checkout based on your billing country and displayed before you confirm payment.',
-              },
-              {
-                q: 'How does annual billing work?',
-                a: 'Annual plans are billed as a single payment covering 12 months — you pay upfront and save up to 15% versus monthly. Your access continues until the end of the paid period.',
-              },
-              {
-                q: 'Can I cancel at any time?',
-                a: 'Yes. Cancel from Settings at any time. Your access continues until the end of the current billing period with no cancellation fees.',
-              },
-              {
-                q: 'Is there a money-back guarantee?',
-                a: 'We offer a 30-day money-back guarantee on your first purchase. Email support@tako.software within 30 days of your first payment.',
-              },
-              {
-                q: 'Where is my data stored?',
-                a: 'Primary hosting is on EU-based servers. TAKO is GDPR-compliant. Where subprocessors operate outside the EU, appropriate safeguards (Standard Contractual Clauses or equivalent) are in place.',
-              },
-              {
-                q: 'What does Enterprise onboarding include?',
-                a: 'Dedicated onboarding with the TAKO team, priority support with a 4-hour SLA, assistance with custom integrations, and ongoing account management.',
-              },
-            ].map(({ q, a }) => (
-              <details key={q} className="group bg-white border border-slate-200 rounded-xl cursor-pointer open:border-[#0EA5A0]/40">
+            {FAQS.map(({ q, a }) => (
+              <details
+                key={q}
+                className="group bg-white border border-slate-200 rounded-xl cursor-pointer open:border-[#0EA5A0]/40"
+              >
                 <summary className="flex items-center justify-between px-5 py-4 text-sm font-medium text-slate-900 list-none select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0EA5A0] rounded-xl">
                   {q}
                   <ChevronDown className="w-4 h-4 text-slate-400 transition-transform duration-200 group-open:rotate-180 shrink-0 ml-3" />
@@ -669,84 +410,7 @@ const PricingPage = () => {
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────────────
-            LAUNCH EDITION
-            Early-access offer for TAKO's founding cohort.
-            Keep this section — it is referenced in launch campaign links.
-        ───────────────────────────────────────────────────────────────────── */}
-        <section id="launch-edition" className="mt-20 rounded-2xl bg-[#0F0A1E] text-white px-6 sm:px-10 py-12 relative overflow-hidden">
-          {/* Background glow */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0EA5A0]/20 to-transparent pointer-events-none" />
-
-          <div className="relative z-10 grid md:grid-cols-[1.5fr_1fr] gap-8 max-w-4xl mx-auto">
-            {/* Left — copy */}
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="inline-flex items-center gap-1.5 bg-white/[0.08] rounded-full px-3 py-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
-                  <span className="text-xs font-bold tracking-wider uppercase text-white/90">Limited time offer</span>
-                </div>
-                <div className="inline-flex items-center bg-[#D4A853] text-[#0f172a] text-xs font-extrabold tracking-wider uppercase px-3 py-1.5 rounded-full">
-                  75% OFF
-                </div>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1">
-                Launch Edition
-              </h2>
-              <div className="flex items-baseline gap-3 mb-4">
-                <span className="text-2xl font-bold text-white">EUR 4,999</span>
-                <span className="text-slate-400 line-through">EUR 19,999</span>
-                <span className="text-slate-400 text-sm">one-time</span>
-              </div>
-              <p className="text-slate-300 text-sm leading-relaxed mb-2">
-                Get the full TAKO platform with <strong className="text-white">unlimited users</strong>, deployed on <strong className="text-white">your own infrastructure</strong>. One payment. Yours forever.
-              </p>
-              <p className="text-slate-400 text-sm mb-5">
-                Or lock in <strong className="text-white">40% off Pro</strong> for life — use code{' '}
-                <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono text-white text-xs">FOUNDER40</code> at checkout.
-              </p>
-              <div className="flex flex-wrap gap-2 mb-6">
-                {['Full source code', 'Unlimited users', 'Self-hosted', 'One-time payment', 'Production-tested'].map(h => (
-                  <span key={h} className="inline-flex items-center px-3 py-1.5 rounded-full bg-white/[0.07] text-white/80 text-xs font-semibold border border-white/[0.06]">{h}</span>
-                ))}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link to="/support?tab=contact">
-                  <Button className="bg-white text-[#0f172a] hover:bg-white/90 font-bold px-6 h-11">
-                    Book a Setup Call
-                  </Button>
-                </Link>
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-white text-sm underline underline-offset-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
-                  onClick={() => {
-                    setCouponCode('FOUNDER40');
-                    setCouponOpen({ pro: true, ent: false });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  Apply FOUNDER40 to Pro instead
-                </button>
-              </div>
-            </div>
-
-            {/* Right — countdown */}
-            <div className="flex flex-col justify-center">
-              <p className="text-white/60 text-xs font-bold tracking-wider uppercase text-center mb-3">Offer expires in</p>
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                {[['days', countdown.days], ['hrs', countdown.hours], ['min', countdown.minutes], ['sec', countdown.seconds]].map(([label, val]) => (
-                  <div key={label} className="bg-white/[0.07] border border-white/[0.08] rounded-2xl p-3 text-center backdrop-blur-sm">
-                    <span className="block text-white text-2xl font-extrabold tracking-tight">{padT(val)}</span>
-                    <small className="block text-white/60 text-[0.68rem] font-bold tracking-wider uppercase mt-1">{label}</small>
-                  </div>
-                ))}
-              </div>
-              <p className="text-white/50 text-xs text-center">Ends June 30, 2026 at 23:59 BST</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Trust strip */}
+        {/* ── Trust strip ── */}
         <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-slate-400">
           <span className="flex items-center gap-1.5">
             <Shield className="w-4 h-4 text-emerald-400" /> EU-hosted · GDPR compliant
@@ -755,13 +419,12 @@ const PricingPage = () => {
             <Check className="w-4 h-4 text-emerald-400" /> 30-day money-back guarantee
           </span>
           <span className="flex items-center gap-1.5">
-            <Check className="w-4 h-4 text-emerald-400" /> Cancel anytime
+            <Check className="w-4 h-4 text-emerald-400" /> Secure payment via Stripe
           </span>
           <span className="flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-emerald-400" /> Secure payment via Stripe
+            <Wallet className="w-4 h-4 text-emerald-400" /> UNYT accepted
           </span>
         </div>
-
       </main>
     </div>
   );

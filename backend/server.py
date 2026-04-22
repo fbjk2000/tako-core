@@ -205,6 +205,49 @@ SUBSCRIPTION_PLANS = {
         "ai_tokens_monthly": None,  # unlimited
         "description": "Unlimited AI. SSO. SLAs. A team that knows your name.",
     },
+    # ── Self-hosted single-product plans ─────────────────────────────
+    # All three deliver the same product. Payment structure differs only.
+    # The "Pay Once" plan charges the full amount in a single Stripe session.
+    # The installment plans charge one period's amount per checkout; recurring
+    # billing requires Stripe subscription objects (price IDs) to be configured
+    # in Stripe and wired to a separate subscription endpoint.
+    "tako_selfhost_once": {
+        "id": "tako_selfhost_once", "name": "TAKO Self-hosted", "tier": "selfhost",
+        "prices": {
+            "gbp": {"monthly": 5000, "annual": None},
+            "eur": {"monthly": 5000, "annual": None},
+            "usd": {"monthly": 5000, "annual": None},
+        },
+        "interval": "once",
+        "ai_tokens_monthly": None,  # unlimited / self-hosted
+        "description": "Full source code. Unlimited users. Paid once.",
+    },
+    "tako_selfhost_12mo": {
+        "id": "tako_selfhost_12mo", "name": "TAKO Self-hosted", "tier": "selfhost",
+        "prices": {
+            "gbp": {"monthly": 500, "annual": None},
+            "eur": {"monthly": 500, "annual": None},
+            "usd": {"monthly": 500, "annual": None},
+        },
+        "interval": "month",
+        "installments": 12,
+        "total_eur": 6000,
+        "ai_tokens_monthly": None,
+        "description": "Full source code. Unlimited users. 12 monthly payments.",
+    },
+    "tako_selfhost_24mo": {
+        "id": "tako_selfhost_24mo", "name": "TAKO Self-hosted", "tier": "selfhost",
+        "prices": {
+            "gbp": {"monthly": 300, "annual": None},
+            "eur": {"monthly": 300, "annual": None},
+            "usd": {"monthly": 300, "annual": None},
+        },
+        "interval": "month",
+        "installments": 24,
+        "total_eur": 7200,
+        "ai_tokens_monthly": None,
+        "description": "Full source code. Unlimited users. 24 monthly payments.",
+    },
 }
 
 # Create the main app
@@ -4288,16 +4331,30 @@ UNYT_DECIMALS = 18
 
 @api_router.post("/checkout/launch-edition/unyt")
 async def launch_edition_unyt(request: Request):
-    """Create a UNYT payment order for the Launch Edition"""
+    """Create a UNYT payment order for a self-hosted TAKO purchase.
+
+    Accepts an optional `plan_id` to select the product variant. Defaults to
+    the original Launch Edition price (4999 EUR) for backward compatibility.
+    """
     body = await request.json()
     buyer_name = body.get("name", "")
     buyer_email = body.get("email", "")
     buyer_wallet = body.get("wallet", "")
-    
+    plan_id = body.get("plan_id") or "launch_edition_4999"
+
+    # Map plan_id → EUR amount. Installment plans pay the full contract value
+    # upfront in UNYT (there is no UNYT recurring billing).
+    PLAN_AMOUNTS_EUR = {
+        "launch_edition_4999": 4999.0,     # backward-compat default
+        "tako_selfhost_once":  5000.0,
+        "tako_selfhost_12mo":  6000.0,
+        "tako_selfhost_24mo":  7200.0,
+    }
+    amount_eur = PLAN_AMOUNTS_EUR.get(plan_id, 4999.0)
+
     deal_id = f"deal_{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc)
-    amount_eur = 4999.0
-    unyt_amount = amount_eur / UNYT_PRICE_EUR  # 9998 UNYT
+    unyt_amount = amount_eur / UNYT_PRICE_EUR
     
     super_admin = await db.users.find_one({"email": SUPER_ADMIN_EMAIL}, {"_id": 0})
     org_id = super_admin.get("organization_id") if super_admin else None
@@ -4306,10 +4363,10 @@ async def launch_edition_unyt(request: Request):
     # Create deal as open opportunity
     await db.deals.insert_one({
         "deal_id": deal_id, "organization_id": org_id,
-        "name": f"Launch Edition (UNYT): {buyer_name or buyer_email or buyer_wallet[:10]}",
+        "name": f"TAKO Self-hosted ({plan_id}, UNYT): {buyer_name or buyer_email or buyer_wallet[:10]}",
         "value": amount_eur, "currency": "EUR", "stage": "negotiation", "probability": 60,
-        "tags": ["launch-edition", "unyt-payment"],
-        "notes": f"Buyer: {buyer_name} ({buyer_email}). Wallet: {buyer_wallet}. UNYT payment: {unyt_amount:.0f} UNYT.",
+        "tags": ["self-hosted", plan_id, "unyt-payment"],
+        "notes": f"Buyer: {buyer_name} ({buyer_email}). Wallet: {buyer_wallet}. Plan: {plan_id}. UNYT payment: {unyt_amount:.0f} UNYT.",
         "assigned_to": admin_uid, "created_by": admin_uid, "created_at": now.isoformat(), "updated_at": now.isoformat()
     })
     
@@ -4325,7 +4382,8 @@ async def launch_edition_unyt(request: Request):
     
     await db.payment_transactions.insert_one({
         "transaction_id": f"txn_{uuid.uuid4().hex[:12]}", "deal_id": deal_id,
-        "product": "launch_edition", "amount": amount_eur, "currency": "eur",
+        "product": "tako_selfhost", "plan_id": plan_id,
+        "amount": amount_eur, "currency": "eur",
         "payment_method": "unyt", "unyt_amount": unyt_amount,
         "buyer_wallet": buyer_wallet, "buyer_name": buyer_name, "buyer_email": buyer_email,
         "status": "pending", "created_at": now.isoformat()
