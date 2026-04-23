@@ -407,8 +407,24 @@ const AuthCallback = () => {
 
     const processCallback = async () => {
       const params = new URLSearchParams(location.search);
-      const token = params.get('token');
+      // New dual-token shape (post-fix): access_token + refresh_token.
+      // Legacy shape (?token=): single JWT, no refresh. We still accept it
+      // so any in-flight redirect from a pre-deploy backend completes — new
+      // logins all come through the dual-token branch.
+      const accessToken = params.get('access_token') || params.get('token');
+      const refreshToken = params.get('refresh_token');
       const error = params.get('error');
+
+      // Strip the tokens from the URL immediately so they don't linger in
+      // the address bar or get captured by browser history / extensions
+      // before the navigate() below replaces the entry.
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        try {
+          window.history.replaceState({}, '', '/auth/callback');
+        } catch {
+          // ignore — some embedded webviews lock down history
+        }
+      }
 
       if (error) {
         console.error('Auth error:', error);
@@ -416,15 +432,15 @@ const AuthCallback = () => {
         return;
       }
 
-      if (token) {
+      if (accessToken) {
         try {
-          // Google OAuth still returns a single long-lived JWT — write it
-          // under the canonical access-token key so the request interceptor
-          // picks it up. The silent-refresh path only kicks in for users
-          // who got the dual-token pair from /auth/login or /auth/register.
-          localStorage.setItem(ACCESS_TOKEN_KEY, token);
+          // Persist both tokens via the shared helper so the request
+          // interceptor picks them up on every subsequent call and the
+          // response interceptor can silently refresh when the 15-min
+          // access token expires.
+          saveAuthTokens({ access_token: accessToken, refresh_token: refreshToken });
           const response = await axios.get(`${API}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${accessToken}` }
           });
           setUser(response.data);
           // safeInternalPath guards against any tampered return destination.

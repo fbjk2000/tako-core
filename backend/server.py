@@ -2073,12 +2073,24 @@ async def google_login_callback(code: str, state: str, response: Response):
     await db.user_sessions.delete_many({"user_id": user_id})
     await db.user_sessions.insert_one(session_doc)
     
-    # Generate JWT token for consistent auth (same as email/password login)
-    jwt_token = create_jwt_token(user_id, email, user.get("organization_id"))
+    # Issue a dual-token pair — same shape as /auth/login so Google users
+    # benefit from the short-lived access token + rotating refresh flow and
+    # the frontend's silent-refresh interceptor can keep them signed in past
+    # the 15-minute access-token window. Prior to this change Google users
+    # were stuck on a legacy single-token JWT with no refresh path, which
+    # meant the very next 401 after expiry hard-bounced them to /login.
+    tokens = await _issue_token_pair(user)
 
     # Store session cookie
     from fastapi.responses import RedirectResponse
-    redirect = RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?token={jwt_token}", status_code=302)
+    redirect = RedirectResponse(
+        url=(
+            f"{FRONTEND_URL}/auth/callback"
+            f"?access_token={tokens['access_token']}"
+            f"&refresh_token={tokens['refresh_token']}"
+        ),
+        status_code=302,
+    )
     redirect.set_cookie(
         key="session_token",
         value=session_token,
