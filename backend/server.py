@@ -934,12 +934,28 @@ def create_jwt_token(user_id: str, email: str, organization_id: str = None) -> s
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def decode_jwt_token(token: str) -> dict:
+    """Decode a token intended for request authorization.
+
+    Accepts both the legacy long-lived JWT shape (no ``token_type`` claim)
+    and the new short-lived access-token shape (``token_type == 'access'``)
+    so we don't force a forced-logout on anyone who still has a legacy
+    access token in localStorage. Explicitly rejects anything carrying a
+    ``token_type`` other than ``'access'`` — today refresh tokens are raw
+    secrets rather than JWTs so this is belt-and-suspenders, but it closes
+    the door if any future code path ever mints a JWT for a non-access
+    purpose (e.g. email-verify, password-reset) and that token is
+    accidentally presented to ``Authorization: Bearer …``.
+    """
     try:
-        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    token_type = payload.get("token_type")
+    if token_type not in (None, "access"):
+        raise HTTPException(status_code=401, detail="Invalid token type")
+    return payload
 
 
 # ---------- FOLLOWUPS #9: short-lived access + rotating refresh tokens ----
@@ -4566,14 +4582,15 @@ async def create_kit_tag(name: str):
             )
             if response.status_code in [200, 201]:
                 return response.json()
-            # If it fails, it's likely because we need api_secret for write
-            # operations. Log only the status — response.text is an error body
-            # from a third-party API and shouldn't land in our logs by default.
+            # Never forward the upstream status verbatim. Kit integration
+            # failures are not session failures, and forwarding a 401 here
+            # would send the client through the axios refresh/redirect
+            # flow — bouncing the user to /login for a third-party problem.
             logger.warning("Kit create tag failed (status=%s) — likely api_secret required", response.status_code)
-            raise HTTPException(status_code=response.status_code, detail="Creating tags requires Kit.com secret key")
+            raise HTTPException(status_code=502, detail="Creating tags requires Kit.com secret key")
     except httpx.RequestError as e:
         logger.error(f"Kit create tag error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.post("/kit/subscribe/{tag_id}")
 async def subscribe_to_tag(tag_id: int, subscriber: LeadMagnetSubscribe):
@@ -4602,10 +4619,11 @@ async def subscribe_to_tag(tag_id: int, subscriber: LeadMagnetSubscribe):
                     "subscribed_at": now.isoformat()
                 })
                 return {"success": True, "message": "Subscribed successfully", "data": response.json()}
-            raise HTTPException(status_code=response.status_code, detail="Failed to subscribe")
+            logger.warning("Kit tag-subscribe upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com subscribe unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit subscribe error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.post("/kit/subscribe-form/{form_id}")
 async def subscribe_to_form(form_id: int, subscriber: LeadMagnetSubscribe):
@@ -4634,10 +4652,11 @@ async def subscribe_to_form(form_id: int, subscriber: LeadMagnetSubscribe):
                     "subscribed_at": now.isoformat()
                 })
                 return {"success": True, "message": "Subscribed successfully", "data": response.json()}
-            raise HTTPException(status_code=response.status_code, detail="Failed to subscribe")
+            logger.warning("Kit form-subscribe upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com subscribe unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit subscribe form error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.post("/lead-magnet/subscribe")
 async def lead_magnet_subscribe(subscriber: LeadMagnetSubscribe):
@@ -4738,10 +4757,11 @@ async def get_kit_broadcasts():
             )
             if response.status_code == 200:
                 return response.json()
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch broadcasts")
+            logger.warning("Kit broadcasts upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com broadcasts unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit broadcasts error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.post("/kit/broadcasts")
 async def create_kit_broadcast(broadcast: KitBroadcastCreate):
@@ -4755,17 +4775,18 @@ async def create_kit_broadcast(broadcast: KitBroadcastCreate):
             }
             if broadcast.send_at:
                 payload["send_at"] = broadcast.send_at
-            
+
             response = await client.post(
                 f"{KIT_API_BASE}/broadcasts",
                 json=payload
             )
             if response.status_code in [200, 201]:
                 return response.json()
-            raise HTTPException(status_code=response.status_code, detail="Failed to create broadcast")
+            logger.warning("Kit create broadcast upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com broadcast create unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit broadcast error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 async def send_campaign_via_kit_internal(campaign: dict) -> dict:
     """Email-channel send pipeline (Kit.com → Resend fallback).
