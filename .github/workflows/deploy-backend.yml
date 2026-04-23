@@ -1,0 +1,98 @@
+# Auto-deploy the backend stack to the production VPS on every push to main.
+#
+# The frontend already auto-deploys via Netlify on push, but the backend
+# Docker stack on the IONOS VPS used to be a manual step:
+#   ssh vps "cd /opt/tako && bash scripts/deploy-production.sh"
+# That meant fixes could sit on origin/main for hours with prod still
+# serving the old code (which is exactly how we spent an afternoon
+# debugging a Google-OAuth bounce that was already fixed in git).
+#
+# This workflow runs the same script remotely. Triggers:
+#   - Any push to main that touches backend code, container config, the
+#     Caddyfile, or the deploy script itself.
+#   - Manual run via the Actions tab (workflow_dispatch) — useful for
+#     re-running a failed deploy without needing a new commit.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_HOST       — VPS hostname or IP (e.g. tako.software)
+#   DEPLOY_SSH_USER       — SSH user on the VPS (e.g. root or deploy)
+#   DEPLOY_SSH_PORT       — optional, defaults to 22
+#   DEPLOY_SSH_KEY        — private SSH key (PEM) authorized on the VPS
+#   DEPLOY_SSH_KNOWN_HOSTS — output of `ssh-keyscan -H <host>` run locally
+#                            (prevents MITM by pinning the host key)
+
+name: Deploy backend to VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'docker-compose*.yml'
+      - 'Caddyfile'
+      - 'scripts/deploy-production.sh'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+# Prevent two deploys racing. A newer push supersedes an in-flight one —
+# the older deploy is cancelled so we don't land an older snapshot on top
+# of a newer one.
+concurrency:
+  group: deploy-backend-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Run deploy script on VPS
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+        run: |
+          # -o BatchMode=yes prevents any interactive prompt from hanging
+          # the job. -o StrictHostKeyChecking=yes enforces known_hosts.
+          # The remote command is wrapped in `bash -lc` so the user's
+          # login env (PATH for docker, etc.) is loaded exactly like an
+          # interactive session. set -e on the remote side so any step
+          # failure aborts and surfaces a non-zero exit to the Action.
+          ssh -i ~/.ssh/id_deploy \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o ServerAliveInterval=30 \
+              -p "$PORT" \
+              "$USER@$HOST" \
+              "bash -lc 'set -e && cd /opt/tako && bash scripts/deploy-production.sh'"
+
+      - name: Smoke-test production health endpoint
+        run: |
+          # If the deploy rebuilt backend correctly, /api/health returns 200.
+          # We poll briefly because the Docker rebuild can leave the
+          # container a few seconds behind the deploy script's own health
+          # check — the script already validates localhost:8001 on the VPS;
+          # this validates the public edge.
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 10 https://tako.software/api/health >/dev/null; then
+              echo "Backend is live."
+              exit 0
+            fi
+            echo "Health check attempt $i failed — retrying in 10s"
+            sleep 10
+          done
+          echo "Backend health check failed after 60s"
+          exit 1
