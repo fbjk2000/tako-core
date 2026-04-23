@@ -6441,32 +6441,107 @@ async def gdpr_cancel_deletion(
 
 # ==================== LEGAL — DPA (Art. 28) ====================
 
+# Static DPA documents live under backend/static/legal/. build-distribution.sh
+# must NOT strip this path — customers ship the same DPA to their own data
+# subjects, so the files travel with every distribution tarball.
+_LEGAL_DIR = ROOT_DIR / "static" / "legal"
+_DPA_FILES = {
+    "en": {
+        "basename": "Data_Processing_Agreement_TAKO_CRM_Fintery",
+        "title": "Data Processing Agreement",
+        "download_filename": "TAKO_Data_Processing_Agreement.{ext}",
+    },
+    "de": {
+        "basename": "Auftragsverarbeitungsvertrag_TAKO_CRM_Fintery",
+        "title": "Auftragsverarbeitungsvertrag",
+        "download_filename": "TAKO_Auftragsverarbeitungsvertrag.{ext}",
+    },
+}
+_DPA_VERSION = "2026-04-23"
+
+
+def _resolve_dpa_file(lang: str):
+    """Return (path, media_type, ext) for the given DPA language.
+
+    Prefers the LibreOffice-converted PDF when present, falling back to the
+    docx source. Raises 404 if neither is on disk for the requested lang.
+    """
+    entry = _DPA_FILES.get(lang)
+    if not entry:
+        raise HTTPException(status_code=404, detail="DPA language not available")
+    base = entry["basename"]
+    pdf_path = _LEGAL_DIR / f"{base}.pdf"
+    docx_path = _LEGAL_DIR / f"{base}.docx"
+    if pdf_path.exists():
+        return pdf_path, "application/pdf", "pdf"
+    if docx_path.exists():
+        return (
+            docx_path,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "docx",
+        )
+    raise HTTPException(status_code=404, detail="DPA document not found on server")
+
+
 @api_router.get("/legal/dpa")
 async def get_dpa():
-    """Publish the subprocessor list + current DPA status.
+    """Publish the active DPA metadata + subprocessor inventory.
 
     Public (no auth) — procurement teams evaluate us before they can log in.
-    The DPA itself is pending legal review (FOLLOWUPS #4); until then we
-    expose the subprocessor inventory and a contact address so buyers can
-    request the draft.
+    The DPA documents themselves are served via /api/legal/dpa/download/{lang}.
     """
+    def _fmt(lang: str):
+        entry = _DPA_FILES[lang]
+        try:
+            _, _, ext = _resolve_dpa_file(lang)
+        except HTTPException:
+            ext = "docx"  # fall back to the expected on-disk format
+        return {
+            "title": entry["title"],
+            "format": ext,
+            "download_url": f"/api/legal/dpa/download/{lang}",
+        }
+
     return {
-        "status": "draft",
-        "message": (
-            "Our Data Processing Agreement (Auftragsverarbeitungsvertrag) "
-            "per GDPR Art. 28 is being finalized with legal counsel. "
-            "Contact support@tako.software to request a copy."
-        ),
+        "status": "active",
+        "version": _DPA_VERSION,
+        "documents": {
+            "en": _fmt("en"),
+            "de": _fmt("de"),
+        },
         "subprocessors": [
-            {"name": "Anthropic", "purpose": "AI features (Claude API)", "location": "US"},
-            {"name": "Stripe",    "purpose": "Payment processing",         "location": "US/EU"},
-            {"name": "Resend",    "purpose": "Transactional email",        "location": "US"},
-            {"name": "Twilio",    "purpose": "SMS and WhatsApp messaging", "location": "US"},
-            {"name": "Google",    "purpose": "OAuth authentication",       "location": "US/EU"},
-            {"name": "Meta",      "purpose": "WhatsApp Business API",      "location": "US/EU"},
+            {"name": "Anthropic",     "purpose": "AI features (Claude API)",            "location": "US",           "safeguard": "EU Standard Contractual Clauses (SCCs)"},
+            {"name": "Stripe",        "purpose": "Payment processing",                  "location": "US/EU",        "safeguard": "EU-US Data Privacy Framework"},
+            {"name": "Resend",        "purpose": "Transactional email delivery",        "location": "US",           "safeguard": "EU Standard Contractual Clauses (SCCs)"},
+            {"name": "Twilio",        "purpose": "SMS and WhatsApp messaging",          "location": "US",           "safeguard": "EU Standard Contractual Clauses (SCCs)"},
+            {"name": "Google",        "purpose": "OAuth authentication, Calendar sync", "location": "US/EU",        "safeguard": "EU-US Data Privacy Framework"},
+            {"name": "Meta",          "purpose": "WhatsApp Business API",               "location": "US/EU",        "safeguard": "EU-US Data Privacy Framework"},
+            {"name": "IONOS",         "purpose": "Hosting and infrastructure",          "location": "EU (Germany)", "safeguard": "Data stored in EU"},
+            {"name": "MongoDB Atlas", "purpose": "Database (if cloud-hosted)",          "location": "EU",           "safeguard": "Data stored in EU"},
         ],
-        "contact_email": "support@tako.software",
+        "contact": "privacy@tako.software",
+        # Preserved for backwards compatibility with frontends that still
+        # read `contact_email`.
+        "contact_email": "privacy@tako.software",
     }
+
+
+@api_router.get("/legal/dpa/download/{lang}")
+async def download_dpa(lang: str):
+    """Serve the DPA document for the given language (en|de).
+
+    Public (no auth) — procurement evaluates us before any account exists.
+    Prefers PDF if the LibreOffice-converted copy is present; falls back to
+    the docx source otherwise.
+    """
+    path, media_type, ext = _resolve_dpa_file(lang)
+    entry = _DPA_FILES[lang]
+    filename = entry["download_filename"].format(ext=ext)
+    return FileResponse(
+        path=str(path),
+        media_type=media_type,
+        filename=filename,
+    )
 
 
 # ==================== SUPER ADMIN SETUP ====================
