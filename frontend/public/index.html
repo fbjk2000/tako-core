@@ -21,9 +21,55 @@
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
         <script>
+          // Service-worker registration with aggressive self-update.
+          //
+          // We had a broken SW (earnrm-v1) whose fetch handler could resolve
+          // event.respondWith(undefined), which turned every cold navigation
+          // into a TypeError and bounced users to /login. The fix itself
+          // shipped in tako-sw-v2, but browsers hold the old controller
+          // until all tabs of the origin close — so a plain .register() call
+          // left users stuck on the broken version indefinitely.
+          //
+          // Flow below:
+          //  1. `updateViaCache: 'none'` — never let HTTP caching hide a new
+          //     service-worker.js from the browser's update check.
+          //  2. On every page load, explicitly call registration.update() so
+          //     we fetch the latest SW without needing a hard refresh.
+          //  3. When an update finishes installing while another SW is still
+          //     controlling the page, poke it with SKIP_WAITING so the new
+          //     one takes over immediately instead of waiting for every tab
+          //     to close.
+          //  4. When the controller actually changes, reload once so the
+          //     page is served by the fresh SW from the first paint. The
+          //     `refreshing` guard prevents an infinite reload loop if the
+          //     browser fires controllerchange more than once.
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/service-worker.js');
+              navigator.serviceWorker
+                .register('/service-worker.js', { updateViaCache: 'none' })
+                .then(function(registration) {
+                  try { registration.update(); } catch (e) {}
+                  registration.addEventListener('updatefound', function() {
+                    var installing = registration.installing;
+                    if (!installing) return;
+                    installing.addEventListener('statechange', function() {
+                      if (
+                        installing.state === 'installed' &&
+                        navigator.serviceWorker.controller
+                      ) {
+                        try { installing.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {}
+                      }
+                    });
+                  });
+                })
+                .catch(function() { /* registration failed — fall back to no SW */ });
+
+              var refreshing = false;
+              navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+              });
             });
           }
         </script>
