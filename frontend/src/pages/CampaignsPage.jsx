@@ -59,12 +59,21 @@ const CampaignsPage = () => {
 
   const fetchKitData = async () => {
     setKitLoading(true);
+    // The Kit proxy endpoints forward status codes from Kit.com. If Kit's
+    // key/secret is stale or revoked, Kit returns 401, our backend passes
+    // that 401 through, and without this header the global axios
+    // interceptor would mistake it for a session 401, try to refresh, fail
+    // if there's no refresh token (legacy Google-login users), and hard
+    // redirect to /login — bouncing the user off the Campaigns page they
+    // just loaded. These calls are integration-status probes, not auth
+    // checks; skipping the refresh flow is the correct behaviour.
+    const kitHeaders = { ...headers, 'X-Skip-Auth-Refresh': '1' };
     try {
       const [accountRes, formsRes, tagsRes, subscribersRes] = await Promise.all([
-        axios.get(`${API}/kit/account`, { headers, withCredentials: true }).catch(() => null),
-        axios.get(`${API}/kit/forms`, { headers, withCredentials: true }).catch(() => null),
-        axios.get(`${API}/kit/tags`, { headers, withCredentials: true }).catch(() => null),
-        axios.get(`${API}/kit/subscribers`, { headers, withCredentials: true }).catch(() => null)
+        axios.get(`${API}/kit/account`, { headers: kitHeaders, withCredentials: true }).catch(() => null),
+        axios.get(`${API}/kit/forms`, { headers: kitHeaders, withCredentials: true }).catch(() => null),
+        axios.get(`${API}/kit/tags`, { headers: kitHeaders, withCredentials: true }).catch(() => null),
+        axios.get(`${API}/kit/subscribers`, { headers: kitHeaders, withCredentials: true }).catch(() => null)
       ]);
       if (accountRes) setKitAccount(accountRes.data);
       if (formsRes) setKitForms(formsRes.data.forms || []);

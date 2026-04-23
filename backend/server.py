@@ -4525,10 +4525,15 @@ async def get_kit_forms():
             )
             if response.status_code == 200:
                 return response.json()
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch forms")
+            # NEVER pass upstream 401/403 through — those would look like
+            # session failures to the axios response interceptor and trigger
+            # a /login redirect. Kit auth failures are an integration
+            # problem, not a user-session problem.
+            logger.warning("Kit forms upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com forms unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit forms error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.get("/kit/tags")
 async def get_kit_tags():
@@ -4541,10 +4546,11 @@ async def get_kit_tags():
             )
             if response.status_code == 200:
                 return response.json()
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch tags")
+            logger.warning("Kit tags upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com tags unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit tags error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.post("/kit/tags")
 async def create_kit_tag(name: str):
@@ -4715,10 +4721,11 @@ async def get_kit_subscribers():
             )
             if response.status_code == 200:
                 return response.json()
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch subscribers")
+            logger.warning("Kit subscribers upstream status=%s", response.status_code)
+            raise HTTPException(status_code=502, detail="Kit.com subscribers unavailable")
     except httpx.RequestError as e:
         logger.error(f"Kit subscribers error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Kit.com")
+        raise HTTPException(status_code=502, detail="Failed to connect to Kit.com")
 
 @api_router.get("/kit/broadcasts")
 async def get_kit_broadcasts():
