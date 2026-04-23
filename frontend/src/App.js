@@ -186,7 +186,19 @@ axios.interceptors.request.use((config) => {
 // new token. On refresh failure, clear tokens and bounce to /login.
 let _refreshInFlight = null;
 const _refreshUrl = `${API}/auth/refresh`;
-const _authPathsNoRefresh = ['/auth/login', '/auth/register', '/auth/refresh'];
+// Paths whose 401 response must NOT trigger the silent-refresh flow.
+// /auth/login, /auth/register, /auth/refresh are obvious — refreshing on
+// *their* 401 would loop.
+// /auth/me is the subtle one: checkAuth() calls it on every page load,
+// and for an anonymous visitor landing on the marketing homepage it
+// legitimately returns 401. Without this entry, that 401 would send the
+// interceptor into _runRefresh(), fail (no refresh_token in localStorage),
+// clearAuthTokens(), and hard-redirect to /login — turning every logged-
+// out visit to tako.software/ into a bounce straight to the login page.
+// checkAuth() already handles a 401 from /auth/me correctly on its own
+// (sets user=null, stays on the current route); the interceptor should
+// stay out of it entirely.
+const _authPathsNoRefresh = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/me'];
 
 const _runRefresh = async () => {
   const refresh = localStorage.getItem(REFRESH_TOKEN_KEY);
